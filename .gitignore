@@ -1,0 +1,136 @@
+# ============================================================================
+# MINDSET HOCKEY — Next.js + Supabase + Stripe + AI
+#
+# SECRETS: the rules in the first block are the ones that matter. Everything
+# below them is convenience. If you add a new service, add its key file here
+# BEFORE you add the key.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# 1. SECRETS AND CREDENTIALS  — never commit
+#
+# Covers: Supabase service-role key, Stripe secret + webhook signing secret,
+# Anthropic / OpenAI API keys, Resend, Mux signing keys.
+# `.env.example` is deliberately NOT ignored — it is the template and holds
+# only blank placeholders.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.env
+.envrc
+
+# Anything key-shaped, wherever it appears
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+*credentials*
+*-secret*
+secrets.*
+service-account*.json
+gha-creds-*.json
+
+# Supabase CLI local state — contains the project ref and access tokens
+.branches/
+.temp/
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# ---------------------------------------------------------------------------
+# 2. DEPENDENCIES
+# ---------------------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/versions
+bower_components/
+jspm_packages/
+
+# ---------------------------------------------------------------------------
+# 3. BUILD OUTPUT AND CACHES
+# ---------------------------------------------------------------------------
+.next/
+out/
+build/
+dist/
+.swc/
+*.tsbuildinfo
+next-env.d.ts
+.turbo/
+.cache/
+.parcel-cache/
+.eslintcache
+.vercel/
+.netlify/
+
+# ---------------------------------------------------------------------------
+# 4. LOGS AND RUNTIME
+# ---------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm/
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ---------------------------------------------------------------------------
+# 5. TESTING AND COVERAGE
+# ---------------------------------------------------------------------------
+coverage/
+.nyc_output/
+/playwright-report/
+/test-results/
+/blob-report/
+.playwright/
+
+# ---------------------------------------------------------------------------
+# 6. EDITOR AND OS NOISE
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ---------------------------------------------------------------------------
+# 7. LOCAL AGENT / TOOL STATE
+# ---------------------------------------------------------------------------
+.claude/
+.cursor/
+.aider*
+
+# ---------------------------------------------------------------------------
+# 8. MEMBER UPLOADS
+#
+# Real member video lives in Supabase Storage, never on disk. This is a guard
+# against a stray local upload folder ever being committed — these are minors'
+# videos and must not end up in version control.
+# ---------------------------------------------------------------------------
+uploads/
+tmp/
+temp/
+*.mov.tmp

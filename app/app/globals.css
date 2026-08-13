@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   MINDSET HOCKEY — design tokens
+   Shared with site/assets/site.css so both surfaces stay identical.
+   70% black/navy · 20% silver/white · 10% electric blue
+   =========================================================================== */
+@theme {
+  --color-ink: #05070c;
+  --color-navy-900: #0a1428;
+  --color-navy-800: #0d1b33;
+  --color-navy-700: #132444;
+  --color-electric: #0a84ff;
+  --color-electric-glow: #3fa9ff;
+  --color-silver: #c7d0dc;
+  --color-silver-dim: #8895a7;
+  --color-ice: #e8f1fa;
+  /* Accent tokens matching site.css. `amber` was already referenced across the
+     portal (sidebar, status pills, demo banners) without being defined here,
+     so those utilities were silently doing nothing until now. */
+  --color-amber: #ffb03c;
+  --color-rink-red: #c8102e;
+  --color-turf: #3ddc84;
+
+  --font-display: "Anton", Impact, "Arial Narrow", sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+:root {
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-silver);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.display {
+  /* --font-anton is injected on <html> by next/font in app/layout.tsx */
+  font-family: var(--font-anton), Impact, "Arial Narrow", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+  color: #fff;
+}
+
+.hairline {
+  border-color: var(--line);
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-electric-glow);
+}
+
+.card {
+  background: var(--color-navy-900);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.card-hover {
+  transition: border-color 0.22s ease, transform 0.22s ease, background 0.22s ease;
+}
+.card-hover:hover {
+  border-color: rgba(10, 132, 255, 0.42);
+  background: var(--color-navy-800);
+  transform: translateY(-2px);
+}
+
+/* Only style text-like controls — ranges, checkboxes and file inputs opt out. */
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  background: var(--color-ink);
+  border: 1px solid var(--line-strong);
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  width: 100%;
+  font-size: 15px;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--color-electric);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-electric);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-ink);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-navy-700);
+  border-radius: 99px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
