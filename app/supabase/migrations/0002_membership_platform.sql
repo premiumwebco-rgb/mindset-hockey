@@ -128,7 +128,15 @@ create table if not exists subscriptions (
   updated_at             timestamptz not null default now()
 );
 create index if not exists subscriptions_profile_idx on subscriptions (profile_id);
-create index if not exists subscriptions_status_idx  on subscriptions (status);
+-- subscriptions_status_idx is NOT created here. 0001 already created this table
+-- with a `status sub_status` column and no index on it (0001's only subscriptions
+-- indexes are subscriptions_profile_id_idx / subscriptions_stripe_customer_id_idx,
+-- both different names). Creating subscriptions_status_idx here, before section
+-- 3a converts status to sub_status_t, would build the index on the OLD column —
+-- and then section 3a's `drop column status` would fail with "cannot drop column
+-- status ... because other objects depend on it: index subscriptions_status_idx",
+-- the same class of error this migration was just fixed for. The index is
+-- created once, after the conversion, in section 3a instead.
 
 -- Idempotency ledger so a replayed Stripe webhook can't double-apply.
 create table if not exists stripe_events (
@@ -186,6 +194,187 @@ create table if not exists shot_analyses (
 );
 create index if not exists shot_analyses_profile_idx on shot_analyses (profile_id, created_at desc);
 create index if not exists shot_analyses_status_idx  on shot_analyses (status);
+
+-- ---------------------------------------------------------------------------
+-- 3a. RECONCILE THE TABLES 0001 ALREADY CREATED
+--
+-- WHY THIS IS HERE AND NOT IN A LATER MIGRATION
+-- 0001 already created `subscriptions`, `video_submissions`, `analysis_reviews`
+-- and `leads` with a DIFFERENT shape. Every `create table if not exists` for
+-- those four in this file is therefore SILENTLY SKIPPED — Postgres keeps 0001's
+-- definition and does not warn. The indexes and policies further down this file
+-- then reference columns that do not exist, and the migration aborts with
+-- "column ... does not exist" (42703).
+--
+-- That is exactly what happened at
+--   create index analysis_reviews_analysis_idx on analysis_reviews (analysis_id)
+--
+-- So the reconciliation has to happen HERE — after the enum types and
+-- shot_analyses exist (both are required below), but BEFORE the first index or
+-- policy that depends on a reconciled column.
+--
+-- Every statement is idempotent, so this is a no-op on a database that already
+-- has the right shape. Migration 0003 repeats this work as a safety net and
+-- will find nothing left to do.
+-- ---------------------------------------------------------------------------
+
+-- SUBSCRIPTIONS ------------------------------------------------------------
+alter table subscriptions
+  add column if not exists setup_fee_paid   boolean not null default false,
+  add column if not exists setup_fee_amount int;
+
+-- tier: membership_tier(free|basic|advanced) -> tier_t(none|basic|premium)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'subscriptions' and column_name = 'tier'
+      and udt_name = 'membership_tier'
+  ) then
+    alter table subscriptions add column tier_tmp tier_t;
+    update subscriptions set tier_tmp = case
+      when tier::text = 'advanced' then 'premium'::tier_t
+      when tier::text = 'basic'    then 'basic'::tier_t
+      else 'none'::tier_t
+    end;
+    alter table subscriptions drop column tier;
+    alter table subscriptions rename column tier_tmp to tier;
+    alter table subscriptions alter column tier set not null;
+  end if;
+end $$;
+
+-- status: sub_status -> sub_status_t
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'subscriptions' and column_name = 'status'
+      and udt_name = 'sub_status'
+  ) then
+    alter table subscriptions add column status_tmp sub_status_t;
+    update subscriptions set status_tmp = case status::text
+      when 'trialing'   then 'trialing'::sub_status_t
+      when 'active'     then 'active'::sub_status_t
+      when 'past_due'   then 'past_due'::sub_status_t
+      when 'canceled'   then 'canceled'::sub_status_t
+      when 'incomplete' then 'incomplete'::sub_status_t
+      else 'incomplete'::sub_status_t
+    end;
+    alter table subscriptions drop column status;
+    alter table subscriptions rename column status_tmp to status;
+    alter table subscriptions alter column status set not null;
+  end if;
+end $$;
+
+create index if not exists subscriptions_status_idx on subscriptions (status);
+
+-- VIDEO SUBMISSIONS --------------------------------------------------------
+alter table video_submissions
+  add column if not exists kind       text not null default 'game',
+  add column if not exists title      text,
+  add column if not exists video_path text,
+  add column if not exists notes      text,
+  add column if not exists created_at timestamptz not null default now();
+
+-- 0001 made player_id NOT NULL; the app submits without one.
+alter table video_submissions alter column player_id drop not null;
+
+update video_submissions set notes = player_notes
+  where notes is null and player_notes is not null;
+update video_submissions set title = 'Submission ' || left(id::text, 8)
+  where title is null;
+
+-- status: submission_status -> analysis_status_t
+--
+-- 0001's `coach_queue` view (create or replace view coach_queue as ... from
+-- video_submissions s ...) reads s.status directly. Postgres will not let a
+-- column a view depends on be dropped — "cannot drop column status of table
+-- video_submissions because other objects depend on it" — so the view has to
+-- go first. It is not deleted permanently: it is recreated immediately after
+-- this block, further down, with the exact same columns and join, and is the
+-- only object touched (no CASCADE — nothing else depends on this column).
+drop view if exists coach_queue;
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'video_submissions' and column_name = 'status'
+      and udt_name = 'submission_status'
+  ) then
+    alter table video_submissions add column status_tmp analysis_status_t;
+    update video_submissions set status_tmp = case status::text
+      when 'uploading'  then 'uploading'::analysis_status_t
+      when 'pending'    then 'queued'::analysis_status_t
+      when 'in_review'  then 'in_review'::analysis_status_t
+      when 'reviewed'   then 'reviewed'::analysis_status_t
+      when 'rejected'   then 'failed'::analysis_status_t
+      else 'queued'::analysis_status_t
+    end;
+    alter table video_submissions drop column status;
+    alter table video_submissions rename column status_tmp to status;
+    alter table video_submissions alter column status set not null;
+    alter table video_submissions alter column status set default 'queued';
+  end if;
+end $$;
+
+-- Recreate coach_queue exactly as 0001 defined it, with one change: the WHERE
+-- clause filtered on submission_status values ('pending','in_review'). Those
+-- literals no longer exist as labels of analysis_status_t — the CASE above
+-- remapped 'pending' to 'queued' — so re-running the old literal set would
+-- itself fail ("invalid input value for enum analysis_status_t: pending").
+-- 'queued' is the direct successor of 'pending' in that mapping, so the queue
+-- keeps selecting the same rows (awaiting review) it always did. This runs
+-- unconditionally so the view exists whether or not the conversion above fired
+-- on this pass (idempotent reruns after a partial failure).
+create or replace view coach_queue as
+select s.id, s.player_id, p.first_name, p.last_name, p.level,
+       s.shot_type, s.submitted_at, s.sla_due_at, s.status,
+       (s.sla_due_at < now()) as overdue
+from video_submissions s
+join players p on p.id = s.player_id
+where s.status in ('queued','in_review')
+order by s.submitted_at asc;
+
+-- ANALYSIS REVIEWS ---------------------------------------------------------
+-- 0001 keyed these to video_submissions(id) via submission_id. The application
+-- keys them to shot_analyses(id) via analysis_id — a coach comment now hangs
+-- off an AI analysis, not off a raw upload. Both columns are kept so existing
+-- rows survive; submission_id becomes nullable rather than being dropped.
+alter table analysis_reviews
+  add column if not exists analysis_id     uuid references shot_analyses(id) on delete cascade,
+  add column if not exists body            text,
+  add column if not exists score_overrides jsonb,
+  add column if not exists complete        boolean not null default false;
+
+update analysis_reviews set body = summary_md
+  where body is null and summary_md is not null;
+
+alter table analysis_reviews alter column submission_id drop not null;
+
+-- LEADS --------------------------------------------------------------------
+alter table leads
+  add column if not exists name          text,
+  add column if not exists phone         text,
+  add column if not exists plan_interest text,
+  add column if not exists goals         text,
+  add column if not exists handled       boolean not null default false;
+
+update leads set name = split_part(email, '@', 1) where name is null;
+
+-- 0001 typed level as play_level; the app posts free text like "16U A".
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'leads' and column_name = 'level' and udt_name = 'play_level'
+  ) then
+    alter table leads alter column level type text using level::text;
+  end if;
+end $$;
+
+-- 0001 had unique(email, source); the same family may enquire twice.
+alter table leads drop constraint if exists leads_email_source_key;
 
 -- Coach commentary layered on top of an AI analysis.
 create table if not exists analysis_reviews (

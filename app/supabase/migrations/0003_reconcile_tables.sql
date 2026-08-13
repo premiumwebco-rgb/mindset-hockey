@@ -15,6 +15,14 @@
 -- Without this migration the Stripe webhook, video review submission, coach
 -- review and admin leads page all fail at runtime with "column does not exist".
 --
+-- STATUS: THIS IS NOW A SAFETY NET, NOT THE PRIMARY FIX.
+-- 0002 aborted before it could finish, because its own indexes and policies
+-- referenced the reconciled columns. The reconciliation therefore had to move
+-- INTO 0002 (see its section "3a"), ahead of the first statement that needs it.
+-- Everything below is idempotent and will find nothing left to do on a database
+-- migrated with the current 0002. It is kept, unchanged, so that any database
+-- already migrated with an older 0002 still converges to the same schema.
+--
 -- Safe to run more than once.
 -- Run AFTER 0001 and 0002.
 -- ============================================================================
@@ -102,6 +110,13 @@ update video_submissions set title = 'Submission ' || left(id::text, 8)
   where title is null;
 
 -- status: submission_status -> analysis_status_t
+--
+-- Same view-dependency guard as 0002 section 3a: coach_queue (0001) reads
+-- video_submissions.status directly, so it must be dropped before the type
+-- swap and recreated after (not left dropped — see below). Kept in step with
+-- 0002 so this file stays a true no-op once 0002 has already run the fix.
+drop view if exists coach_queue;
+
 do $$
 begin
   if exists (
@@ -124,6 +139,17 @@ begin
     alter table video_submissions alter column status set default 'queued';
   end if;
 end $$;
+
+-- Recreate with the remapped literal ('pending' -> 'queued'; see 0002 3a for
+-- the full explanation). Unconditional so the view exists on every rerun.
+create or replace view coach_queue as
+select s.id, s.player_id, p.first_name, p.last_name, p.level,
+       s.shot_type, s.submitted_at, s.sla_due_at, s.status,
+       (s.sla_due_at < now()) as overdue
+from video_submissions s
+join players p on p.id = s.player_id
+where s.status in ('queued','in_review')
+order by s.submitted_at asc;
 
 -- ---------------------------------------------------------------------------
 -- 3. ANALYSIS REVIEWS
