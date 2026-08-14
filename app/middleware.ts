@@ -27,6 +27,9 @@ const PROTECTED = [
   '/onboarding',
   '/admin',
   '/coach',
+  // The purchase flow. Checkout sessions may only ever be created for a
+  // signed-in account, so the page that offers them is gated like any other.
+  '/upgrade',
 ];
 
 const AUTH_PAGES = ['/login', '/signup'];
@@ -70,15 +73,28 @@ export async function middleware(request: NextRequest) {
   if (!user && isProtected(pathname)) {
     const login = request.nextUrl.clone();
     login.pathname = '/login';
-    login.searchParams.set('next', pathname);
+    // Keep the query string: `/upgrade?plan=premium` must survive the bounce
+    // through login, or the member loses the plan they picked on the way in.
+    login.search = '';
+    login.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(login);
   }
 
   if (user && AUTH_PAGES.includes(pathname)) {
-    const dash = request.nextUrl.clone();
-    dash.pathname = '/dashboard';
-    dash.search = '';
-    return NextResponse.redirect(dash);
+    const dest = request.nextUrl.clone();
+    // An already-signed-in member clicking "Get Started" on the public pricing
+    // page lands on /signup?plan=… — they don't need an account, they need
+    // checkout. Sending them to the dashboard would silently drop the plan
+    // they just chose and dead-end the purchase.
+    const plan = request.nextUrl.searchParams.get('plan');
+    dest.search = '';
+    if (pathname === '/signup' && plan) {
+      dest.pathname = '/upgrade';
+      dest.searchParams.set('plan', plan);
+    } else {
+      dest.pathname = '/dashboard';
+    }
+    return NextResponse.redirect(dest);
   }
 
   return response;

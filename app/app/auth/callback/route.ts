@@ -23,6 +23,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=invalid_link`);
   }
 
-  const dest = next.startsWith('/') ? next : '/dashboard';
+  // Same-origin only. `//evil.example` also starts with '/' but browsers read
+  // it as protocol-relative, so it must be rejected explicitly.
+  const dest =
+    next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')
+      ? next
+      : '/dashboard';
   return NextResponse.redirect(`${origin}${dest}`);
 }

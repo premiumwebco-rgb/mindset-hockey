@@ -14,6 +14,7 @@
 import {
   SHOT_RUBRIC,
   confidenceLabel,
+  computeOverallScore,
   type AnalysisResult,
   type CategoryScore,
   type CategoryKey,
@@ -25,6 +26,19 @@ export class ModelOutputError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'ModelOutputError';
+  }
+}
+
+/**
+ * The response stopped mid-structure — the JSON is not malformed so much as
+ * unfinished. Kept separate from ModelOutputError because it is the one
+ * failure a stricter, shorter retry genuinely tends to fix, and because it
+ * means "we ran out of room", not "the model cannot follow instructions".
+ */
+export class TruncatedOutputError extends ModelOutputError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TruncatedOutputError';
   }
 }
 
@@ -50,22 +64,103 @@ interface RawOutput {
   footageIssues?: unknown;
 }
 
-/** Strips a markdown fence if the model added one, then parses the JSON body. */
+/**
+ * Locates the first COMPLETE top-level JSON object in a blob of model text.
+ *
+ * The previous implementation took `indexOf('{')` … `lastIndexOf('}')`. On a
+ * truncated response that silently grabs everything up to the last inner
+ * closing brace — a prefix of an object — and hands JSON.parse a fragment.
+ * That is what produced:
+ *
+ *   "Expected ',' or ']' after array element … at position 4509"
+ *
+ * which reads like malformed JSON but actually means the response was cut off
+ * mid-array. Brace counting must also respect string literals and escapes, or
+ * a `}` inside an observation string ends the object early.
+ *
+ * Returns null when no balanced object is present, so the caller can tell
+ * "truncated" apart from "no JSON at all".
+ */
+function extractBalancedObject(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      if (inString) escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+
+  // Ran to the end while still nested: the response stopped mid-object.
+  return null;
+}
+
+/**
+ * Extracts and parses the JSON object from a raw model response.
+ *
+ * Handles, in order: a bare object, a ```json fenced block, a fenced block
+ * with no language tag, and an object embedded in surrounding prose. It does
+ * NOT attempt to repair broken JSON — no quote-balancing, no bracket-patching,
+ * no trailing-comma stripping. A response that cannot be parsed as written is
+ * rejected, because a "repaired" analysis is a fabricated one.
+ */
 export function parseModelJson(text: string): RawOutput {
-  const cleaned = text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '');
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if (start === -1 || end === -1) {
-    throw new ModelOutputError('The model did not return JSON.');
+  const trimmed = (text ?? '').trim();
+  if (!trimmed) {
+    throw new ModelOutputError('The model returned an empty response.');
   }
-  try {
-    return JSON.parse(cleaned.slice(start, end + 1)) as RawOutput;
-  } catch (err) {
-    throw new ModelOutputError(`The model returned invalid JSON: ${(err as Error).message}`);
+
+  // Prefer the contents of a fenced block when one is present; models often
+  // wrap JSON in ```json even when told not to.
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidates = fenced ? [fenced[1], trimmed] : [trimmed];
+
+  for (const candidate of candidates) {
+    const objectText = extractBalancedObject(candidate);
+    if (!objectText) continue;
+    try {
+      const parsed = JSON.parse(objectText);
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new ModelOutputError('The model returned JSON that was not an object.');
+      }
+      return parsed as RawOutput;
+    } catch (err) {
+      if (err instanceof ModelOutputError) throw err;
+      throw new ModelOutputError(
+        `The model returned JSON that could not be parsed: ${(err as Error).message}`
+      );
+    }
   }
+
+  // A '{' with no matching '}' is an unfinished response, not a broken one.
+  if (trimmed.includes('{')) {
+    throw new TruncatedOutputError(
+      'The model response stopped before the JSON object was complete.'
+    );
+  }
+  throw new ModelOutputError('The model did not return JSON.');
 }
 
 function cleanString(value: unknown, maxLen = 600): string {
@@ -158,12 +253,13 @@ export function validateAnalysis(raw: RawOutput, model: string): AnalysisResult 
   );
 
   const graded = categories.filter((c) => c.score !== null);
-  const overallScore =
-    graded.length === 0
-      ? null
-      : Math.round(
-          (graded.reduce((sum, c) => sum + (c.score as number), 0) / (graded.length * 10)) * 100
-        );
+
+  // Confidence-weighted, then mapped through the calibration curve in
+  // rubric.ts. Previously this was (mean / 10) * 100, which treated a 1-10
+  // coaching score as a percentage and made a functional developing shot read
+  // as a failing grade. Ungradeable categories are excluded from the average
+  // entirely rather than counting as zero.
+  const overallScore = computeOverallScore(categories);
 
   let confidence = 0;
   if (typeof raw.confidence === 'number' && Number.isFinite(raw.confidence)) {

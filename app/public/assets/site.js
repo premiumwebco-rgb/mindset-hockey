@@ -115,10 +115,18 @@
         track('form_submit', { form_name: form.getAttribute('data-track-form') });
 
         // ── Delivery ────────────────────────────────────────────────────────
-        // Submissions POST to the host's form handler (Netlify Forms picks up
-        // any POST carrying `form-name`). If that fails — e.g. the site isn't
-        // on Netlify yet — we fall back to opening the visitor's email client
-        // with their answers pre-filled, so an enquiry is never lost silently.
+        // Enquiries POST to /api/leads, which writes them to the `leads` table
+        // where the admin Leads page can see them.
+        //
+        // The previous version never called the API at all: with no `action`
+        // and no `data-netlify` attribute it fell straight through to the
+        // mailto branch, opened a popup that most desktop browsers block, and
+        // then redirected to the thank-you page regardless — so every enquiry
+        // was lost while the visitor was told it had been received.
+        //
+        // The mailto path is kept, but only as a genuine last resort when the
+        // API is unreachable or returns an error, and the visitor is only sent
+        // to the thank-you page once something has actually worked.
         var custom = form.getAttribute('action');
         var isNetlify = form.hasAttribute('data-netlify');
         if (!custom || isNetlify) {
@@ -130,36 +138,76 @@
           var thanks = thanksBase + '?from=' +
             encodeURIComponent(form.getAttribute('data-track-form'));
 
-          var mailFallback = function () {
-            var to = form.getAttribute('data-fallback-email');
-            if (to) {
-              var lines = [];
-              form.querySelectorAll('input, select, textarea').forEach(function (el) {
-                if (!el.name || !el.value || el.name === 'company' || el.name === 'form-name') return;
-                var lab = form.querySelector('label[for="' + el.id + '"]');
-                lines.push((lab ? lab.textContent.trim() : el.name) + ': ' + el.value);
-              });
-              window.open('mailto:' + to +
-                '?subject=' + encodeURIComponent('Free assessment request — Mindset Hockey') +
-                '&body=' + encodeURIComponent(lines.join('\n') + '\n\n— Sent from the website'),
-                '_blank');
-            }
-            window.location.href = thanks;
+          var submitBtn = form.querySelector('[type="submit"]');
+          var originalLabel = submitBtn ? submitBtn.textContent : null;
+          var setBusy = function (busy) {
+            if (!submitBtn) return;
+            submitBtn.disabled = busy;
+            submitBtn.textContent = busy ? 'Sending…' : originalLabel;
           };
 
-          if (window.fetch && isNetlify) {
-            var body = new URLSearchParams(new FormData(form)).toString();
-            fetch('/', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: body
-            }).then(function (r) {
-              if (r.ok) window.location.href = thanks;
-              else mailFallback();
-            }).catch(mailFallback);
-          } else {
-            mailFallback();
-          }
+          var showError = function (msg) {
+            setBusy(false);
+            var box = form.querySelector('.form-error');
+            if (!box) {
+              box = document.createElement('p');
+              box.className = 'form-error';
+              box.setAttribute('role', 'alert');
+              box.style.cssText =
+                'margin-top:12px;padding:10px 14px;border-radius:10px;' +
+                'border:1px solid rgba(200,16,46,.45);background:rgba(200,16,46,.10);' +
+                'color:#fff;font-size:14px';
+              form.appendChild(box);
+            }
+            box.textContent = msg;
+          };
+
+          var mailFallback = function () {
+            var to = form.getAttribute('data-fallback-email');
+            if (!to) {
+              showError('Something went wrong. Please call (240) 435-6511 and we will sort it out.');
+              return;
+            }
+            var lines = [];
+            form.querySelectorAll('input, select, textarea').forEach(function (el) {
+              if (!el.name || !el.value || el.name === 'company' || el.name === 'form-name') return;
+              var lab = form.querySelector('label[for="' + el.id + '"]');
+              lines.push((lab ? lab.textContent.trim() : el.name) + ': ' + el.value);
+            });
+            window.open('mailto:' + to +
+              '?subject=' + encodeURIComponent('Free assessment request — Mindset Hockey') +
+              '&body=' + encodeURIComponent(lines.join('\n') + '\n\n— Sent from the website'),
+              '_blank');
+            // The popup may be blocked, so never claim success here — tell the
+            // visitor plainly how else to reach us.
+            showError(
+              'We could not send that automatically. An email draft may have opened — ' +
+              'otherwise please email ' + to + ' or call (240) 435-6511.'
+            );
+          };
+
+          if (!window.fetch) { mailFallback(); return; }
+
+          var data = {};
+          new FormData(form).forEach(function (v, k) { data[k] = v; });
+          data.source = data.source || form.getAttribute('data-track-form') || 'website';
+
+          setBusy(true);
+          fetch('/api/leads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (j) {
+              if (r.ok && j && j.ok) {
+                window.location.href = thanks;
+              } else if (r.status === 400 && j && j.error) {
+                showError(j.error);
+              } else {
+                mailFallback();
+              }
+            });
+          }).catch(mailFallback);
         }
       });
 

@@ -45,7 +45,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       <StickyCta />
 
       <Script src="/assets/site.js" strategy="afterInteractive" />
-      {/* Re-binds page-scoped behaviour after every client-side navigation. */}
+      {/* Re-binds page-scoped behavior after every client-side navigation. */}
       <MarketingScripts />
     </>
   );

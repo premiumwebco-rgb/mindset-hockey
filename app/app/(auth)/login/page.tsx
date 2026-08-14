@@ -57,7 +57,7 @@ export default async function Login({
 
           <p className="mt-4 text-center text-[13.5px] text-silver-dim">
             New here?{' '}
-            <Link href="/signup?plan=basic" className="text-electric-glow underline underline-offset-4">
+            <Link href="/signup?plan=standard" className="text-electric-glow underline underline-offset-4">
               Create an account
             </Link>
           </p>

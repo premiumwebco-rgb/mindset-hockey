@@ -1,5 +1,5 @@
 import { requireSession } from '@/lib/session';
-import { PLANS } from '@/lib/plans';
+import { PLANS, planFromParam } from '@/lib/plans';
 import { Card, Eyebrow } from '@/components/ui';
 import CheckoutButton from '@/components/CheckoutButton';
 
@@ -8,10 +8,14 @@ export const metadata = { title: 'Plans — Mindset Hockey' };
 export default async function UpgradePage({
   searchParams,
 }: {
-  searchParams: Promise<{ need?: string; f?: string; checkout?: string }>;
+  searchParams: Promise<{ need?: string; f?: string; checkout?: string; plan?: string }>;
 }) {
   const session = await requireSession();
   const sp = await searchParams;
+
+  // Route boundary: the plan the member picked on the public pricing page,
+  // carried through signup (and possibly through email confirmation).
+  const chosen = planFromParam(sp.plan);
 
   return (
     <div>
@@ -32,15 +36,27 @@ export default async function UpgradePage({
           That area is part of the Premium program.
         </Card>
       )}
+      {chosen && !session.subscriptionActive && (
+        <Card className="mt-6 border-electric/40 bg-electric/[.06] p-4 text-[14.5px] text-silver">
+          Your account is ready. Complete checkout below to start the{' '}
+          <b className="text-white">{chosen.name}</b> — ${chosen.setupFee} today, then $
+          {chosen.monthly}/month.
+        </Card>
+      )}
 
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
         {PLANS.map((plan) => {
           const current = session.tier === plan.tier && session.subscriptionActive;
+          const highlight = chosen?.slug === plan.slug && !session.subscriptionActive;
           return (
             <Card
               key={plan.slug}
               className={`flex flex-col p-7 ${
-                plan.featured ? 'border-electric bg-gradient-to-b from-[#0E1E3C] to-[#0A1428]' : ''
+                highlight
+                  ? 'border-electric ring-2 ring-electric/40'
+                  : plan.featured
+                    ? 'border-electric bg-gradient-to-b from-[#0E1E3C] to-[#0A1428]'
+                    : ''
               }`}
             >
               {plan.featured && (

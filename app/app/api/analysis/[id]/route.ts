@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, DEMO_MODE } from '@/lib/session';
 import { createServerClient } from '@/lib/supabase/server';
-import { deleteAnalysisObjects } from '@/lib/ai/storage';
+import { deleteAnalysisObjects, deleteFrameObjects } from '@/lib/ai/storage';
 
 export const runtime = 'nodejs';
 
@@ -47,10 +47,15 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     id,
     analysis.video_bucket ?? 'member-videos'
   );
+  // Archived frames live in a second bucket and would otherwise be orphaned —
+  // these are stills of a minor, so "delete" has to mean all of it.
+  await deleteFrameObjects(supabase, analysis.profile_id, id);
 
   const { error: deleteError } = await supabase.from('shot_analyses').delete().eq('id', id);
   if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 403 });
+    // Log the real cause; never hand a Postgres/RLS message to the browser.
+    console.error('[analysis] delete failed:', deleteError.message);
+    return NextResponse.json({ error: 'Could not delete that analysis.' }, { status: 403 });
   }
 
   return NextResponse.json({ ok: true });
@@ -93,7 +98,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? 'Could not request review.' }, { status: 403 });
+    if (error) console.error('[analysis] review request failed:', error.message);
+    return NextResponse.json({ error: 'Could not request review.' }, { status: 403 });
   }
 
   return NextResponse.json({ ok: true, status: 'in_review' });

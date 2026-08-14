@@ -19,17 +19,10 @@ export default function Footer() {
               <a href="tel:+12404356511">(240) 435-6511</a><br />
               <a href="mailto:braydencastiglia@gmail.com">braydencastiglia@gmail.com</a>
             </p>
-            <div className="socials">
-              <a href="https://instagram.com/mindsethockey" aria-label="Mindset Hockey on Instagram">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg>
-              </a>
-              <a href="https://youtube.com/@mindsethockey" aria-label="Mindset Hockey on YouTube">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="4" /><path d="m10 9 5 3-5 3z" fill="currentColor" stroke="none" /></svg>
-              </a>
-              <a href="https://tiktok.com/@mindsethockey" aria-label="Mindset Hockey on TikTok">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden="true"><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5" /><path d="M14 6.5A4.5 4.5 0 0 0 18.5 11" /></svg>
-              </a>
-            </div>
+            {/* Social icons removed until the accounts actually exist. Three
+                dead links read as an abandoned business to a visitor — and to a
+                payment processor reviewing the site. Add them back here when the
+                handles are live. */}
           </div>
           <div className="f-col">
             <h4>Programs</h4>
@@ -47,9 +40,13 @@ export default function Footer() {
             <Link href="/locations">Waldorf, MD Location</Link>
             <Link href="/contact">Contact</Link>
             <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/terms">Terms of Service</Link>
+            <Link href="/refunds">Cancellation &amp; Refunds</Link>
           </div>
           <div className="f-col">
             <h4>Get started</h4>
+            <Link href="/pricing">See Pricing</Link>
+            <Link href="/signup?plan=standard">Create Account</Link>
             <Link href="/contact">Free Assessment</Link>
             <a href="tel:+12404356511">Call Us</a>
             <a href="mailto:braydencastiglia@gmail.com">Email Us</a>

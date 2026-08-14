@@ -170,3 +170,123 @@ export function confidenceLabel(value: number): ConfidenceLevel {
   if (value >= 0.35) return 'medium';
   return 'low';
 }
+
+/* ==========================================================================
+   SCORE CALIBRATION
+
+   THE PROBLEM THIS SOLVES
+   The overall score used to be a straight linear map of the 1-10 category
+   mean onto 0-100:  (mean / 10) * 100. That silently assumed a 1-10 coaching
+   score means the same thing as a percentage. It does not.
+
+   In coaching, 5/10 means "functional, real things to work on". As a
+   percentage, 50 reads as a fail. A developing player with a connected,
+   working shot scored a mean of 5.6 and was shown 56/100 — a number that says
+   "your shot is broken" about a shot that is not.
+
+   THE FIX
+   An explicit anchor curve. Each 1-10 category level is given the 0-100 band
+   the business actually means by it, and values in between are interpolated.
+   This is a recalibration of MEANING, not a bonus: nothing is added, no floor
+   is applied, and the full range stays in use. A genuinely poor shot still
+   scores in the 40s and an elite one still has to earn the 90s.
+   ========================================================================== */
+
+/**
+ * Category level (1-10) -> overall points (0-100).
+ *
+ * Read this as: "what does a player whose mechanics average THIS level
+ * actually deserve to be told?" Derived directly from the published bands:
+ *
+ *   90-100  elite / exceptional        95+ needs a near-flawless read
+ *   85-89   excellent
+ *   80-84   strong
+ *   75-79   good foundation, clear improvements
+ *   70-74   developing but functional   <- the common youth case
+ *   60-69   needs focused mechanical work
+ *   <60     a genuinely significant mechanical problem
+ *
+ * The curve is intentionally compressed at the top (9 -> 10 buys 5 points)
+ * and steep at the bottom (2 -> 3 buys 10). Elite is hard to reach; genuinely
+ * broken mechanics are still clearly separated from merely imperfect ones.
+ */
+const SCORE_ANCHORS: readonly [level: number, points: number][] = [
+  [1, 22], // fundamentally not working
+  [2, 34],
+  [3, 46], // significant mechanical issue
+  [4, 57],
+  [5, 66], // needs focused work
+  [6, 74], // developing but functional
+  [7, 80], // strong
+  [8, 86], // excellent
+  [9, 92],
+  [10, 97], // elite — deliberately not 100
+];
+
+/** Piecewise-linear interpolation across the anchors above. */
+export function levelToPoints(level: number): number {
+  const clamped = Math.max(1, Math.min(10, level));
+  for (let i = 0; i < SCORE_ANCHORS.length - 1; i++) {
+    const [lo, loPts] = SCORE_ANCHORS[i];
+    const [hi, hiPts] = SCORE_ANCHORS[i + 1];
+    if (clamped >= lo && clamped <= hi) {
+      const t = hi === lo ? 0 : (clamped - lo) / (hi - lo);
+      return loPts + t * (hiPts - loPts);
+    }
+  }
+  return SCORE_ANCHORS[SCORE_ANCHORS.length - 1][1];
+}
+
+/**
+ * How much a category counts toward the overall score.
+ *
+ * A judgement the model was unsure about, or deduced rather than saw, should
+ * not swing the headline number as hard as something plainly visible. This is
+ * weighting, never point-adjustment: a low-confidence 4 is still a 4, it just
+ * carries less of the average.
+ */
+const CONFIDENCE_WEIGHT: Record<ConfidenceLevel, number> = {
+  high: 1,
+  medium: 0.7,
+  low: 0.4,
+};
+
+const BASIS_WEIGHT: Record<EvidenceBasis, number> = {
+  observed: 1,
+  inferred: 0.75,
+  // Contributes zero WEIGHT, not zero points — an unreadable category must
+  // never drag the average down as though it were a bad score.
+  unable_to_evaluate: 0,
+};
+
+export function categoryWeight(cat: CategoryScore): number {
+  if (cat.score === null || cat.status === 'insufficient_footage') return 0;
+  return CONFIDENCE_WEIGHT[cat.confidence] * BASIS_WEIGHT[cat.basis];
+}
+
+/**
+ * The overall score: a confidence-weighted mean of the graded category levels,
+ * mapped through the calibration curve.
+ *
+ * Only gradeable categories participate. Ungradeable ones are excluded from
+ * both numerator and denominator, so "9 of 10 categories supported" costs the
+ * player nothing.
+ *
+ * Returns null when nothing was gradeable — the honest answer, and the one
+ * case where no number is shown at all.
+ */
+export function computeOverallScore(categories: CategoryScore[]): number | null {
+  const graded = categories.filter((c) => c.score !== null && categoryWeight(c) > 0);
+  if (graded.length === 0) return null;
+
+  let weightedSum = 0;
+  let totalWeight = 0;
+  for (const cat of graded) {
+    const w = categoryWeight(cat);
+    weightedSum += (cat.score as number) * w;
+    totalWeight += w;
+  }
+
+  if (totalWeight === 0) return null;
+  return Math.round(levelToPoints(weightedSum / totalWeight));
+}

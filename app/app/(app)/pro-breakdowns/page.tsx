@@ -99,7 +99,7 @@ export default async function ProBreakdowns({
         <p className="max-w-[70ch] text-[14.5px] leading-relaxed text-silver-dim">
           Two reasons. The practical one: the gap between a 13-year-old and an NHL winger is so
           large it isn&apos;t actionable — a Junior A release he could realistically copy changes far
-          more behaviour than a highlight he can&apos;t. The honest one: NHL broadcast footage belongs
+          more behavior than a highlight he can&apos;t. The honest one: NHL broadcast footage belongs
           to the NHL, and re-hosting it inside a paid membership isn&apos;t ours to do. Every clip in
           this library was filmed by us, with consent.
         </p>

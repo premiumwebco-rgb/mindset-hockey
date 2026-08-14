@@ -6,7 +6,7 @@ import { extractFrames, readVideoDuration, type ExtractedFrame } from '@/lib/ai/
 import { Card } from '@/components/ui';
 
 /* ==========================================================================
-   UPLOAD → EXTRACT → ANALYSE
+   UPLOAD → EXTRACT → ANALYZE
 
    The full sequence, client side:
      1. Validate the file locally (fast failure, no wasted upload).
@@ -27,6 +27,20 @@ import { Card } from '@/components/ui';
 const ACCEPTED = ['video/mp4', 'video/quicktime', 'video/webm'];
 const MAX_BYTES = 200 * 1024 * 1024;
 
+/**
+ * Maximum clip length for AI Shot Analysis.
+ *
+ * THIS IS CONVENIENCE ONLY. The authoritative check reads the duration out of
+ * the uploaded file's container header server-side (lib/ai/duration.ts) before
+ * the entitlement is reserved and before any provider call. Editing this
+ * constant, or the duration this component reports, changes nothing — the
+ * server never consults either.
+ *
+ * Kept in sync with MAX_ANALYSIS_SECONDS. Does NOT apply to training
+ * resources, which are full-length instructional videos.
+ */
+const MAX_SECONDS = 5;
+
 const SHOT_TYPES = [
   { value: 'wrist', label: 'Wrist shot' },
   { value: 'snap', label: 'Snap shot' },
@@ -41,12 +55,12 @@ const ANGLES = [
   { value: 'rear', label: 'From behind', hint: 'Limited — shoulder rotation only.' },
 ];
 
-type Phase = 'idle' | 'uploading' | 'extracting' | 'analysing' | 'done' | 'error';
+type Phase = 'idle' | 'uploading' | 'extracting' | 'analyzing' | 'done' | 'error';
 
 const PHASE_COPY: Record<Exclude<Phase, 'idle' | 'done' | 'error'>, string> = {
   uploading: 'Uploading your clip securely…',
   extracting: 'Finding the release and pulling frames…',
-  analysing: 'Grading ten mechanics categories…',
+  analyzing: 'Grading ten mechanics categories…',
 };
 
 function validateFile(file: File): string | null {
@@ -57,11 +71,12 @@ function validateFile(file: File): string | null {
   return null;
 }
 
-export default function UploadAnalyzer() {
+export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: boolean }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
+  const [clipSeconds, setClipSeconds] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [shotType, setShotType] = useState('wrist');
   const [angle, setAngle] = useState('side');
@@ -96,6 +111,18 @@ export default function UploadAnalyzer() {
       setPreviewUrl(URL.createObjectURL(f));
       setFrames([]);
       setPhase('idle');
+      setClipSeconds(null);
+
+      // Read the length immediately so the member finds out now rather than
+      // after waiting through an upload. The server re-checks regardless.
+      void readVideoDuration(f).then((d) => {
+        setClipSeconds(d);
+        if (d !== null && d > MAX_SECONDS + 0.25) {
+          setError(
+            `Video length: ${d.toFixed(1)} seconds — too long. Maximum is ${MAX_SECONDS} seconds.`
+          );
+        }
+      });
     },
     [previewUrl]
   );
@@ -150,8 +177,8 @@ export default function UploadAnalyzer() {
       setFrames(extracted);
       setProgress(72);
 
-      // ---- 4. analyse ---------------------------------------------------
-      setPhase('analysing');
+      // ---- 4. analyze ---------------------------------------------------
+      setPhase('analyzing');
       const runRes = await fetch('/api/analysis/run', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -192,7 +219,7 @@ export default function UploadAnalyzer() {
     }
   }
 
-  const busy = phase === 'uploading' || phase === 'extracting' || phase === 'analysing';
+  const busy = phase === 'uploading' || phase === 'extracting' || phase === 'analyzing';
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
@@ -217,7 +244,16 @@ export default function UploadAnalyzer() {
                 </svg>
               </div>
               <p className="mt-4 font-semibold text-white">Drop your video here</p>
-              <p className="mt-1 text-[13.5px] text-silver-dim">MP4, MOV or WEBM · up to 200 MB</p>
+              <p className="mt-1 text-[13.5px] text-silver-dim">
+                MP4, MOV or WEBM · up to 200 MB
+              </p>
+              <p className="mt-2 text-[13px] font-semibold text-white">
+                Maximum video length: {MAX_SECONDS} seconds
+              </p>
+              <p className="mt-1 text-[12.5px] text-silver-dim">
+                Short clips keep the analysis on the shot itself rather than the skating
+                before it.
+              </p>
             </div>
           ) : (
             <div className="mt-4">
@@ -228,6 +264,18 @@ export default function UploadAnalyzer() {
                   playsInline
                   className="w-full rounded-xl border border-white/[.08] bg-black"
                 />
+              )}
+              {clipSeconds !== null && (
+                <p
+                  className={`mt-3 text-[13.5px] font-semibold ${
+                    clipSeconds > MAX_SECONDS + 0.25 ? 'text-amber' : 'text-[#3ddc84]'
+                  }`}
+                >
+                  Video length: {clipSeconds.toFixed(1)} seconds —{' '}
+                  {clipSeconds > MAX_SECONDS + 0.25
+                    ? `too long. Maximum is ${MAX_SECONDS} seconds.`
+                    : 'ready to analyze.'}
+                </p>
               )}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="min-w-0 flex-1 truncate text-[13.5px] text-silver-dim">
@@ -357,10 +405,14 @@ export default function UploadAnalyzer() {
           <button
             type="button"
             onClick={run}
-            disabled={!file}
+            disabled={!file || (clipSeconds !== null && clipSeconds > MAX_SECONDS + 0.25)}
             className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-electric px-8 py-4 text-[15px] font-bold tracking-wide text-white shadow-[0_8px_30px_rgba(10,132,255,.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-electric-glow disabled:pointer-events-none disabled:opacity-40"
           >
-            {phase === 'error' ? 'Try Again' : 'Analyse This Shot'}
+            {phase === 'error'
+              ? 'Try Again'
+              : aiAvailable
+                ? 'Analyze This Shot'
+                : 'Upload & Send to a Coach'}
           </button>
         )}
       </div>

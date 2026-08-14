@@ -1,6 +1,7 @@
 import { requireAdmin, DEMO_MODE } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Card, Eyebrow } from '@/components/ui';
+import ResourceManager from './ResourceManager';
 
 export const metadata = { title: 'Content — Admin' };
 
@@ -48,16 +49,27 @@ export default async function AdminContentPage() {
         ))}
       </div>
 
-      <Card className="mt-5 border-l-2 border-electric p-6">
-        <h3 className="display text-[18px]">Authoring</h3>
+      <div className="mt-10">
+        <Eyebrow>Training resources</Eyebrow>
+        <h2 className="display mt-1 text-[clamp(22px,3.5vw,30px)]">Videos, PDFs and images</h2>
+        <p className="mt-2 max-w-[64ch] text-[14.5px] text-silver-dim">
+          Files you upload here are stored privately and served to members through short-lived
+          signed links — never a public URL.
+        </p>
+        <div className="mt-5">
+          <ResourceManager />
+        </div>
+      </div>
+
+      <Card className="mt-8 border-l-2 border-electric p-6">
+        <h3 className="display text-[18px]">Structured content</h3>
         <p className="mt-2 text-[14.5px] text-silver-dim">
-          Content rows are managed in the Supabase table editor for now — that keeps the surface
-          area small while the library is still being written. Set{' '}
+          The four curriculum tables above (workout plans, meal plans, mindset lessons, nutrition
+          guides) are still edited in the Supabase table editor. Set{' '}
           <code className="rounded bg-ink px-1.5 py-0.5 text-[13px] text-white">is_published</code>{' '}
-          to true to make a row visible to members, and{' '}
+          to true to make a row visible, and{' '}
           <code className="rounded bg-ink px-1.5 py-0.5 text-[13px] text-white">required_tier</code>{' '}
-          to control which plan can see it. A full authoring UI is worth building once the
-          library stops changing shape weekly.
+          to control which plan sees it. Uploaded files are managed above.
         </p>
       </Card>
     </div>

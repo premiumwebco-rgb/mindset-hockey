@@ -1,9 +1,8 @@
 import Link from 'next/link';
-import { PLANS } from '@/lib/plans';
+import { PLANS, planFromParam } from '@/lib/plans';
 import { Button } from '@/components/ui';
 import AuthForm from '@/components/auth/AuthForm';
 import { signUpAction } from '../actions';
-import type { Tier } from '@/lib/types';
 
 export const metadata = { title: 'Create your account' };
 
@@ -13,8 +12,9 @@ export default async function Signup({
   searchParams: Promise<{ plan?: string }>;
 }) {
   const { plan } = await searchParams;
-  const tier = (plan as Tier) || 'basic';
-  const selected = PLANS.find((p) => p.tier === tier) ?? PLANS[0];
+  // Route boundary: `?plan=` may be a public slug or a legacy tier alias.
+  // planFromParam is the one place that translation is allowed to happen.
+  const selected = planFromParam(plan) ?? PLANS[0];
 
   return (
     <div className="grid min-h-screen place-items-center px-5 py-16">
@@ -32,12 +32,17 @@ export default async function Signup({
             {`Create your account`}
           </h1>
           <p className="mt-2 text-[14.5px] text-silver-dim">
-            {tier === 'premium'
-              ? `$${selected.setupFee} one-time setup, then $${selected.monthly}/month. No contract — cancel the monthly any time.`
-              : `$${selected.setupFee} one-time setup, then $${selected.monthly}/month. No contract — cancel the monthly any time.`}
+            {`$${selected.setupFee} one-time setup, then $${selected.monthly}/month. No contract — cancel the monthly any time.`}
+          </p>
+          <p className="mt-2 text-[13px] text-silver-dim">
+            Create your account first — payment is the next step, and nothing is charged until
+            you confirm it in Stripe.
           </p>
 
           <AuthForm action={signUpAction} label="Create Account" pendingLabel="Creating account…">
+            {/* Carries the chosen plan into signUpAction so the member lands on
+                checkout rather than a generic dashboard. Always the public slug. */}
+            <input type="hidden" name="plan" value={selected.slug} />
             <div>
               <label htmlFor="name" className="mb-2 block text-[11.5px] font-bold uppercase tracking-[.14em] text-silver-dim">
                 Your name
@@ -56,6 +61,22 @@ export default async function Signup({
               </label>
               <input id="password" name="password" type="password" placeholder="8+ characters" required />
             </div>
+
+            {/* Explicit, unticked opt-IN. Declining does NOT block signup and
+                does NOT affect the 3 free analyses. Account, security and
+                payment email is transactional and sent regardless. */}
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[.10] bg-ink px-4 py-3.5">
+              <input
+                type="checkbox"
+                name="marketing_opt_in"
+                value="true"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[#0A84FF]"
+              />
+              <span className="text-[13px] leading-relaxed text-silver-dim">
+                Yes, send me hockey tips, AI Shot Analysis updates, product news and occasional
+                offers. You can unsubscribe from any email in one click.
+              </span>
+            </label>
           </AuthForm>
 
           <p className="mt-4 text-center text-[12px] text-silver-dim">

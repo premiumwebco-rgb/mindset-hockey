@@ -17,7 +17,7 @@ export type AnalysisStatus =
 export const STATUS_LABEL: Record<AnalysisStatus, string> = {
   uploading: 'Uploading',
   queued: 'Queued',
-  analyzing: 'Analysing',
+  analyzing: 'Analyzing',
   analyzed: 'Complete',
   in_review: 'With a coach',
   reviewed: 'Coach reviewed',
@@ -46,7 +46,7 @@ export const BASIS_LABEL: Record<EvidenceBasis, string> = {
   unable_to_evaluate: 'Unable to evaluate',
 };
 
-/** Colour for a 1-10 category score. Null reads as neutral, never as bad. */
+/** Color for a 1-10 category score. Null reads as neutral, never as bad. */
 export function scoreClass(score: number | null): string {
   if (score === null) return 'text-silver-dim';
   if (score >= 8) return 'text-[#3ddc84]';

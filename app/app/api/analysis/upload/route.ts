@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
   if (DEMO_MODE) {
     return NextResponse.json(
-      { error: 'Demo mode — connect Supabase to upload and analyse real video.' },
+      { error: 'Demo mode — connect Supabase to upload and analyze real video.' },
       { status: 503 }
     );
   }
@@ -111,8 +111,11 @@ export async function POST(req: Request) {
   // An RLS denial surfaces here — the caller is not actually entitled, whatever
   // the checks above concluded.
   if (insertError || !created) {
+    // An RLS denial is expected here for an unentitled caller; the raw
+    // message names tables and policies, so it stays in the server log.
+    if (insertError) console.error('[analysis] insert denied:', insertError.message);
     return NextResponse.json(
-      { error: insertError?.message ?? 'Could not start the analysis.' },
+      { error: 'Could not start the analysis. Check your membership is active.' },
       { status: 403 }
     );
   }

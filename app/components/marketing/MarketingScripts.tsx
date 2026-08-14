@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 /* ==========================================================================
-   Re-runs the marketing site's per-page behaviour after each navigation.
+   Re-runs the marketing site's per-page behavior after each navigation.
 
    WHY THIS EXISTS
    site.js is a plain IIFE written for a static site, where every page load
@@ -15,7 +15,7 @@ import { usePathname } from 'next/navigation';
    layout's header and footer (never `.rv`) kept rendering.
 
    site.js now exposes `window.mhInitPage()`, which re-binds only the
-   page-scoped behaviour: the reveal observer, forms and video facades. It is
+   page-scoped behavior: the reveal observer, forms and video facades. It is
    idempotent — already-bound elements are skipped — so calling it on every
    route change is safe.
 

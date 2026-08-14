@@ -1,14 +1,57 @@
-import { requireSession } from '@/lib/session';
+import { requireSession, DEMO_MODE } from '@/lib/session';
 import { PILLARS } from '@/lib/types';
+import { planFromParam } from '@/lib/plans';
 import { Button, Card, PageHeading } from '@/components/ui';
+import CheckoutSuccessBanner, { type CheckoutState } from '@/components/CheckoutSuccessBanner';
 
 export const metadata = { title: 'Set up your player' };
 
-export default async function Onboarding() {
-  await requireSession();
+export default async function Onboarding({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string; session_id?: string }>;
+}) {
+  const session = await requireSession();
+  const sp = await searchParams;
+
+  /* ---- Returning from Stripe Checkout ------------------------------------
+     The query string is treated as a hint, never as proof. When it claims
+     success we ask Stripe directly and confirm the session belongs to this
+     member before showing anything. Entitlement itself still comes from
+     profiles.subscription_active, written only by the webhook. */
+  let checkoutState: CheckoutState | null = null;
+  let checkoutPlan: string | null = null;
+
+  if (sp.checkout === 'success' && !DEMO_MODE) {
+    if (!sp.session_id) {
+      checkoutState = 'unverified';
+    } else {
+      const { verifyCheckoutSession } = await import('@/lib/stripe');
+      const result = await verifyCheckoutSession(sp.session_id, session.userId);
+      checkoutPlan = planFromParam(
+        'planName' in result ? result.planName : null
+      )?.name ?? null;
+
+      if (result.state === 'paid') {
+        // Paid is settled. Whether the member can USE it depends on the
+        // webhook having landed — that is the lag window the banner polls.
+        checkoutState = session.subscriptionActive ? 'active' : 'pending';
+      } else if (result.state === 'processing') {
+        checkoutState = 'pending';
+      } else if (result.state === 'unpaid') {
+        checkoutState = 'unpaid';
+      } else {
+        checkoutState = 'unverified';
+      }
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[640px]">
+      {checkoutState && (
+        <CheckoutSuccessBanner state={checkoutState} planName={checkoutPlan} />
+      )}
+
       <PageHeading
         eyebrow="Three steps · about 60 seconds"
         title="Set up your player"

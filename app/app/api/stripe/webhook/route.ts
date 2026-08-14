@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Tier, SubscriptionStatus } from '@/lib/types';
 import { ACTIVE_SUB_STATUSES } from '@/lib/types';
+import { ANALYSIS_ADDON } from '@/lib/plans';
 
 export const runtime = 'nodejs';
 /** Stripe needs the raw body for signature verification — never cache. */
@@ -21,6 +22,18 @@ const RELEVANT = new Set<string>([
 function tierFromMetadata(meta: Stripe.Metadata | null | undefined): Tier | null {
   const t = meta?.tier;
   return t === 'basic' || t === 'premium' ? t : null;
+}
+
+/**
+ * The one-time setup fee in cents, as recorded by the checkout route after it
+ * verified the price is genuinely non-recurring. Returns null when absent or
+ * unparseable so a bad value is never written to `subscriptions`.
+ */
+function setupFeeFromMetadata(meta: Stripe.Metadata | null | undefined): number | null {
+  const raw = meta?.setup_fee_amount;
+  if (!raw) return null;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 /**
@@ -94,6 +107,15 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const cs = event.data.object as Stripe.Checkout.Session;
+
+      // A one-time add-on purchase is NOT a membership change. Branch before
+      // any subscription logic so it can never touch profiles.tier or
+      // subscription_active.
+      if (cs.metadata?.kind === 'analysis_addon') {
+        await grantAnalysisAddon(admin, event, cs);
+        return;
+      }
+
       const profileId = cs.client_reference_id ?? cs.metadata?.profile_id;
       const tier = tierFromMetadata(cs.metadata);
       if (!profileId || !tier) {
@@ -113,7 +135,11 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
         customerId: String(cs.customer),
         sub,
         setupFeePaid: true,
-        setupFeeAmount: cs.amount_total ?? null,
+        // NOT cs.amount_total — that is the whole first invoice (setup fee PLUS
+        // the first month, e.g. $349 for Standard). The checkout route puts the
+        // verified one-time price amount in metadata; fall back to null rather
+        // than recording a number we know to be wrong.
+        setupFeeAmount: setupFeeFromMetadata(cs.metadata),
       });
 
       await applyEntitlement(admin, profileId, tier, sub ? normalizeStatus(sub.status) : 'active');
@@ -199,6 +225,83 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
   }
 }
 
+/**
+ * Banks ONE paid AI Shot Analysis after Stripe confirms payment.
+ *
+ * THE ONLY PLACE A PURCHASED ENTITLEMENT IS EVER CREATED. Reaching it requires
+ * a signature-verified Stripe event — a client redirect, a replayed success
+ * URL or a crafted API call cannot produce one.
+ *
+ * IDEMPOTENCY IS THE DATABASE'S JOB. `stripe_event_id` and `stripe_session_id`
+ * are both UNIQUE in `analysis_purchases`, so a duplicate delivery loses to a
+ * unique violation (23505) rather than granting a second analysis. That holds
+ * even for simultaneous deliveries, which an application-level "check then
+ * insert" would not.
+ *
+ * QUANTITY AND AMOUNT COME FROM STRIPE AND FROM OUR OWN PRODUCT DEFINITION,
+ * never from metadata a client could have influenced.
+ */
+async function grantAnalysisAddon(
+  admin: Admin,
+  event: Stripe.Event,
+  cs: Stripe.Checkout.Session
+): Promise<void> {
+  // Only a genuinely paid session grants anything. Unpaid, async-pending and
+  // cancelled sessions fall through and bank nothing.
+  if (cs.payment_status !== 'paid') {
+    console.warn(`[addon] session ${cs.id} is ${cs.payment_status}, not granting`);
+    return;
+  }
+
+  const profileId = cs.client_reference_id ?? cs.metadata?.profile_id;
+  if (!profileId) {
+    console.error(`[addon] session ${cs.id} has no profile reference — cannot grant`);
+    return;
+  }
+
+  // Trust Stripe's own line items over anything in metadata.
+  let quantity = 0;
+  try {
+    const items = await stripe().checkout.sessions.listLineItems(cs.id, { limit: 10 });
+    for (const item of items.data) {
+      if (item.price?.id === ANALYSIS_ADDON.priceId) quantity += item.quantity ?? 0;
+    }
+  } catch (err) {
+    console.error('[addon] could not read line items:', (err as Error).message);
+    return;
+  }
+
+  if (quantity <= 0) {
+    console.error(`[addon] session ${cs.id} contained no add-on line item — not granting`);
+    return;
+  }
+
+  const { error } = await admin.from('analysis_purchases').insert({
+    profile_id: profileId,
+    stripe_event_id: event.id,
+    stripe_session_id: cs.id,
+    stripe_payment_intent_id:
+      typeof cs.payment_intent === 'string' ? cs.payment_intent : (cs.payment_intent?.id ?? null),
+    quantity,
+    amount_cents: cs.amount_total ?? ANALYSIS_ADDON.amountCents * quantity,
+    currency: cs.currency ?? ANALYSIS_ADDON.currency,
+  });
+
+  if (error) {
+    // 23505 = unique violation = this payment was already banked. Expected on
+    // a Stripe retry, and precisely the behavior we want.
+    if (error.code === '23505') {
+      console.log(`[addon] session ${cs.id} already granted — duplicate ignored`);
+      return;
+    }
+    // Anything else must surface so Stripe retries rather than losing a
+    // purchase the member has paid for.
+    throw new Error(`could not record analysis purchase: ${error.message}`);
+  }
+
+  console.log(`[addon] granted ${quantity} analysis to ${profileId} (session ${cs.id})`);
+}
+
 /** Finds the profile behind a subscription, via metadata then customer id. */
 async function resolveProfileId(admin: Admin, sub: Stripe.Subscription) {
   const fromMeta = sub.metadata?.profile_id;
@@ -274,10 +377,16 @@ async function applyEntitlement(
 ) {
   const active = ACTIVE_SUB_STATUSES.includes(status);
 
+  // `tier` is written unconditionally and `subscription_active` carries the
+  // entitlement. On cancellation the tier LABEL is deliberately retained while
+  // subscription_active flips false, so /account can still say "Premium —
+  // Inactive" and offer a reactivate CTA. Access is unaffected: both
+  // hasTier() in lib/session.ts and auth_has_tier() in the RLS policies
+  // require subscription_active, not just the label.
   await admin
     .from('profiles')
     .update({
-      tier: active ? tier : tier, // keep the label so the UI can offer a reactivate CTA
+      tier,
       subscription_active: active,
     })
     .eq('id', profileId);

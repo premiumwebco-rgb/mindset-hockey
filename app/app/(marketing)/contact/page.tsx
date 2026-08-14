@@ -53,7 +53,7 @@ export default function Contact() {
                   drives GA4 event tracking + client-side validation, and
                   data-fallback-email opens a pre-filled mailto since no
                   action/data-netlify is set (matches the original static
-                  site's behaviour — never wired to a backend endpoint). */}
+                  site's behavior — never wired to a backend endpoint). */}
               <form className="form" data-track-form="assessment_request" data-fallback-email="braydencastiglia@gmail.com" noValidate>
                 <div className="form-row">
                   <div className="field"><label htmlFor="parentName">Your name</label><input id="parentName" name="name" required autoComplete="name" /><span className="err">Please enter your name.</span></div>

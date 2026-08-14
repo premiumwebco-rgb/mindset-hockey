@@ -14,6 +14,25 @@ import type { Tier } from './types';
    "basic OR premium, with an active subscription". Do not move it to premium.
    ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   PLAN VOCABULARY — one canonical form, converted explicitly at the edges.
+
+   CANONICAL (internal):  Tier — 'none' | 'basic' | 'premium'
+     This is what the database enum `tier_t`, `profiles.tier`, the RLS function
+     `auth_has_tier()` and `session.tier` all speak. Application code should
+     only ever compare tiers.
+
+   PUBLIC (URLs + API bodies):  PlanSlug — 'standard' | 'premium'
+     This is what a member sees. 'basic' is the historical internal name for
+     the Standard plan and must never appear in a URL.
+
+   The two vocabularies meet in exactly ONE place: `planFromParam()`. Every
+   route boundary that receives a plan from outside (a query string, a JSON
+   body) must go through it. Nothing else may translate between them — that is
+   what stops `basic` and `standard` being mixed up silently.
+-------------------------------------------------------------------------- */
+export type PlanSlug = 'standard' | 'premium';
+
 export interface PlanFeature {
   label: string;
   included: boolean;
@@ -21,7 +40,7 @@ export interface PlanFeature {
 
 export interface Plan {
   tier: Tier;
-  slug: 'standard' | 'premium';
+  slug: PlanSlug;
   name: string;
   tagline: string;
   who: string;
@@ -51,7 +70,7 @@ export const PLANS: Plan[] = [
     priceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_STANDARD_MONTHLY,
     priceIdSetup: process.env.NEXT_PUBLIC_STRIPE_PRICE_STANDARD_SETUP,
     features: [
-      { label: 'AI Shot Analysis', included: true },
+      { label: '10 AI Shot Analyses per week', included: true },
       { label: 'Personalized hockey development roadmap', included: true },
       { label: 'Hockey-specific workout plan', included: true },
       { label: 'Monthly progress review', included: true },
@@ -79,7 +98,8 @@ export const PLANS: Plan[] = [
     priceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_MONTHLY,
     priceIdSetup: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_SETUP,
     features: [
-      { label: 'Everything in Standard, including AI Shot Analysis', included: true },
+      { label: '20 AI Shot Analyses per week', included: true },
+      { label: 'Everything in Standard', included: true },
       { label: 'Customized training program that evolves as the athlete progresses', included: true },
       { label: "Performance nutrition guidance tailored to the athlete's goals", included: true },
       { label: 'Video analysis and breakdowns', included: true },
@@ -99,6 +119,24 @@ export const PLAN_BY_SLUG: Record<string, Plan> = Object.fromEntries(
 
 export function planForTier(tier: Tier): Plan | undefined {
   return PLANS.find((p) => p.tier === tier);
+}
+
+/**
+ * THE ONLY BRIDGE BETWEEN THE PUBLIC AND CANONICAL VOCABULARIES.
+ *
+ * Accepts whatever arrived from outside — a `?plan=` query string, a JSON body
+ * — and resolves it to a Plan, or `undefined` if it is not a real plan.
+ *
+ * It deliberately accepts the internal tier name as a legacy alias so that old
+ * links and bookmarks (`/signup?plan=basic`) keep working, but it normalises
+ * immediately: callers get a Plan and should thereafter use `plan.slug` for
+ * anything outward-facing and `plan.tier` for anything internal. `'none'` is
+ * not a purchasable plan and is rejected.
+ */
+export function planFromParam(param: string | null | undefined): Plan | undefined {
+  if (!param) return undefined;
+  const key = param.trim().toLowerCase();
+  return PLANS.find((p) => p.slug === key || p.tier === key);
 }
 
 /** Private on-ice coaching, billed per session rather than by subscription. */
@@ -152,15 +190,102 @@ export const FEATURE_MIN_TIER: Record<Feature, Tier> = {
   basic_tracking: 'basic',
   monthly_content: 'basic',
   workout_plans: 'basic',
-  // Included with BOTH Standard and Premium. Mirrored by the RLS policies on
-  // shot_analyses and storage.objects in migration 0004.
-  ai_shot_analysis: 'basic',
+  // Reachable by EVERY signed-in account, including free ones — a new member
+  // gets 3 free analyses and must be able to use them. This is a UX gate only:
+  // the real boundary is the entitlement reservation in lib/ai/quota.ts plus
+  // the RLS policies in 0007, which require either an active tier OR an
+  // unspent credit. A free member with 0 credits still reaches the page and is
+  // shown the upgrade options rather than being bounced to /upgrade.
+  ai_shot_analysis: 'none',
   nutrition_plans: 'premium',
   mindset_training: 'premium',
   video_review: 'premium',
   advanced_tracking: 'premium',
   priority_support: 'premium',
 };
+
+/* --------------------------------------------------------------------------
+   AI SHOT ANALYSIS — WEEKLY ALLOWANCE
+
+   THE ONLY PLACE THESE NUMBERS LIVE. To move Basic 3 -> 5 and Premium 6 -> 10,
+   edit the two numbers below and nothing else. The API limit, the enforcement,
+   the "2 of 3 used this week" counter and the exhausted-allowance message all
+   read from here.
+
+   WEEKLY, NOT MONTHLY. AI Shot Analysis is a weekly coaching rhythm: film a
+   session, get it graded, work on it, film again. That cadence is deliberately
+   decoupled from Stripe. Stripe answers "is this subscription active and what
+   tier is it?" — nothing more. This answers "how many analyses does that tier
+   include per week?". A monthly invoice does not reset the weekly allowance.
+
+   FUTURE ADD-ONS. `weeklyAiAllowance()` returns the INCLUDED allowance. When
+   purchased top-ups arrive, they become a separate additive term
+   (included + purchased = total) rather than an edit to these numbers, so the
+   entitlement architecture already supports it. Nothing here needs to change.
+-------------------------------------------------------------------------- */
+
+/** Included AI Shot Analyses per rolling 7-day period, by tier. */
+export const AI_ANALYSIS_LIMITS: Record<Tier, number> = {
+  none: 0,
+  basic: 10, // Standard
+  premium: 20, // Premium
+};
+
+/* --------------------------------------------------------------------------
+   PAID ADD-ON — one extra AI Shot Analysis
+
+   A one-time purchase, deliberately NOT a subscription change. Buying an
+   add-on must never touch profiles.tier or subscription_active.
+
+   The amount below is the SERVER'S definition of the product and is what the
+   checkout route validates the configured Stripe price against. The client
+   never supplies a price, amount, quantity or user id — see
+   app/api/analysis/purchase/route.ts.
+-------------------------------------------------------------------------- */
+export const ANALYSIS_ADDON = {
+  /** Cents. Compared against the Stripe price before any session is created. */
+  amountCents: 50,
+  currency: 'usd',
+  /** Exactly one analysis per purchase. One click = one analysis. */
+  quantity: 1,
+  label: 'One AI Shot Analysis',
+  /** Display helper so no template hardcodes "$0.50". */
+  get display(): string {
+    return `$${(this.amountCents / 100).toFixed(2)}`;
+  },
+  priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ANALYSIS_ADDON,
+} as const;
+
+/**
+ * Whether add-ons can actually be sold right now.
+ *
+ * Stripe is not fully configured yet. Without a price id the purchase route
+ * refuses with 503, so showing a live "Get 1 more — $0.50" button would offer
+ * the member something that simply fails. The UI reads this and shows a
+ * "coming soon" note instead of a broken button.
+ *
+ * The moment NEXT_PUBLIC_STRIPE_PRICE_ANALYSIS_ADDON is set, the real button
+ * appears with no code change — and the purchase route still independently
+ * verifies the price is one-time, USD and exactly 50 cents before charging.
+ */
+export function analysisAddonAvailable(): boolean {
+  return Boolean(ANALYSIS_ADDON.priceId);
+}
+
+/** Length of one allowance period, in days. Weekly by product decision. */
+export const AI_ANALYSIS_PERIOD_DAYS = 7;
+
+/**
+ * Included weekly allowance for a tier.
+ *
+ * INCLUDED allowance only. Purchased add-ons are a separate, persistent
+ * balance tracked in the `analysis_purchases` ledger and added on top at
+ * reservation time — see lib/ai/quota.ts. They are deliberately NOT folded in
+ * here, because included analyses reset weekly and purchased ones never do.
+ */
+export function weeklyAiAllowance(tier: Tier): number {
+  return AI_ANALYSIS_LIMITS[tier] ?? 0;
+}
 
 export const FEATURE_LABEL: Record<Feature, string> = {
   dashboard: 'Dashboard',

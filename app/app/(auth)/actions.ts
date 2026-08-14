@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { createServerClient } from '@/lib/supabase/server';
 import { DEMO_MODE } from '@/lib/session';
+import { planFromParam } from '@/lib/plans';
 
 /* ==========================================================================
    Auth server actions.
@@ -26,6 +27,21 @@ function siteOrigin(h: Headers): string {
   );
 }
 
+/**
+ * Only ever redirect to a path on this site.
+ *
+ * `startsWith('/')` alone is not enough: `//evil.example` also starts with a
+ * slash and browsers treat it as a protocol-relative URL, which would make
+ * `?next=` an open redirect straight off the login page. A backslash is
+ * rejected for the same reason — some browsers normalise `/\` to `//`.
+ */
+function safeNext(raw: unknown, fallback = '/dashboard'): string {
+  const next = typeof raw === 'string' ? raw : '';
+  if (!next.startsWith('/')) return fallback;
+  if (next.startsWith('//') || next.startsWith('/\\')) return fallback;
+  return next;
+}
+
 export async function signInAction(
   _prev: AuthState,
   formData: FormData
@@ -34,7 +50,7 @@ export async function signInAction(
 
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
-  const next = String(formData.get('next') ?? '/dashboard');
+  const next = safeNext(formData.get('next'));
 
   if (!email || !password) return { error: 'Enter your email and password.' };
 
@@ -47,18 +63,24 @@ export async function signInAction(
   }
 
   revalidatePath('/', 'layout');
-  redirect(next.startsWith('/') ? next : '/dashboard');
+  redirect(next);
 }
 
 export async function signUpAction(
   _prev: AuthState,
   formData: FormData
 ): Promise<AuthState> {
-  if (DEMO_MODE) redirect('/onboarding');
-
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
   const fullName = String(formData.get('name') ?? '').trim();
+
+  // Route boundary: normalise the plan once, here. Downstream we only ever
+  // pass `plan.slug` outward. A signup with no plan is still valid — it just
+  // lands on onboarding instead of checkout.
+  const plan = planFromParam(formData.get('plan') as string | null);
+  const destination = plan ? `/upgrade?plan=${plan.slug}` : '/onboarding';
+
+  if (DEMO_MODE) redirect(destination);
 
   if (!email || !password) return { error: 'Enter your email and password.' };
   if (password.length < 8) return { error: 'Use at least 8 characters for your password.' };
@@ -70,8 +92,15 @@ export async function signUpAction(
     email,
     password,
     options: {
-      data: { full_name: fullName },
-      emailRedirectTo: `${siteOrigin(h)}/auth/callback`,
+      data: {
+        full_name: fullName,
+        // Read by handle_new_user() in migration 0007. Explicit opt-in only:
+        // an absent or unchecked box records false.
+        marketing_opt_in: formData.get('marketing_opt_in') === 'true' ? 'true' : 'false',
+      },
+      // The chosen plan has to survive the round trip through the member's
+      // inbox, so it rides along in `next` and the callback forwards to it.
+      emailRedirectTo: `${siteOrigin(h)}/auth/callback?next=${encodeURIComponent(destination)}`,
     },
   });
 
@@ -80,12 +109,14 @@ export async function signUpAction(
   // With email confirmation on, there is no session until they click the link.
   if (!data.session) {
     return {
-      message: `Check ${email} for a confirmation link to finish creating your account.`,
+      message: plan
+        ? `Check ${email} for a confirmation link. Once you confirm, we'll take you straight to checkout for the ${plan.name}.`
+        : `Check ${email} for a confirmation link to finish creating your account.`,
     };
   }
 
   revalidatePath('/', 'layout');
-  redirect('/onboarding');
+  redirect(destination);
 }
 
 export async function signOutAction(): Promise<void> {

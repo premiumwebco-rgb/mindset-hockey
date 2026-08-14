@@ -16,8 +16,13 @@ import {
   type AnalysisStatus,
 } from '@/lib/ai/present';
 import DeleteAnalysis from './DeleteAnalysis';
+import AnalysisProgress from './AnalysisProgress';
+import RetryAnalysis from './RetryAnalysis';
 
 export const metadata = { title: 'Shot Analysis — Mindset Hockey' };
+
+/** Matches STALL_AFTER_MS in app/api/analysis/run/route.ts. */
+const STALL_AFTER_MS = 5 * 60 * 1000;
 
 interface Row {
   id: string;
@@ -39,6 +44,7 @@ interface Row {
   player_notes: string | null;
   video_path: string | null;
   video_bucket: string | null;
+  frame_paths: string[] | null;
   error_message: string | null;
   requested_review: boolean | null;
   created_at: string;
@@ -143,6 +149,14 @@ export default async function AnalysisReport({ params }: { params: Promise<{ id:
   const confidencePct = row.confidence !== null ? Math.round(row.confidence * 100) : null;
   const isComplete = row.status === 'analyzed';
   const needsHuman = row.status === 'in_review' || row.status === 'failed';
+  // Anything still moving. Previously these three statuses fell through every
+  // branch on this page and rendered an empty body.
+  const inProgress =
+    row.status === 'uploading' || row.status === 'queued' || row.status === 'analyzing';
+  // A retry re-runs the model against the frames archived on the first attempt.
+  // Without those frames there is nothing to re-run, so the option is hidden
+  // rather than offered and then failed.
+  const retryable = (row.frame_paths?.length ?? 0) > 0;
 
   return (
     <div>
@@ -173,6 +187,17 @@ export default async function AnalysisReport({ params }: { params: Promise<{ id:
         </div>
       </div>
 
+      {/* ------------------------------------------- still running ------- */}
+      {inProgress && (
+        <AnalysisProgress
+          id={row.id}
+          status={row.status as 'uploading' | 'queued' | 'analyzing'}
+          startedAtIso={row.analyzed_at ?? row.created_at}
+          stalledAfterMs={STALL_AFTER_MS}
+          canRetry={retryable}
+        />
+      )}
+
       {/* ---------------------------------------- needs a human ---------- */}
       {needsHuman && (
         <div className="mt-6 rounded-xl border border-amber/40 bg-amber/[.07] px-6 py-5">
@@ -185,6 +210,18 @@ export default async function AnalysisReport({ params }: { params: Promise<{ id:
             Nothing has been invented to fill the gap, and your video is still stored — a coach can
             watch it and give you a manual breakdown.
           </p>
+
+          {retryable && (
+            <>
+              <p className="mt-3 max-w-[64ch] text-[13.5px] text-silver-dim">
+                If this looked like a temporary problem rather than a footage problem, you can run
+                the analysis again on the frames already saved from this clip — no re-upload needed.
+              </p>
+              <div className="mt-4">
+                <RetryAnalysis id={row.id} />
+              </div>
+            </>
+          )}
         </div>
       )}
 

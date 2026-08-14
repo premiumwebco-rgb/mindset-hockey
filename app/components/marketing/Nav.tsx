@@ -16,7 +16,7 @@ const LINKS = [
 /**
  * Shared marketing-site nav. Reads the current route to decide which link
  * gets aria-current, so site.css can draw the underline — mirrors the static
- * site's per-page markup. Burger/scroll behaviour is handled by the vanilla
+ * site's per-page markup. Burger/scroll behavior is handled by the vanilla
  * site.js loaded in the (marketing) layout; this component just renders the
  * DOM it expects.
  */

@@ -87,6 +87,28 @@ export default function Pricing() {
               Market Place, Waldorf, MD</Link>. Remote coaching is available anywhere.
             </p>
             <p className="mt2"><span className="respond">⏱ We respond to all inquiries within 24 hours</span></p>
+
+            {/* Acquisition offer. Deliberately factual — no accuracy or
+                improvement claims, matching the honesty of the analysis itself. */}
+            <div className="mt3" style={{
+              border: '1px solid rgba(61,220,132,.38)', background: 'rgba(61,220,132,.07)',
+              borderRadius: '16px', padding: '20px 24px', maxWidth: '620px',
+              marginLeft: 'auto', marginRight: 'auto',
+            }}>
+              <p style={{ margin: 0, fontWeight: 800, color: 'var(--white)', fontSize: '18px' }}>
+                New to Mindset Hockey? Get 3 AI Shot Analyses free.
+              </p>
+              <p className="mt1 muted" style={{ margin: '8px 0 0' }}>
+                Create an account and upload a clip — no card needed. You&apos;ll get a breakdown of
+                your shot mechanics across ten categories, with anything the footage can&apos;t
+                support marked as such rather than guessed.
+              </p>
+              <p className="mt2" style={{ margin: '14px 0 0' }}>
+                <Link className="btn btn-primary" href="/signup" data-cta="free_analyses" data-cta-location="pricing_hero">
+                  Get 3 Free Analyses
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -101,7 +123,7 @@ export default function Pricing() {
               <div className="price-monthly"><b>$100</b><span>/ month</span></div>
               <p className="price-note">No contract. Cancel the monthly any time.</p>
               <ul>
-                <li><b style={{ color: 'var(--white)' }}>AI Shot Analysis</b></li>
+                <li><b style={{ color: 'var(--white)' }}>10 AI Shot Analyses per week</b></li>
                 <li>Hockey-specific workout plan</li>
                 <li>Personalized development roadmap</li>
                 <li>Monthly progress review</li>
@@ -111,7 +133,7 @@ export default function Pricing() {
                 <li>Member dashboard access</li>
               </ul>
               <div className="foot">
-                <Link className="btn btn-ghost btn-block" href="/contact?plan=basic" data-plan="basic" data-cta="start_basic" data-cta-location="pricing_page">Get Started</Link>
+                <Link className="btn btn-ghost btn-block" href="/signup?plan=standard" data-plan="standard" data-cta="start_basic" data-cta-location="pricing_page">Get Started</Link>
               </div>
             </article>
 
@@ -123,7 +145,8 @@ export default function Pricing() {
               <div className="price-monthly"><b>$149</b><span>/ month</span></div>
               <p className="price-note">No contract. Cancel the monthly any time.</p>
               <ul>
-                <li className="head">Everything in Standard, including AI Shot Analysis, plus</li>
+                <li><b style={{ color: 'var(--white)' }}>20 AI Shot Analyses per week</b></li>
+                <li className="head">Everything in Standard, plus</li>
                 <li>Customized training program that evolves as the athlete progresses</li>
                 <li>Performance nutrition guidance tailored to the athlete&apos;s goals</li>
                 <li>Video analysis and breakdowns</li>
@@ -135,7 +158,7 @@ export default function Pricing() {
                 <li>Premium resource library</li>
               </ul>
               <div className="foot">
-                <Link className="btn btn-primary btn-block" href="/contact?plan=premium" data-plan="premium" data-cta="start_premium" data-cta-location="pricing_page">Get Started</Link>
+                <Link className="btn btn-primary btn-block" href="/signup?plan=premium" data-plan="premium" data-cta="start_premium" data-cta-location="pricing_page">Get Started</Link>
               </div>
             </article>
 
@@ -160,6 +183,12 @@ export default function Pricing() {
               </div>
             </article>
           </div>
+
+          <p className="center mt3 muted" style={{ fontSize: '14.5px' }}>
+            Weekly allowances reset every 7 days. Additional single analyses at{' '}
+            <b style={{ color: 'var(--white)' }}>$0.50 each</b> are coming soon — they&apos;ll never
+            expire once purchased.
+          </p>
 
           <div className="onice rv mt3" id="on-ice">
             <div className="onice-price">
@@ -281,7 +310,7 @@ export default function Pricing() {
             <div className="mind"><b>10</b><h3>Leadership</h3><p>Communicating with coaches and becoming the player used when it matters.</p></div>
           </div>
           <p className="center mt3">
-            <Link className="btn btn-primary btn-lg" href="/contact?plan=premium" data-plan="premium" data-cta="premium_from_mindset" data-cta-location="pricing_mindset">Start Premium — $389 + $149/mo</Link>
+            <Link className="btn btn-primary btn-lg" href="/signup?plan=premium" data-plan="premium" data-cta="premium_from_mindset" data-cta-location="pricing_mindset">Start Premium — $389 + $149/mo</Link>
           </p>
         </div>
       </section>

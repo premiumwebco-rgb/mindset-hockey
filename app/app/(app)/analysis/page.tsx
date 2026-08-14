@@ -54,7 +54,7 @@ export default async function AnalysisHistory() {
           <Eyebrow>AI Shot Analysis</Eyebrow>
           <h1 className="display text-[clamp(28px,5vw,44px)]">Your shot, frame by frame</h1>
         </div>
-        <Button href="/analysis/new">Analyse a Shot</Button>
+        <Button href="/analysis/new">Analyze a Shot</Button>
       </div>
 
       <p className="mt-3 max-w-[64ch] text-[16px] text-silver">
@@ -91,7 +91,7 @@ export default async function AnalysisHistory() {
           <EmptyState
             title="No analyses yet"
             body="Film five shots of the same type from the side, about ten feet away with the whole body in frame. That is what makes a real breakdown possible."
-            action={<Button href="/analysis/new">Analyse Your First Shot</Button>}
+            action={<Button href="/analysis/new">Analyze Your First Shot</Button>}
           />
         </div>
       ) : (

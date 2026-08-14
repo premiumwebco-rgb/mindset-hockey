@@ -10,7 +10,7 @@ export const metadata = { title: 'AI Review Queue — Mindset Hockey' };
 /* ==========================================================================
    HUMAN FALLBACK QUEUE
 
-   Where a clip lands when the AI could not confidently analyse it — no
+   Where a clip lands when the AI could not confidently analyze it — no
    provider configured, the model failed, the response failed validation, or
    the member asked for a human look.
 
@@ -106,7 +106,7 @@ export default async function AiReviewQueue() {
       {rows.length === 0 ? (
         <EmptyState
           title="Nothing waiting"
-          body="Every uploaded clip has been analysed with enough confidence to stand on its own."
+          body="Every uploaded clip has been analyzed with enough confidence to stand on its own."
         />
       ) : (
         <div className="grid gap-4">
