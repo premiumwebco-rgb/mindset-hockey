@@ -38,13 +38,46 @@ function checkPrice(
 }
 
 /**
+ * One calendar month from now, as a Unix timestamp (seconds) — used as the
+ * subscription's `trial_end`.
+ *
+ * Deliberately calendar-month arithmetic (setUTCMonth) rather than
+ * `trial_period_days: 30`, so "one month after signup" lands on the same
+ * day-of-month rather than drifting a day or two short in short months.
+ * `Date.setUTCMonth` overflows correctly for month-end edge cases (e.g. Jan
+ * 31 -> Mar 3, since February has no 31st) the same way any calendar-month
+ * addition has to; there is no ambiguity-free alternative for that date.
+ */
+function oneMonthFromNowUnix(): number {
+  const d = new Date();
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  return Math.floor(d.getTime() / 1000);
+}
+
+/**
  * Creates a Stripe Checkout session containing BOTH lines:
  *   - the one-time setup fee
  *   - the recurring monthly subscription
  *
  * Stripe allows mixing a one-time price into a `mode: 'subscription'` session
  * as long as the one-time price is not recurring — it lands on the first
- * invoice. That gives "$600 today, then $200/month" in a single payment.
+ * invoice, charged immediately when checkout completes.
+ *
+ * BILLING TIMING: the subscription is given a `trial_end` one month out.
+ * This is what makes only the setup fee due today. Stripe's documented
+ * behavior for Checkout is that one-time price line items are still charged
+ * on the initial invoice EVEN WHEN the subscription has a trial — only the
+ * recurring price itself is deferred to trial end. So this session produces
+ * exactly one charge today (the setup fee), and the subscription sits in
+ * `trialing` status until trial_end, when Stripe automatically bills the
+ * saved payment method for the first real $100/$149 month and the
+ * subscription's normal monthly cycle begins from that date.
+ *
+ * `trialing` already counts as an active status — see ACTIVE_SUB_STATUSES in
+ * lib/types.ts — so applyEntitlement() in the webhook grants full access for
+ * that first month exactly as if the subscription were `active`. Nothing in
+ * the webhook, the entitlement/tier logic, or the Supabase schema needed to
+ * change for that reason.
  */
 export async function POST(req: Request) {
   if (DEMO_MODE) {
@@ -137,11 +170,17 @@ export async function POST(req: Request) {
     ],
     subscription_data: {
       metadata: { profile_id: session.userId, tier: plan.tier },
+      // Defers the FIRST recurring charge one month out. The setup-fee line
+      // item above is unaffected by this and is still charged immediately —
+      // see the function doc comment above for why.
+      trial_end: oneMonthFromNowUnix(),
     },
     // Mirrored onto the session so the webhook can act on either object.
-    // `setup_fee_amount` is the verified one-time price in cents — the webhook
-    // records this rather than the session's amount_total, which also contains
-    // the first month's subscription charge.
+    // `setup_fee_amount` is the verified one-time price in cents. With the
+    // trial above, `session.amount_total` should now equal exactly this (the
+    // recurring line is deferred, so nothing else is charged today) — but the
+    // webhook still reads this explicit, independently-verified value rather
+    // than trusting amount_total, in case that ever changes.
     metadata: {
       profile_id: session.userId,
       tier: plan.tier,
