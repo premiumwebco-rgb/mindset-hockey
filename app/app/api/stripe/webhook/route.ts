@@ -155,7 +155,30 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
-      const sub = event.data.object as Stripe.Subscription;
+      const snapshot = event.data.object as Stripe.Subscription;
+
+      /* ------------------------------------------------------------------
+         Stripe delivers the events for a single checkout concurrently, and
+         they are NOT guaranteed to be processed in the order they occurred.
+         `event.data.object` is a point-in-time SNAPSHOT taken when the event
+         was created, so a slow-delivered `incomplete` snapshot can arrive
+         after a `trialing` one and overwrite it — revoking a paying member's
+         access. This was observed in production: audit_log recorded
+         `entitlement.granted {status: trialing}` immediately followed by
+         `entitlement.revoked {status: incomplete}` for the same paid
+         subscription, leaving the member locked out.
+
+         Re-reading the subscription from Stripe makes every handler decide
+         from current truth instead of its own stale snapshot, so concurrent
+         out-of-order deliveries converge on the same correct result rather
+         than fighting each other. A `deleted` event is authoritative on its
+         own and is deliberately NOT re-read — the row may already be gone.
+      ------------------------------------------------------------------ */
+      const sub =
+        event.type === 'customer.subscription.deleted'
+          ? snapshot
+          : await stripe().subscriptions.retrieve(snapshot.id);
+
       const profileId = await resolveProfileId(admin, sub);
       if (!profileId) return;
 
