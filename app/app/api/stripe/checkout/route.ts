@@ -147,12 +147,51 @@ export async function POST(req: Request) {
     .single();
 
   let customerId = profile?.stripe_customer_id ?? undefined;
+
+  /* ------------------------------------------------------------------------
+     STRIPE MODE BOUNDARY
+
+     Customer ids are scoped to the Stripe mode that created them. A id minted
+     in test mode does not exist under a live key and vice versa, so after a
+     test -> live cutover every stored id fails with:
+
+       No such customer: 'cus_...'; a similar object exists in test mode,
+       but a live mode key was used to make this request.
+
+     Verify the stored id against the CURRENT mode before using it. If Stripe
+     says it genuinely does not exist (or it was deleted), drop it and mint a
+     replacement in this mode. Any other Stripe failure is re-thrown untouched
+     so real outages/permission errors are never silently swallowed.
+  ------------------------------------------------------------------------ */
+  if (customerId) {
+    try {
+      const existing = await s.customers.retrieve(customerId);
+      if ((existing as Stripe.DeletedCustomer).deleted) customerId = undefined;
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code === 'resource_missing') {
+        console.warn(
+          `[stripe] stored customer ${customerId} does not exist in this Stripe mode — reconnecting billing for profile ${session.userId}`
+        );
+        customerId = undefined;
+      } else {
+        throw err;
+      }
+    }
+  }
+
   if (!customerId) {
-    const customer = await s.customers.create({
-      email: session.email,
-      name: session.fullName || undefined,
-      metadata: { profile_id: session.userId },
-    });
+    // Reuse a customer already present in THIS mode for the same email before
+    // creating another, so a re-run does not litter duplicates.
+    const found = await s.customers.list({ email: session.email, limit: 1 });
+    const customer =
+      found.data[0] ??
+      (await s.customers.create({
+        email: session.email,
+        name: session.fullName || undefined,
+        metadata: { profile_id: session.userId },
+      }));
+
     customerId = customer.id;
     await admin
       .from('profiles')
