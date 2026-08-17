@@ -130,14 +130,13 @@ const FAQ_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
   mainEntity: [
-    { '@type': 'Question', name: 'What age players do you train?', acceptedAnswer: { '@type': 'Answer', text: 'Players aged 10 to 18. Under about 12 a parent should work through the plan alongside the player; from 13 up most players run it themselves.' } },
-    { '@type': 'Question', name: 'Where do you train in Waldorf, Maryland?', acceptedAnswer: { '@type': 'Answer', text: 'All in-person sessions run at The Capital Clubhouse, 3033 Waldorf Market Place, Waldorf, MD 20603. It is our only training location, serving Waldorf, Charles County and Southern Maryland. Remote video coaching is available anywhere.' } },
-    { '@type': 'Question', name: 'Will this get my son to Junior or college hockey?', acceptedAnswer: { '@type': 'Answer', text: 'No one can promise that, and anyone who does is not being straight with you. What we deliver is better shot mechanics, a real weekly plan, trained habits and a player who handles a bad game better.' } },
-    { '@type': 'Question', name: 'How fast do you respond?', acceptedAnswer: { '@type': 'Answer', text: 'We respond to all inquiries within 24 hours.' } },
-    { '@type': 'Question', name: 'How much is an on-ice hockey session in Waldorf, MD?', acceptedAnswer: { '@type': 'Answer', text: 'On-ice sessions are $149 each at The Capital Clubhouse in Waldorf, Maryland. There is no set time limit — a session runs as long as it needs to. When both coaches are available, both are on the ice, and session sizes are kept deliberately small so every player gets individual attention.' } },
-    { '@type': 'Question', name: 'Who are the coaches?', acceptedAnswer: { '@type': 'Answer', text: 'Two coaches, both current Jr hockey players. The program is owned and led by Coach Brayden Castiglia, who sets the development systems and coaches players directly. He coaches alongside Coach Jack Magill, a Jr hockey player and NCAA prospect who works as a development coach, skill specialist and player mentor.' } },
-    { '@type': 'Question', name: 'What is mindset development training?', acceptedAnswer: { '@type': 'Answer', text: 'Mindset development training is included with the Premium program. It covers confidence building, mental toughness, handling mistakes during games, performing under pressure, goal setting, accountability, winning habits, discipline and consistency, game preparation routines and leadership development.' } },
-    { '@type': 'Question', name: "How do you analyze my player's shot?", acceptedAnswer: { '@type': 'Answer', text: 'You film two phone angles — side and front. Every submission is scored 1-10 against a 7-point mechanics rubric with timestamped notes, a coach voiceover and three prescribed drills.' } },
+    { '@type': 'Question', name: 'Who is Mindset Hockey for?', acceptedAnswer: { '@type': 'Answer', text: 'Hockey players ages 10 to 18 who want structure between practices — shot mechanics, a real weekly plan and mindset coaching. Below about 12, a parent should work through the plan alongside the player; from 13 up, most players run it themselves.' } },
+    { '@type': 'Question', name: 'What does the program include?', acceptedAnswer: { '@type': 'Answer', text: 'Standard includes AI Shot Analysis, a personalized development roadmap, a hockey-specific workout plan, monthly progress review, goal setting and dashboard access. Premium adds performance nutrition guidance, video breakdowns, mindset development training and priority support.' } },
+    { '@type': 'Question', name: 'Do you offer in-person and remote training?', acceptedAnswer: { '@type': 'Answer', text: 'Both. In-person ice time runs at The Capital Clubhouse in Waldorf, MD. The core of the program — video analysis, the weekly plan and mindset work — is built to run remotely.' } },
+    { '@type': 'Question', name: 'Where are in-person sessions held?', acceptedAnswer: { '@type': 'Answer', text: 'All in-person sessions run at The Capital Clubhouse, 3033 Waldorf Market Place, Waldorf, MD 20603 — our only training location.' } },
+    { '@type': 'Question', name: 'How does AI Shot Analysis work?', acceptedAnswer: { '@type': 'Answer', text: 'You film a few shots on your phone and upload the clip. It grades your mechanics across ten categories with notes on what it actually saw and a confidence level on every score. Anything the footage does not clearly show comes back marked insufficient footage instead of guessed at.' } },
+    { '@type': 'Question', name: 'What makes Mindset Hockey different?', acceptedAnswer: { '@type': 'Answer', text: 'One of two named coaches works with your player directly, both current Jr hockey players. The program combines shot mechanics, a structured weekly plan and mindset coaching in one system.' } },
+    { '@type': 'Question', name: 'How do I get started?', acceptedAnswer: { '@type': 'Answer', text: 'Book a free assessment and tell us your player’s age and level. We respond to every inquiry within 24 hours.' } },
   ],
 };
 
@@ -279,52 +278,6 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </details>
-        </div>
-      </section>
-
-      {/* SIX PILLARS */}
-      <section className="band">
-        <div className="wrap">
-          <div className="head center rv">
-            <p className="eyebrow center">The framework</p>
-            <h2>The Six Pillars</h2>
-            <p className="lede mt2">
-              The system I used, in the order I used it. Every session, drill and weekly plan maps to
-              exactly one pillar — so your player always knows what he&apos;s working on and why.
-            </p>
-          </div>
-          <details className="acc">
-          <summary className="acc-summary">See all six pillars</summary>
-          <div className="acc-body">
-          <div className="pillars">
-            <article className="pillar rv"><span className="k">01</span>
-              <div className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3FA9FF" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 3a5 5 0 0 0-5 5c0 1.5.6 2.6 1.4 3.5.9 1 1.6 1.8 1.6 3.5v1h4v-1c0-1.7.7-2.5 1.6-3.5C16.4 10.6 17 9.5 17 8a5 5 0 0 0-5-5Z" /><path d="M10 20h4" /></svg></div>
-              <h3>Mindset</h3><p>Confidence after a bad shift. Bounce-back protocols. Pre-game routine. Coming back from injury without losing yourself.</p>
-            </article>
-            <article className="pillar rv"><span className="k">02</span>
-              <div className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3FA9FF" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" /></svg></div>
-              <h3>Mechanics</h3><p>The 7-point shot framework: weight transfer, stick flex, release timing, hands, follow through, balance and posture.</p>
-            </article>
-            <article className="pillar rv"><span className="k">03</span>
-              <div className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3FA9FF" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M3 17c4-1 6-4 8-8s4-6 8-6" /><circle cx="6" cy="18" r="2.4" /></svg></div>
-              <h3>Skill</h3><p>Hands, edges, puck protection, deception and winning 1-on-1s. On-ice and off-ice progressions you can run at home.</p>
-            </article>
-            <article className="pillar rv"><span className="k">04</span>
-              <div className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3FA9FF" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5" /><path d="M3 10h18M8 3v4M16 3v4" /></svg></div>
-              <h3>Systems</h3><p>Weekly plans built around age, level and position. In-season versus off-season. When to push and when to recover.</p>
-            </article>
-            <article className="pillar rv"><span className="k">05</span>
-              <div className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3FA9FF" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 9a8 8 0 0 1 13.5-4L21 8" /><path d="M21 4v4h-4" /><path d="M20 15a8 8 0 0 1-13.5 4L3 16" /><path d="M3 20v-4h4" /></svg></div>
-              <h3>Habits</h3><p>The daily standard. Practice structure. Game habits. The unglamorous consistency that separates improving from plateauing.</p>
-            </article>
-            <article className="pillar rv"><span className="k">06</span>
-              <div className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3FA9FF" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6l-8-3Z" /><path d="M9.4 14 12 8.6l2.6 5.4M10.3 12.4h3.4" /></svg></div>
-              <h3>Leadership</h3><p>Coachability, communication, and becoming the player a coach uses in the moments that matter. How I earned an &quot;A&quot;.</p>
-            </article>
-          </div>
-          <p className="center mt3"><Link className="btn btn-ghost" href="/programs" data-cta="explore_programs" data-cta-location="pillars">Explore the Programs</Link></p>
-          </div>
           </details>
         </div>
       </section>
@@ -586,63 +539,6 @@ export default function Home() {
 
       <div className="rinkline" aria-hidden="true" />
 
-      {/* CASE STUDIES */}
-      <section>
-        <div className="wrap">
-          <div className="head center rv">
-            <p className="eyebrow center">Player development</p>
-            <h2>Success stories</h2>
-            <p className="lede mt2">
-              The first case study is Coach Brayden&apos;s own — documented frame by frame, because it&apos;s the one
-              we can prove today. Player case studies get added here as members hit their 30-day re-films.
-            </p>
-          </div>
-
-          <details className="acc">
-          <summary className="acc-summary">Read both case studies</summary>
-          <div className="acc-body">
-          <div className="cards c2">
-            <article className="case rv">
-              <div className="case-head"><p>Case study 01 · Coach Brayden</p></div>
-              <div className="case-body">
-                <h3>16U A to a signed Jr hockey contract</h3>
-                <p className="mt1 muted">
-                  Two broken ribs cost most of two seasons. The comeback wasn&apos;t more talent — it was
-                  rebuilding shot mechanics frame by frame and training the mental side nobody was
-                  coaching. Result: trusted in key moments, named alternate captain, moved to AAA, signed
-                  to play Jr hockey.
-                </p>
-                <div className="case-metrics">
-                  <div><b>2</b><span>Seasons lost to injury</span></div>
-                  <div><b>A→AAA</b><span>Level jump</span></div>
-                  <div><b>&quot;A&quot;</b><span>Alternate captain</span></div>
-                </div>
-              </div>
-            </article>
-
-            <article className="case rv">
-              <div className="case-head"><p>Case study 02 · Shot rebuild</p></div>
-              <div className="case-body">
-                <h3>Elite flex, slow release — the real diagnosis</h3>
-                <p className="mt1 muted">
-                  A full 7-point breakdown found stick flex at 9/10 and weight transfer at 8/10 — but
-                  release timing at 5/10, with a 0.8-second puck drag before release. The fix wasn&apos;t a
-                  harder shot. It was a shorter runway. That&apos;s the kind of finding that changes what a
-                  player trains for the next 30 days.
-                </p>
-                <div className="case-metrics">
-                  <div><b>9/10</b><span>Stick flex</span></div>
-                  <div><b>5/10</b><span>Release timing</span></div>
-                  <div><b>0.8s</b><span>Drag before release</span></div>
-                </div>
-              </div>
-            </article>
-          </div>
-          </div>
-          </details>
-        </div>
-      </section>
-
       {/* PRICING PREVIEW */}
       <section className="band">
         <div className="wrap">
@@ -749,68 +645,39 @@ export default function Home() {
       <section>
         <div className="wrap">
           <div className="head center rv">
-            <p className="eyebrow center">Straight answers</p>
-            <h2>Hockey training FAQ</h2>
+            <p className="eyebrow center">Straight Answers</p>
+            <h2>Hockey Training FAQ</h2>
           </div>
-          <details className="acc">
-          <summary className="acc-summary">See all FAQ</summary>
-          <div className="acc-body">
           <div className="faq">
             <details open>
-              <summary>What age players do you train?</summary>
-              <div className="ans">Ages 10 to 18. Below about 12, a parent should work through the plan alongside the player — the drills are simple but the mindset lessons land better with a conversation attached. From 13 up, most players run it themselves, and honestly that&apos;s part of the point.</div>
+              <summary>Who is Mindset Hockey for?</summary>
+              <div className="ans">Hockey players ages 10 to 18 who want structure between practices — shot mechanics, a real weekly plan and mindset coaching, not just an hour twice a month. Below about 12, a parent should work through the plan alongside the player; from 13 up, most players run it themselves.</div>
             </details>
             <details>
-              <summary>What is AI Shot Analysis, and which plan includes it?</summary>
-              <div className="ans"><b>It is included with both Standard and Premium</b> — every member gets it. You film a few shots on your phone, upload the clip, and it grades your mechanics across ten categories with notes on what it actually saw. Being straight with you about the limits: it reads still frames from your video, the same way a coach does stepping through film. It is not a biomechanics lab, it cannot measure joint angles or puck velocity, and anything your footage does not clearly show comes back marked &quot;insufficient footage&quot; instead of guessed at. Every score carries a confidence level, and a low-confidence read is a starting point for a conversation with a coach — not a verdict.</div>
+              <summary>What does the program include?</summary>
+              <div className="ans">Standard includes AI Shot Analysis, a personalized development roadmap, a hockey-specific workout plan, monthly progress review, goal setting and dashboard access. Premium adds performance nutrition guidance, video breakdowns, mindset development training and priority support. On-ice sessions at The Capital Clubhouse are available separately. <Link href="/pricing">Full pricing here</Link>.</div>
             </details>
             <details>
-              <summary>How much is an on-ice session?</summary>
-              <div className="ans"><b>$149 per session</b>, on the ice at The Capital Clubhouse in Waldorf. There&apos;s no set time limit — a session runs as long as it needs to instead of ending on a clock. When we&apos;re both available you get both coaches on the ice, and we keep session sizes small on purpose so every player gets real attention and real reps. <a href="#on-ice">Details here</a>.</div>
+              <summary>Do you offer in-person and remote training?</summary>
+              <div className="ans">Both. In-person ice time runs at The Capital Clubhouse in Waldorf, MD. The core of the program — video analysis, the weekly plan and mindset work — is built to run remotely, so families outside Southern Maryland get the same system without the drive.</div>
             </details>
             <details>
-              <summary>Where in Waldorf, Maryland do you train?</summary>
-              <div className="ans">All in-person sessions run at <b>The Capital Clubhouse, 3033 Waldorf Market Place, Waldorf, MD 20603</b> — our only training location. It&apos;s just off Route 301, with free on-site parking, and it serves families across Waldorf, White Plains, La Plata, Brandywine, Charles County and the wider Southern Maryland area. <Link href="/locations">Directions and details here</Link>.</div>
+              <summary>Where are in-person sessions held?</summary>
+              <div className="ans">All in-person sessions run at <b>The Capital Clubhouse, 3033 Waldorf Market Place, Waldorf, MD 20603</b> — our only training location. <Link href="/locations">Directions and details here</Link>.</div>
             </details>
             <details>
-              <summary>Do we have to travel to you?</summary>
-              <div className="ans">Only if you want in-person ice time. The core of the program — video analysis, the weekly plan and mindset work — is built to run remotely, so families outside Southern Maryland get the same system without the drive.</div>
+              <summary>How does AI Shot Analysis work?</summary>
+              <div className="ans">You film a few shots on your phone and upload the clip. It grades your mechanics across ten categories with notes on what it actually saw, and every score carries a confidence level. Being straight with you about the limits: it reads still frames from your video, the same way a coach does stepping through film — it is not a biomechanics lab, and anything your footage does not clearly show comes back marked &quot;insufficient footage&quot; instead of guessed at.</div>
             </details>
             <details>
-              <summary>Who will actually be coaching my player?</summary>
-              <div className="ans">One of two named coaches, never an anonymous reviewer. We&apos;re both coaches and both current Jr hockey players — the difference is that one of us owns the business and sets the system we both coach. Coach Brayden Castiglia works with players directly, alongside Coach Jack Magill, our development coach, skill specialist and NCAA prospect. <Link href="/coaches">Meet them both here</Link>.</div>
+              <summary>What makes Mindset Hockey different?</summary>
+              <div className="ans">One of two named coaches works with your player directly — never an anonymous reviewer. Both are current Jr hockey players. The program combines shot mechanics, a structured weekly plan and mindset coaching in one system, instead of leaving the 167 hours between lessons unplanned. <Link href="/coaches">Meet the coaches here</Link>.</div>
             </details>
             <details>
-              <summary>What is mindset development training?</summary>
-              <div className="ans">It&apos;s the mental side of the game, coached deliberately rather than left to chance — confidence building, mental toughness, handling mistakes mid-game, performing under pressure, goal setting, accountability, winning habits, discipline, game preparation routines and leadership. It&apos;s included with the <Link href="/pricing#premium">Premium program</Link>.</div>
-            </details>
-            <details>
-              <summary>Will this get my son to Junior or college hockey?</summary>
-              <div className="ans">No one can promise that, and anyone who does isn&apos;t being straight with you. Fewer than 0.11% of youth players reach the NHL, and Junior and college spots are genuinely scarce. What we do promise: better shot mechanics, a real weekly plan, trained habits, and a player who handles a bad game better. Those are the things inside your control.</div>
-            </details>
-            <details>
-              <summary>He already has a skills coach. Is this redundant?</summary>
-              <div className="ans">The opposite. Your skills coach gets him for an hour, twice a month. This is what he does the other twenty-nine days — and it means he shows up to that lesson already knowing which two mechanics he&apos;s working on. It makes money you already spend go further.</div>
-            </details>
-            <details>
-              <summary>What do we need to film a video analysis?</summary>
-              <div className="ans">A phone. Two angles — one from the side at about hip height, one from the front, roughly ten feet away, with his whole body in frame. Five shots minimum of the same type. There&apos;s a walkthrough in your onboarding, and if the footage isn&apos;t usable we&apos;ll tell you exactly what to change at no charge.</div>
-            </details>
-            <details>
-              <summary>How quickly do you respond?</summary>
-              <div className="ans">We respond to all inquiries within 24 hours. Premium members get priority support and video breakdowns returned inside 72 hours — most come back in under 48.</div>
-            </details>
-            <details>
-              <summary>Does this work for defencemen and goalies?</summary>
-              <div className="ans">Mindset, Systems, Habits and Leadership apply to every position — four of the Six Pillars. Shot mechanics content covers forwards and defencemen, including a separate point-shot module. Goalie-specific technical coaching isn&apos;t offered yet, so if he&apos;s a goalie, know what you&apos;re getting.</div>
-            </details>
-            <details>
-              <summary>Can our team or association work with you?</summary>
-              <div className="ans">Yes. Team and association packages are quoted per roster and include a live mindset session with the team. <Link href="/contact?plan=custom">Request a custom quote</Link> with your roster size and level.</div>
+              <summary>How do I get started?</summary>
+              <div className="ans">Book a free assessment and tell us your player&apos;s age and level. We respond to every inquiry within 24 hours with an honest read on what to work on first.</div>
             </details>
           </div>
-          </div>
-          </details>
         </div>
       </section>
 
