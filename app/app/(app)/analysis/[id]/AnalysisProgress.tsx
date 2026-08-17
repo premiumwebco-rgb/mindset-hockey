@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 /* ==========================================================================
    IN-PROGRESS / STALLED / RETRY
@@ -107,17 +108,17 @@ export default function AnalysisProgress({
             <button
               onClick={retry}
               disabled={retrying}
-              className="inline-flex items-center justify-center rounded-[10px] bg-electric px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:bg-electric-glow disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[10px] bg-electric px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:bg-electric-glow disabled:opacity-50"
             >
               {retrying ? 'Restarting…' : 'Retry analysis'}
             </button>
           )}
-          <a
+          <Link
             href="/analysis/new"
-            className="inline-flex items-center justify-center rounded-[10px] border border-white/[.14] px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:border-electric"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-[10px] border border-white/[.14] px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:border-electric"
           >
             Upload a different clip
-          </a>
+          </Link>
         </div>
       </div>
     );

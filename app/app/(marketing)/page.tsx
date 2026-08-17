@@ -65,15 +65,15 @@ const BUSINESS_JSONLD = {
     {
       '@type': 'Person',
       jobTitle: 'Coach, Founder & Owner',
-      name: 'Coach Brayden',
+      name: 'Brayden Castiglia',
       description:
-        'Coach, founder and owner of Mindset Hockey. Junior A player who owns the business and oversees all player development systems, program direction and coaching standards.',
+        'Coach, founder and owner of Mindset Hockey. Jr hockey player who owns the business and oversees all player development systems, program direction and coaching standards.',
     },
     {
       '@type': 'Person',
       jobTitle: 'Development Coach',
-      name: 'Coach Jack',
-      description: 'Junior A player and NCAA prospect. Skill development specialist and player mentor.',
+      name: 'Jack Magill',
+      description: 'Jr hockey player and NCAA prospect. Skill development specialist and player mentor.',
     },
   ],
   openingHoursSpecification: [
@@ -135,7 +135,7 @@ const FAQ_JSONLD = {
     { '@type': 'Question', name: 'Will this get my son to Junior or college hockey?', acceptedAnswer: { '@type': 'Answer', text: 'No one can promise that, and anyone who does is not being straight with you. What we deliver is better shot mechanics, a real weekly plan, trained habits and a player who handles a bad game better.' } },
     { '@type': 'Question', name: 'How fast do you respond?', acceptedAnswer: { '@type': 'Answer', text: 'We respond to all inquiries within 24 hours.' } },
     { '@type': 'Question', name: 'How much is an on-ice hockey session in Waldorf, MD?', acceptedAnswer: { '@type': 'Answer', text: 'On-ice sessions are $149 each at The Capital Clubhouse in Waldorf, Maryland. There is no set time limit — a session runs as long as it needs to. When both coaches are available, both are on the ice, and session sizes are kept deliberately small so every player gets individual attention.' } },
-    { '@type': 'Question', name: 'Who are the coaches?', acceptedAnswer: { '@type': 'Answer', text: 'Two coaches, both currently playing Junior A. The program is owned and led by Coach Brayden, who sets the development systems and coaches players directly. He coaches alongside Coach Jack, a Junior A player and NCAA prospect who works as a development coach, skill specialist and player mentor.' } },
+    { '@type': 'Question', name: 'Who are the coaches?', acceptedAnswer: { '@type': 'Answer', text: 'Two coaches, both current Jr hockey players. The program is owned and led by Coach Brayden Castiglia, who sets the development systems and coaches players directly. He coaches alongside Coach Jack Magill, a Jr hockey player and NCAA prospect who works as a development coach, skill specialist and player mentor.' } },
     { '@type': 'Question', name: 'What is mindset development training?', acceptedAnswer: { '@type': 'Answer', text: 'Mindset development training is included with the Premium program. It covers confidence building, mental toughness, handling mistakes during games, performing under pressure, goal setting, accountability, winning habits, discipline and consistency, game preparation routines and leadership development.' } },
     { '@type': 'Question', name: "How do you analyze my player's shot?", acceptedAnswer: { '@type': 'Answer', text: 'You film two phone angles — side and front. Every submission is scored 1-10 against a 7-point mechanics rubric with timestamped notes, a coach voiceover and three prescribed drills.' } },
   ],
@@ -160,9 +160,9 @@ export default function Home() {
             </h1>
             <p className="hero-sub lede">
               I founded Mindset Hockey after going from a 16U A player with two broken ribs to an
-              alternate captain, then AAA, then a signed Junior A contract. I own and run the program out
+              alternate captain, then AAA, then a signed Jr hockey contract. I own and run the program out
               of <b className="hl">The Capital Clubhouse in Waldorf, MD</b> — and I coach alongside Coach
-              Jack. We&apos;re both coaches and both Junior A players; the difference is I own the business
+              Jack. We&apos;re both coaches and both Jr hockey players; the difference is I own the business
               and set the system we both coach.
             </p>
 
@@ -178,20 +178,20 @@ export default function Home() {
             <p className="hero-note"><span className="pulse" aria-hidden="true" /> We respond to all inquiries within 24 hours.</p>
 
             <div className="ladder">
-              <b>16U A</b><i /><b>AAA</b><i /><b className="now">JUNIOR A</b>
+              <b>16U A</b><i /><b>AAA</b><i /><b className="now">JR HOCKEY</b>
             </div>
           </div>
 
           <div className="duo">
             <figure className="hero-shot lead">
-              <img src="/media/photo-faceoff.jpg" alt="Coach Brayden, owner of Mindset Hockey, in a Team Maryland number 17 jersey lined up for a faceoff" width={1250} height={830} fetchPriority="high" />
-              <figcaption>Coach Brayden<em>Owner · Junior A player</em></figcaption>
+              <img src="/media/photo-faceoff.jpg" alt="Coach Brayden Castiglia, owner of Mindset Hockey, in a Team Maryland number 17 jersey lined up for a faceoff" width={1250} height={830} fetchPriority="high" />
+              <figcaption>Coach Brayden Castiglia<em>Owner · Jr hockey player</em></figcaption>
             </figure>
             <figure className="hero-shot">
-              <img src="/media/coach-jack-action.jpg" alt="Coach Jack, Mindset Hockey development coach, wearing the captain's C in a Utica Jr. Comets game" width={628} height={630} fetchPriority="high" />
-              <figcaption>Coach Jack<em>Junior A player</em></figcaption>
+              <img src="/media/coach-jack-action.jpg" alt="Coach Jack Magill, Mindset Hockey development coach, wearing the captain's C in a Utica Jr. Comets game" width={628} height={630} fetchPriority="high" />
+              <figcaption>Coach Jack Magill<em>Jr hockey player · Development Coach</em></figcaption>
             </figure>
-            <p className="duo-note">Two coaches. Both Junior A players. I own and run the program.</p>
+            <p className="duo-note">Two coaches. Both Jr hockey players. I own and run the program.</p>
           </div>
         </div>
       </section>
@@ -203,7 +203,7 @@ export default function Home() {
         <div className="wrap">
           <div className="cards c4">
             <div style={{ textAlign: 'center' }}>
-              <p className="display" style={{ fontSize: '30px' }}>JUNIOR A</p>
+              <p className="display" style={{ fontSize: '30px' }}>JR HOCKEY</p>
               <p className="small muted mt0">Signed player, coaching now</p>
             </div>
             <div style={{ textAlign: 'center' }}>
@@ -379,7 +379,7 @@ export default function Home() {
             <h2>Real film. Both coaches.</h2>
             <p className="lede mt2">
               Every frame you see actually happened — no interpolation, no invented frames. Two coaches,
-              both currently playing Junior A, and the same film standard we hold your player&apos;s video to.
+              both current Jr hockey players, and the same film standard we hold your player&apos;s video to.
             </p>
           </div>
 
@@ -398,13 +398,13 @@ export default function Home() {
             </div>
             <div className="facade" data-lf-video="" data-video-src="/media/coach-jack-clip-1.mp4" data-video-title="Coach Jack game film 1" role="button" tabIndex={0} aria-label="Play Coach Jack game film, clip one">
               <span className="tag">Coach Jack · game film</span>
-              <img src="/media/poster-coach-clip-1.jpg" alt="Junior A game film still showing Coach Jack circled as the play develops in the offensive zone" width={1172} height={540} loading="lazy" />
+              <img src="/media/poster-coach-clip-1.jpg" alt="Jr hockey game film still showing Coach Jack Magill circled as the play develops in the offensive zone" width={1172} height={540} loading="lazy" />
               <span className="play"><span><svg width="20" height="24" viewBox="0 0 22 26" fill="#fff" aria-hidden="true"><path d="M22 13 0 26V0z" /></svg></span></span>
               <div className="cap">Coach Jack — reading the play and attacking the middle</div>
             </div>
             <div className="facade" data-lf-video="" data-video-src="/media/coach-jack-clip-2.mp4" data-video-title="Coach Jack game film 2" role="button" tabIndex={0} aria-label="Play Coach Jack game film, clip two">
               <span className="tag">Coach Jack · game film</span>
-              <img src="/media/poster-coach-clip-2.jpg" alt="Junior A game film still showing a rush entering the offensive zone toward the net" width={1172} height={540} loading="lazy" />
+              <img src="/media/poster-coach-clip-2.jpg" alt="Jr hockey game film still showing a rush entering the offensive zone toward the net" width={1172} height={540} loading="lazy" />
               <span className="play"><span><svg width="20" height="24" viewBox="0 0 22 26" fill="#fff" aria-hidden="true"><path d="M22 13 0 26V0z" /></svg></span></span>
               <div className="cap">Coach Jack — zone entry into a net-front finish</div>
             </div>
@@ -430,7 +430,7 @@ export default function Home() {
             <p className="eyebrow center">The coaching staff</p>
             <h2>Learn from coaches who<br />are still living the game</h2>
             <p className="lede mt2">
-              Two coaches, both currently playing Junior A. Our staff combines leadership, experience and
+              Two coaches, both current Jr hockey players. Our staff combines leadership, experience and
               a passion for player development — helping athletes improve their skills, confidence and
               understanding of the game, on and off the ice.
             </p>
@@ -443,15 +443,15 @@ export default function Home() {
                 <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Brayden</h3>
-                <p className="coach-role">Owner &amp; Lead Coach · Junior A Player</p>
+                <h3>Coach Brayden Castiglia</h3>
+                <p className="coach-role">Owner &amp; Lead Coach · Jr Hockey Player</p>
                 <ul className="chips">
-                  <li>Junior A Player</li><li>Program Founder</li><li>Business Owner</li><li>Lead Coach</li>
+                  <li>Jr Hockey Player</li><li>Program Founder</li><li>Business Owner</li><li>Lead Coach</li>
                 </ul>
                 <p>
                   I own and run Mindset Hockey. The seven-point rubric, the six-pillar framework and the
                   standard every coach here is held to are all mine — built out of my own climb from 16U A
-                  to a signed Junior A contract, through two broken ribs.
+                  to a signed Jr hockey contract, through two broken ribs.
                 </p>
                 <p>
                   I oversee every part of the program: operations, player development systems and the
@@ -470,15 +470,15 @@ export default function Home() {
                 <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Jack</h3>
-                <p className="coach-role">Development Coach · Junior A Player</p>
+                <h3>Coach Jack Magill</h3>
+                <p className="coach-role">Development Coach · Jr Hockey Player</p>
                 <ul className="chips">
-                  <li>Junior A Player</li><li>NCAA Prospect</li><li>Skill Specialist</li><li>Player Mentor</li>
+                  <li>Jr Hockey Player</li><li>NCAA Prospect</li><li>Skill Specialist</li><li>Player Mentor</li>
                 </ul>
                 <p>
                   At 16, playing Single-A, Jack broke his collarbone and his wrist. Instead of letting the
                   setbacks define him he used them — rebuilding his shot from the ground up and going from
-                  Single-A at 16 to competing at Junior A by 20. He&apos;s currently exploring NCAA
+                  Single-A at 16 to competing at the Jr hockey level by 20. He&apos;s currently exploring NCAA
                   opportunities.
                 </p>
                 <p>
@@ -559,12 +559,12 @@ export default function Home() {
             <article className="case rv">
               <div className="case-head"><p>Case study 01 · Coach Brayden</p></div>
               <div className="case-body">
-                <h3>16U A to a signed Junior A contract</h3>
+                <h3>16U A to a signed Jr hockey contract</h3>
                 <p className="mt1 muted">
                   Two broken ribs cost most of two seasons. The comeback wasn&apos;t more talent — it was
                   rebuilding shot mechanics frame by frame and training the mental side nobody was
                   coaching. Result: trusted in key moments, named alternate captain, moved to AAA, signed
-                  Junior A.
+                  to play Jr hockey.
                 </p>
                 <div className="case-metrics">
                   <div><b>2</b><span>Seasons lost to injury</span></div>
@@ -727,7 +727,7 @@ export default function Home() {
             </details>
             <details>
               <summary>Who will actually be coaching my player?</summary>
-              <div className="ans">One of two named coaches, never an anonymous reviewer. We&apos;re both coaches and both currently playing Junior A — the difference is that one of us owns the business and sets the system we both coach. Coach Brayden works with players directly, alongside Coach Jack, our development coach, skill specialist and NCAA prospect. <Link href="/coaches">Meet them both here</Link>.</div>
+              <div className="ans">One of two named coaches, never an anonymous reviewer. We&apos;re both coaches and both current Jr hockey players — the difference is that one of us owns the business and sets the system we both coach. Coach Brayden Castiglia works with players directly, alongside Coach Jack Magill, our development coach, skill specialist and NCAA prospect. <Link href="/coaches">Meet them both here</Link>.</div>
             </details>
             <details>
               <summary>What is mindset development training?</summary>

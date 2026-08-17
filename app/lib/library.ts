@@ -250,6 +250,85 @@ export async function buildLibraryView(
 }
 
 /* ==========================================================================
+   AI-RECOMMENDED TRAINING (Phase 4)
+
+   Sits on top of the exact same table, RLS policies and lock/upsell rule as
+   getLibrary() above — the only difference is the filter (skill_tags overlap
+   instead of pillar equality) and that it never falls back to "everything",
+   only ever the resources tagged for the categories a shot analysis found
+   weak. See app/lib/ai/recommendations.ts for the pure ranking logic that
+   consumes this.
+   ========================================================================== */
+
+export interface RecommendableRow {
+  id: string;
+  title: string;
+  requiredTier: Tier;
+  skillTags: string[];
+  /** Sourced from the same RLS-backed entitlement query as getLibrary(), not a tier comparison in code. */
+  locked: boolean;
+}
+
+/**
+ * Published training_resources whose skill_tags overlap `tags`, in library
+ * order (sort_order, then newest), each carrying the same locked/unlocked
+ * determination getLibrary() uses — a Premium-only match is still returned
+ * so it can be shown as an upsell, never silently dropped or unlocked.
+ *
+ * ONE entitlement query + ONE teaser query total, regardless of how many
+ * weak categories produced `tags` — the caller passes the full deduplicated
+ * tag union up front, this never runs once per category.
+ */
+export async function getRecommendableResources(
+  session: Session,
+  tags: string[],
+  limit = 24
+): Promise<RecommendableRow[]> {
+  if (DEMO_MODE || tags.length === 0) return [];
+
+  const { createServerClient, createAdminClient } = await import('./supabase/server');
+  const supabase = await createServerClient();
+  const admin = await createAdminClient();
+
+  const staff = session.role === 'admin' || session.role === 'coach';
+
+  /* -- 1. ENTITLEMENT: which of the tag-matching rows may this user read? -- */
+  const { data: allowedRows, error: allowedError } = await supabase
+    .from('training_resources')
+    .select('id')
+    .eq('is_published', true)
+    .overlaps('skill_tags', tags);
+
+  if (allowedError) {
+    console.error('[recommendations] entitlement query failed:', allowedError.message);
+  }
+  const unlockedIds = new Set((allowedRows ?? []).map((r) => r.id as string));
+
+  /* -- 2. TEASER: published, tag-matching rows for display -------------- */
+  const { data: rows, error: rowsError } = await admin
+    .from('training_resources')
+    .select('id, title, required_tier, skill_tags')
+    .eq('is_published', true)
+    .overlaps('skill_tags', tags)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (rowsError) {
+    console.error('[recommendations] candidate query failed:', rowsError.message);
+    return [];
+  }
+
+  return (rows ?? []).map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    requiredTier: (row.required_tier as Tier) ?? 'basic',
+    skillTags: (row.skill_tags as string[] | null) ?? [],
+    locked: !staff && !unlockedIds.has(row.id as string),
+  }));
+}
+
+/* ==========================================================================
    PLAYBACK
    ========================================================================== */
 

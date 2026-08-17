@@ -332,7 +332,7 @@ export default function Pricing() {
         <div className="wrap">
           <div className="head center rv">
             <p className="eyebrow center">Who you&apos;re paying for</p>
-            <h2>Two coaches. Both<br />playing Junior A.</h2>
+            <h2>Two coaches. Both<br />current Jr hockey players.</h2>
             <p className="lede mt2">
               Whichever plan you pick, your player works with one of these two — never a queue or an
               anonymous reviewer. One of us owns the program; both of us coach it.
@@ -342,25 +342,25 @@ export default function Pricing() {
             <article className="coach lead rv">
               <div className="coach-photo">
                 <span className="coach-badge">Coach &amp; Owner</span>
-                <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
+                <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden Castiglia, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Brayden</h3>
-                <p className="coach-role">Owner &amp; Lead Coach · Junior A Player</p>
-                <ul className="chips"><li>Junior A Player</li><li>Program Founder</li><li>Lead Coach</li></ul>
+                <h3>Coach Brayden Castiglia</h3>
+                <p className="coach-role">Owner &amp; Lead Coach · Jr Hockey Player</p>
+                <ul className="chips"><li>Jr Hockey Player</li><li>Program Founder</li><li>Lead Coach</li></ul>
                 <p>Coach Brayden owns the business and built every system you&apos;re buying — the 7-point rubric, the six pillars and the mindset curriculum. Coaches players directly and answers every inquiry personally.</p>
               </div>
             </article>
             <article className="coach rv">
               <div className="coach-photo">
                 <span className="coach-badge blue">Development Coach</span>
-                <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
+                <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack Magill, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Jack</h3>
-                <p className="coach-role">Development Coach · Junior A Player</p>
-                <ul className="chips"><li>Junior A Player</li><li>NCAA Prospect</li><li>Player Mentor</li></ul>
-                <p>Broke his collarbone and wrist at 16 playing Single-A, rebuilt his shot from scratch and reached Junior A by 20. Now exploring NCAA opportunities — and coaching the climb he&apos;s still on.</p>
+                <h3>Coach Jack Magill</h3>
+                <p className="coach-role">Development Coach · Jr Hockey Player</p>
+                <ul className="chips"><li>Jr Hockey Player</li><li>NCAA Prospect</li><li>Player Mentor</li></ul>
+                <p>Broke his collarbone and wrist at 16 playing Single-A, rebuilt his shot from scratch and reached the Jr hockey level by 20. Now exploring NCAA opportunities — and coaching the climb he&apos;s still on.</p>
               </div>
             </article>
           </div>

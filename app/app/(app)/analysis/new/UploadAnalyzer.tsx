@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { extractFrames, readVideoDuration, type ExtractedFrame } from '@/lib/ai/frames';
+import { ensurePlayableMp4 } from '@/lib/ai/transcode';
 import { Card } from '@/components/ui';
 
 /* ==========================================================================
@@ -55,9 +56,10 @@ const ANGLES = [
   { value: 'rear', label: 'From behind', hint: 'Limited — shoulder rotation only.' },
 ];
 
-type Phase = 'idle' | 'uploading' | 'extracting' | 'analyzing' | 'done' | 'error';
+type Phase = 'idle' | 'converting' | 'uploading' | 'extracting' | 'analyzing' | 'done' | 'error';
 
 const PHASE_COPY: Record<Exclude<Phase, 'idle' | 'done' | 'error'>, string> = {
+  converting: 'Preparing your clip for playback…',
   uploading: 'Uploading your clip securely…',
   extracting: 'Finding the release and pulling frames…',
   analyzing: 'Grading ten mechanics categories…',
@@ -133,19 +135,34 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
     setNotice(null);
 
     try {
+      // ---- 0. make sure the clip will actually play back everywhere -----
+      // Convenience only — lib/ai/duration.ts independently re-verifies the
+      // stored file's real duration server-side regardless of what happens
+      // here, so this step cannot be used to smuggle a longer clip past the
+      // 5-second gate. If this fails or the file is already MP4/WEBM, the
+      // original file is uploaded exactly as before.
+      setPhase('converting');
+      setProgress(2);
+      const { file: uploadFile, transcoded } = await ensurePlayableMp4(file, (pct) =>
+        setProgress(2 + Math.round(pct * 0.13))
+      );
+      if (transcoded) {
+        setNotice('Converted your clip for playback compatibility.');
+      }
+
       // ---- 1. reserve the analysis + get a signed upload URL ------------
       setPhase('uploading');
-      setProgress(5);
+      setProgress(15);
 
-      const durationSec = await readVideoDuration(file);
+      const durationSec = await readVideoDuration(uploadFile);
 
       const initRes = await fetch('/api/analysis/upload', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
+          fileName: uploadFile.name,
+          fileSize: uploadFile.size,
+          fileType: uploadFile.type,
           shotType,
           angle,
           playerNotes: notes,
@@ -157,11 +174,11 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
       if (!initRes.ok) throw new Error(init.error ?? 'Could not start the upload.');
 
       // ---- 2. PUT the video straight to storage -------------------------
-      setProgress(15);
+      setProgress(20);
       const put = await fetch(init.signedUrl, {
         method: 'PUT',
-        headers: { 'content-type': file.type || 'video/mp4' },
-        body: file,
+        headers: { 'content-type': uploadFile.type || 'video/mp4' },
+        body: uploadFile,
       });
       if (!put.ok) {
         throw new Error(`The video upload failed (${put.status}). Check your connection and retry.`);
@@ -169,8 +186,11 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
       setProgress(45);
 
       // ---- 3. extract frames locally ------------------------------------
+      // Extracted from the SAME bytes just uploaded (post-transcode when
+      // applicable), so the archived frames always match what is actually
+      // stored and what a coach or a retry would later see.
       setPhase('extracting');
-      const extracted = await extractFrames(file, {
+      const extracted = await extractFrames(uploadFile, {
         count: 10,
         onProgress: (done, total) => setProgress(45 + Math.round((done / total) * 25)),
       });
@@ -219,14 +239,15 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
     }
   }
 
-  const busy = phase === 'uploading' || phase === 'extracting' || phase === 'analyzing';
+  const busy =
+    phase === 'converting' || phase === 'uploading' || phase === 'extracting' || phase === 'analyzing';
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
+    <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.15fr_.85fr]">
       {/* ------------------------------------------------ upload + settings */}
-      <div className="grid gap-6">
-        <Card className="p-6">
-          <h2 className="display text-[20px]">1 · Your clip</h2>
+      <div className="grid gap-4 sm:gap-6">
+        <Card className="p-4 sm:p-6">
+          <h2 className="display text-[18px] sm:text-[20px]">1 · Your clip</h2>
 
           {!file ? (
             <div
@@ -236,10 +257,10 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
                 pickFile(e.dataTransfer.files?.[0] ?? null);
               }}
               onClick={() => inputRef.current?.click()}
-              className="mt-4 cursor-pointer rounded-xl border-2 border-dashed border-white/[.14] bg-navy-900/40 px-6 py-12 text-center transition-colors hover:border-electric/50 hover:bg-electric/[.04]"
+              className="mt-4 cursor-pointer rounded-xl border-2 border-dashed border-white/[.14] bg-navy-900/40 px-4 py-8 text-center transition-colors hover:border-electric/50 hover:bg-electric/[.04] sm:px-6 sm:py-12"
             >
-              <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-electric shadow-[0_10px_36px_rgba(10,132,255,.45)]">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-electric shadow-[0_10px_36px_rgba(10,132,255,.45)] sm:h-14 sm:w-14">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" className="sm:h-[22px] sm:w-[22px]">
                   <path d="M12 19V5M5 12l7-7 7 7" />
                 </svg>
               </div>
@@ -262,7 +283,8 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
                   src={previewUrl}
                   controls
                   playsInline
-                  className="w-full rounded-xl border border-white/[.08] bg-black"
+                  preload="metadata"
+                  className="aspect-video w-full rounded-xl border border-white/[.08] bg-black"
                 />
               )}
               {clipSeconds !== null && (
@@ -290,7 +312,7 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
                       setFrames([]);
                       setPhase('idle');
                     }}
-                    className="text-[13px] font-semibold text-silver-dim underline underline-offset-4 hover:text-white"
+                    className="-m-2 shrink-0 p-2 text-[13px] font-semibold text-silver-dim underline underline-offset-4 hover:text-white"
                   >
                     Choose a different clip
                   </button>
@@ -308,8 +330,8 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
           />
         </Card>
 
-        <Card className="p-6">
-          <h2 className="display text-[20px]">2 · What are we looking at?</h2>
+        <Card className="p-4 sm:p-6">
+          <h2 className="display text-[18px] sm:text-[20px]">2 · What are we looking at?</h2>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
@@ -384,7 +406,7 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
         )}
 
         {busy ? (
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <div className="flex items-center justify-between text-[13.5px]">
               <span className="font-semibold text-white">
                 {PHASE_COPY[phase as keyof typeof PHASE_COPY]}
@@ -418,8 +440,8 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
       </div>
 
       {/* ------------------------------------------------------- side panel */}
-      <div className="grid content-start gap-6">
-        <Card className="p-6">
+      <div className="grid content-start gap-4 sm:gap-6">
+        <Card className="p-4 sm:p-6">
           <h3 className="display text-[18px]">Filming for a real read</h3>
           <ul className="mt-4 grid gap-3 text-[14px] text-silver-dim">
             <li>Side on, about ten feet away, whole body in frame.</li>
@@ -436,7 +458,7 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
         </Card>
 
         {frames.length > 0 && (
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <h3 className="display text-[18px]">Frames being graded</h3>
             <p className="mt-2 text-[13px] text-silver-dim">
               Pulled from around the highest-motion moment — the release.
@@ -455,7 +477,7 @@ export default function UploadAnalyzer({ aiAvailable = true }: { aiAvailable?: b
           </Card>
         )}
 
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <h3 className="display text-[18px]">What you get back</h3>
           <p className="mt-3 text-[14px] text-silver-dim">
             Ten categories scored 1–10 where the footage supports it, each with what was actually

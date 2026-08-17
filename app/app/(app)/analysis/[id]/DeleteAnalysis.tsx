@@ -68,7 +68,7 @@ export default function DeleteAnalysis({
             type="button"
             onClick={requestReview}
             disabled={busy}
-            className="rounded-[10px] border border-white/[.14] px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:border-electric hover:bg-electric/10 disabled:opacity-40"
+            className="min-h-[44px] rounded-[10px] border border-white/[.14] px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:border-electric hover:bg-electric/10 disabled:opacity-40"
           >
             Send this to a coach
           </button>
@@ -84,7 +84,7 @@ export default function DeleteAnalysis({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="text-[13.5px] font-semibold text-silver-dim underline underline-offset-4 hover:text-red-300"
+            className="-m-2 inline-flex min-h-[44px] items-center p-2 text-[13.5px] font-semibold text-silver-dim underline underline-offset-4 hover:text-red-300"
           >
             Delete this analysis and video
           </button>
@@ -97,7 +97,7 @@ export default function DeleteAnalysis({
               type="button"
               onClick={remove}
               disabled={busy}
-              className="rounded-[10px] bg-rink-red px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40"
+              className="min-h-[44px] rounded-[10px] bg-rink-red px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40"
             >
               {busy ? 'Deleting…' : 'Yes, delete'}
             </button>
@@ -105,7 +105,7 @@ export default function DeleteAnalysis({
               type="button"
               onClick={() => setConfirming(false)}
               disabled={busy}
-              className="text-[13.5px] font-semibold text-silver-dim underline underline-offset-4 hover:text-white"
+              className="-m-2 inline-flex min-h-[44px] items-center p-2 text-[13.5px] font-semibold text-silver-dim underline underline-offset-4 hover:text-white"
             >
               Cancel
             </button>

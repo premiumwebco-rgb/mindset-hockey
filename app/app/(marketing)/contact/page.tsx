@@ -121,12 +121,12 @@ export default function Contact() {
                 <p className="mt1 small"><Link href="/locations">Location &amp; directions →</Link></p>
               </div>
               <div className="card mt2"><h3>Who you&apos;ll hear from</h3>
-                <p className="mt1 muted small">Every inquiry goes straight to Coach Brayden, the owner of the program — not an assistant or an inbox. He answers it himself within 24 hours.</p>
+                <p className="mt1 muted small">Every inquiry goes straight to Coach Brayden Castiglia, the owner of the program — not an assistant or an inbox. He answers it himself within 24 hours.</p>
                 <div className="ministaff mt2">
-                  <figure><img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" /><figcaption>Coach Brayden<em>Owner · Junior A player</em></figcaption></figure>
-                  <figure><img src="/media/coach-jack-headshot.jpg" alt="Coach Jack, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" /><figcaption>Coach Jack<em>Junior A player</em></figcaption></figure>
+                  <figure><img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden Castiglia, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" /><figcaption>Coach Brayden Castiglia<em>Owner · Jr hockey player</em></figcaption></figure>
+                  <figure><img src="/media/coach-jack-headshot.jpg" alt="Coach Jack Magill, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" /><figcaption>Coach Jack Magill<em>Jr hockey player · Development Coach</em></figcaption></figure>
                 </div>
-                <p className="mt2 small muted">Two coaches, both currently playing Junior A. One of us owns the program; both of us coach it.</p>
+                <p className="mt2 small muted">Two coaches, both current Jr hockey players. One of us owns the program; both of us coach it.</p>
                 <p className="mt1 small"><Link href="/coaches">Meet the coaching staff →</Link></p>
               </div>
             </div>

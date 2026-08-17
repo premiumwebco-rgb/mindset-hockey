@@ -135,31 +135,31 @@ export default function VideoCompare({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => step(-5)}
-            className="rounded-lg border border-white/[.14] px-3 py-2 text-[13px] font-semibold hover:border-electric hover:text-white"
+            className="min-h-[44px] rounded-lg border border-white/[.14] px-3 py-2 text-[13px] font-semibold hover:border-electric hover:text-white"
           >
             ⏪ 5f
           </button>
           <button
             onClick={() => step(-1)}
-            className="rounded-lg border border-white/[.14] px-3 py-2 text-[13px] font-semibold hover:border-electric hover:text-white"
+            className="min-h-[44px] rounded-lg border border-white/[.14] px-3 py-2 text-[13px] font-semibold hover:border-electric hover:text-white"
           >
             ◀ 1f
           </button>
           <button
             onClick={togglePlay}
-            className="rounded-lg bg-electric px-5 py-2 text-[13px] font-bold text-white hover:bg-electric-glow"
+            className="min-h-[44px] rounded-lg bg-electric px-5 py-2 text-[13px] font-bold text-white hover:bg-electric-glow"
           >
             {playing ? 'Pause' : 'Play both'}
           </button>
           <button
             onClick={() => step(1)}
-            className="rounded-lg border border-white/[.14] px-3 py-2 text-[13px] font-semibold hover:border-electric hover:text-white"
+            className="min-h-[44px] rounded-lg border border-white/[.14] px-3 py-2 text-[13px] font-semibold hover:border-electric hover:text-white"
           >
             1f ▶
           </button>
           <button
             onClick={() => step(5)}
-            className="rounded-lg border border-white/[.14] px-3 py-2 text-[13px] font-semibold hover:border-electric hover:text-white"
+            className="min-h-[44px] rounded-lg border border-white/[.14] px-3 py-2 text-[13px] font-semibold hover:border-electric hover:text-white"
           >
             5f ⏩
           </button>
@@ -171,7 +171,7 @@ export default function VideoCompare({
             <button
               key={r}
               onClick={() => changeRate(r)}
-              className={`rounded-lg px-3 py-2 text-[12.5px] font-semibold ${
+              className={`min-h-[44px] rounded-lg px-3 py-2 text-[13px] font-semibold ${
                 rate === r ? 'bg-electric text-white' : 'border border-white/[.14] text-silver-dim hover:text-white'
               }`}
             >
@@ -214,7 +214,7 @@ export default function VideoCompare({
               <button
                 key={p.id}
                 onClick={() => toggleOverlay(p.id)}
-                className={`rounded-md px-2.5 py-1.5 text-[11.5px] font-semibold transition-colors ${
+                className={`min-h-[40px] rounded-md px-3 py-2 text-[12.5px] font-semibold transition-colors ${
                   overlays.includes(p.id)
                     ? 'bg-electric/20 text-electric-glow ring-1 ring-electric/50'
                     : 'bg-white/[.05] text-silver-dim hover:text-white'

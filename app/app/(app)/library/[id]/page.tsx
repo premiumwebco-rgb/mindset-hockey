@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { requireSession } from '@/lib/session';
 import { getResourceForViewing } from '@/lib/library';
 import { Button, Card, PillarChip, formatDuration } from '@/components/ui';
+import { SmartVideo, SmartImage } from '@/components/media/SmartMedia';
 
 export const metadata = { title: 'Lesson' };
 
@@ -45,7 +46,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
     <>
       <Link
         href={`/library?pillar=${resource.pillar}`}
-        className="mb-6 inline-block text-[13.5px] text-silver-dim hover:text-white"
+        className="-m-2 mb-4 inline-block p-2 text-[13.5px] text-silver-dim hover:text-white"
       >
         ← Training library
       </Link>
@@ -77,18 +78,21 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
 
       <div className="mb-6">
         {isVideo ? (
-          <video
+          <SmartVideo
             key={resource.id}
             src={signedUrl}
+            fallbackLabel="lesson video"
             controls
             playsInline
+            preload="metadata"
             controlsList="nodownload"
             className="aspect-video w-full rounded-xl border border-white/[.08] bg-navy-900"
           />
         ) : isImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SmartImage
+            key={resource.id}
             src={signedUrl}
+            fallbackLabel="image"
             alt={resource.title}
             className="w-full rounded-xl border border-white/[.08] bg-navy-900"
           />

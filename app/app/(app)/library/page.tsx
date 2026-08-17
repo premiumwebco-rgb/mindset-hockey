@@ -35,11 +35,13 @@ export default async function Library({
         sub="Nothing loose, nothing random. Each lesson belongs to exactly one of the Six Pillars so your player always knows what he's working on and why."
       />
 
-      {/* filters — every count is read from the database, none are hardcoded */}
-      <div className="mb-8 flex flex-wrap gap-2">
+      {/* filters — every count is read from the database, none are hardcoded.
+          Horizontal scroll on mobile keeps six-plus pillar chips from eating a
+          full screen of vertical space before any lesson is visible. */}
+      <div className="mb-6 flex gap-2 overflow-x-auto pb-1 sm:mb-8 sm:flex-wrap sm:overflow-visible sm:pb-0">
         <Link
           href="/library"
-          className={`rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors ${
+          className={`shrink-0 rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold transition-colors ${
             !active ? 'bg-electric text-white' : 'border border-white/[.1] text-silver-dim hover:text-white'
           }`}
         >
@@ -49,7 +51,7 @@ export default async function Library({
           <Link
             key={p.key}
             href={`/library?pillar=${p.key}`}
-            className={`rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors ${
+            className={`shrink-0 rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold transition-colors ${
               active === p.key
                 ? 'bg-electric text-white'
                 : 'border border-white/[.1] text-silver-dim hover:text-white'
@@ -72,7 +74,7 @@ export default async function Library({
           }
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {resources.map((r) => {
             // A locked card links to the upgrade page, never to the lesson.
             const href = r.locked ? `/upgrade?need=${r.requiredTier}` : `/library/${r.id}`;
@@ -81,39 +83,43 @@ export default async function Library({
                 <Card hover className="h-full overflow-hidden">
                   <div className="relative grid aspect-video place-items-center border-b border-white/[.06] bg-navy-800">
                     <div
-                      className={`grid h-12 w-12 place-items-center rounded-full ${
+                      className={`grid h-10 w-10 place-items-center rounded-full sm:h-12 sm:w-12 ${
                         r.locked ? 'bg-white/[.06]' : 'bg-electric shadow-[0_8px_28px_rgba(10,132,255,.45)]'
                       }`}
                     >
                       {r.locked ? (
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8895A7" strokeWidth="2.2">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8895A7" strokeWidth="2.2">
                           <rect x="4" y="10" width="16" height="11" rx="2" />
                           <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                         </svg>
                       ) : (
-                        <svg width="13" height="16" viewBox="0 0 22 26" fill="#fff" className="ml-0.5">
+                        <svg width="11" height="14" viewBox="0 0 22 26" fill="#fff" className="ml-0.5">
                           <path d="M22 13 0 26V0z" />
                         </svg>
                       )}
                     </div>
                     {r.durationSec !== null && (
-                      <span className="absolute bottom-2.5 right-3 rounded bg-ink/85 px-2 py-1 text-[11px] font-semibold tabular-nums text-silver">
+                      <span className="absolute bottom-2 right-2.5 rounded bg-ink/85 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-silver sm:bottom-2.5 sm:right-3 sm:px-2 sm:py-1 sm:text-[11px]">
                         {formatDuration(r.durationSec)}
                       </span>
                     )}
                   </div>
 
-                  <div className="p-5">
-                    <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="p-3.5 sm:p-5">
+                    <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
                       <PillarChip pillar={r.pillar} />
                       {r.locked && <LockBadge tier={r.requiredTier} />}
                     </div>
-                    <h3 className="text-[16px] font-semibold leading-snug text-white">{r.title}</h3>
+                    <h3 className="text-[14.5px] font-semibold leading-snug text-white sm:text-[16px]">
+                      {r.title}
+                    </h3>
                     {r.description && (
-                      <p className="mt-2 text-[13.5px] leading-relaxed text-silver-dim">{r.description}</p>
+                      <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-silver-dim sm:mt-2 sm:line-clamp-none sm:text-[13.5px]">
+                        {r.description}
+                      </p>
                     )}
                     {r.category && (
-                      <p className="mt-3 text-[11px] uppercase tracking-[.14em] text-silver-dim">
+                      <p className="mt-2 text-[10.5px] uppercase tracking-[.14em] text-silver-dim sm:mt-3 sm:text-[11px]">
                         {r.category}
                       </p>
                     )}

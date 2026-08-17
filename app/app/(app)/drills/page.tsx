@@ -43,7 +43,7 @@ export default async function Drills({
           <Link
             key={p.key}
             href={`/drills?pillar=${p.key}`}
-            className={`rounded-lg px-3.5 py-2 text-[13px] font-semibold ${
+            className={`min-h-[40px] rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold ${
               activePillar === p.key
                 ? 'bg-electric text-white'
                 : 'border border-white/[.1] text-silver-dim hover:text-white'

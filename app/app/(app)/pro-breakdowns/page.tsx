@@ -7,7 +7,7 @@ import { Button, Card, PageHeading } from '@/components/ui';
 export const metadata = { title: 'Pro Breakdowns' };
 
 const LEVEL_LABEL: Record<ProLevel, string> = {
-  junior: 'Junior A',
+  junior: 'Jr Hockey',
   aaa: 'AAA',
   college: 'College',
 };
@@ -28,14 +28,14 @@ export default async function ProBreakdowns({
       <PageHeading
         eyebrow="Premium membership"
         title="Elite Release Library"
-        sub="Junior A and AAA shooting mechanics, annotated against the same rubric — so a 13-year-old can see exactly what the difference is instead of just being told there is one."
+        sub="Jr hockey and AAA shooting mechanics, annotated against the same rubric — so a 13-year-old can see exactly what the difference is instead of just being told there is one."
         action={<Button href="/pro-breakdowns/compare">Open comparison tool</Button>}
       />
 
       <div className="mb-8 flex flex-wrap gap-2">
         <Link
           href="/pro-breakdowns"
-          className={`rounded-lg px-3.5 py-2 text-[13px] font-semibold ${
+          className={`min-h-[40px] rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold ${
             !active ? 'bg-electric text-white' : 'border border-white/[.1] text-silver-dim hover:text-white'
           }`}
         >
@@ -45,7 +45,7 @@ export default async function ProBreakdowns({
           <Link
             key={l}
             href={`/pro-breakdowns?level=${l}`}
-            className={`rounded-lg px-3.5 py-2 text-[13px] font-semibold ${
+            className={`min-h-[40px] rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold ${
               active === l
                 ? 'bg-electric text-white'
                 : 'border border-white/[.1] text-silver-dim hover:text-white'
@@ -98,7 +98,7 @@ export default async function ProBreakdowns({
         <h3 className="display mb-2 text-[18px]">Why there are no NHL clips here</h3>
         <p className="max-w-[70ch] text-[14.5px] leading-relaxed text-silver-dim">
           Two reasons. The practical one: the gap between a 13-year-old and an NHL winger is so
-          large it isn&apos;t actionable — a Junior A release he could realistically copy changes far
+          large it isn&apos;t actionable — a Jr hockey release he could realistically copy changes far
           more behavior than a highlight he can&apos;t. The honest one: NHL broadcast footage belongs
           to the NHL, and re-hosting it inside a paid membership isn&apos;t ours to do. Every clip in
           this library was filmed by us, with consent.

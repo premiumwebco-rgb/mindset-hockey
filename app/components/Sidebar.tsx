@@ -37,6 +37,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/subscriptions', label: 'Subscriptions' },
   { href: '/admin/content', label: 'Content' },
+  { href: '/admin/nutrition', label: 'Nutrition CMS' },
   { href: '/admin/leads', label: 'Leads' },
 ];
 

@@ -75,8 +75,174 @@ export async function getWorkoutPlans(): Promise<WorkoutPlanRow[]> {
     .from('workout_plans')
     .select('id, slug, title, description, phase, focus, weeks')
     .eq('is_published', true)
+    // Situational routines (see below) live in this same table so they share
+    // its RLS and admin tooling, but they are a different content type —
+    // single-session, not periodised — and must not show up mixed into this
+    // multi-week list.
+    .neq('phase', 'routine')
     .order('sort_order');
   return (data as WorkoutPlanRow[]) ?? [];
+}
+
+/* --------------------------------------------------------- workout routines
+   "What do I do before a game / after practice / on a travel day" — a single
+   structured session for a situation, as opposed to the multi-week periodised
+   plans above.
+
+   REUSES the exact same tables as workout_plans/workout_sessions above: no
+   migration, no new RLS. A routine is one workout_plans row with
+   phase = 'routine' (weeks is meaningless for these and left at 1) and
+   exactly one linked workout_sessions row. That session's `blocks` jsonb
+   column — previously unused, with no reader anywhere in the codebase to
+   conflict with — holds the routine's structure:
+
+     { difficulty, whenToUse, coachTip, sections: [{ name, items: [...] }] }
+
+   rather than the flat exercise-list shape its original column comment
+   sketched, because nothing had ever been built against that shape yet.
+   ------------------------------------------------------------------------ */
+
+export const ROUTINE_OCCASIONS = [
+  'pre-game',
+  'pre-practice',
+  'post-practice-recovery',
+  'game-day',
+  'strength-day',
+  'speed-agility',
+  'recovery-day',
+  'off-ice-shooting',
+  'travel-hotel',
+  'quick-15',
+] as const;
+
+export type RoutineOccasion = (typeof ROUTINE_OCCASIONS)[number];
+
+export const OCCASION_LABEL: Record<RoutineOccasion, string> = {
+  'pre-game': 'Pre-Game',
+  'pre-practice': 'Pre-Practice',
+  'post-practice-recovery': 'Post-Practice Recovery',
+  'game-day': 'Game Day',
+  'strength-day': 'Strength Day',
+  'speed-agility': 'Speed & Agility',
+  'recovery-day': 'Recovery Day',
+  'off-ice-shooting': 'Off-Ice Shooting',
+  'travel-hotel': 'Travel / Hotel',
+  'quick-15': 'Quick 15-Minute',
+};
+
+export function isRoutineOccasion(v: unknown): v is RoutineOccasion {
+  return typeof v === 'string' && (ROUTINE_OCCASIONS as readonly string[]).includes(v);
+}
+
+export const ROUTINE_DIFFICULTIES = ['easy', 'moderate', 'advanced'] as const;
+export type RoutineDifficulty = (typeof ROUTINE_DIFFICULTIES)[number];
+
+export interface RoutineExercise {
+  name: string;
+  duration?: string;
+  sets?: number;
+  reps?: string;
+  rest?: string;
+  instructions: string;
+}
+
+export interface RoutineSection {
+  name: string;
+  items: RoutineExercise[];
+}
+
+interface RoutineBlocksShape {
+  difficulty?: string;
+  whenToUse?: string;
+  coachTip?: string;
+  sections?: RoutineSection[];
+}
+
+function parseRoutineBlocks(raw: unknown): RoutineBlocksShape {
+  if (!raw || typeof raw !== 'object') return {};
+  return raw as RoutineBlocksShape;
+}
+
+export interface WorkoutRoutineCard {
+  id: string;
+  slug: string;
+  title: string;
+  purpose: string | null;
+  occasion: string;
+  difficulty: string | null;
+  durationMin: number | null;
+}
+
+export interface WorkoutRoutineDetail extends WorkoutRoutineCard {
+  whenToUse: string | null;
+  coachTip: string | null;
+  sections: RoutineSection[];
+}
+
+interface RoutinePlanRow {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  focus: string;
+  workout_sessions: { blocks: unknown; duration_min: number | null }[] | { blocks: unknown; duration_min: number | null } | null;
+}
+
+function firstSession(row: RoutinePlanRow) {
+  return Array.isArray(row.workout_sessions) ? row.workout_sessions[0] : row.workout_sessions;
+}
+
+function toRoutineCard(row: RoutinePlanRow): WorkoutRoutineCard {
+  const session = firstSession(row);
+  const blocks = parseRoutineBlocks(session?.blocks);
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    purpose: row.description,
+    occasion: row.focus,
+    difficulty: blocks.difficulty ?? null,
+    durationMin: session?.duration_min ?? null,
+  };
+}
+
+const ROUTINE_SELECT = 'id, slug, title, description, focus, workout_sessions(blocks, duration_min)';
+
+/** Every published routine, in library order. Small, fixed-size content — filtering happens in JS, same as /drills. */
+export async function getWorkoutRoutines(): Promise<WorkoutRoutineCard[]> {
+  if (DEMO_MODE) return [];
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from('workout_plans')
+    .select(ROUTINE_SELECT)
+    .eq('is_published', true)
+    .eq('phase', 'routine')
+    .order('sort_order');
+  return ((data as unknown as RoutinePlanRow[]) ?? []).map(toRoutineCard);
+}
+
+/** One routine's full structure. RLS-scoped — a non-entitled or unpublished slug simply returns null, same 404 pattern as everywhere else. */
+export async function getWorkoutRoutineBySlug(slug: string): Promise<WorkoutRoutineDetail | null> {
+  if (DEMO_MODE) return null;
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from('workout_plans')
+    .select(ROUTINE_SELECT)
+    .eq('is_published', true)
+    .eq('phase', 'routine')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (!data) return null;
+
+  const row = data as unknown as RoutinePlanRow;
+  const session = firstSession(row);
+  const blocks = parseRoutineBlocks(session?.blocks);
+  return {
+    ...toRoutineCard(row),
+    whenToUse: blocks.whenToUse ?? null,
+    coachTip: blocks.coachTip ?? null,
+    sections: blocks.sections ?? [],
+  };
 }
 
 /* --------------------------------------------------------------- nutrition */

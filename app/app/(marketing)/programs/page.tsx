@@ -164,31 +164,31 @@ export default function Programs() {
           <div className="head center rv">
             <p className="eyebrow center">Who coaches it</p>
             <h2>Every program above is<br />coached by these two</h2>
-            <p className="lede mt2">No queue, no anonymous reviewer, no rotating cast of part-timers. Your player works with Coach Brayden, who built this system, or with Coach Jack, a current Junior A player and NCAA prospect.</p>
+            <p className="lede mt2">No queue, no anonymous reviewer, no rotating cast of part-timers. Your player works with Coach Brayden Castiglia, who built this system, or with Coach Jack Magill, a current Jr hockey player and NCAA prospect.</p>
           </div>
           <div className="staff">
             <article className="coach lead rv">
               <div className="coach-photo">
                 <span className="coach-badge">Coach &amp; Owner</span>
-                <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
+                <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden Castiglia, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Brayden</h3>
-                <p className="coach-role">Owner &amp; Lead Coach · Junior A Player</p>
-                <ul className="chips"><li>Junior A Player</li><li>Program Founder</li><li>Lead Coach</li></ul>
+                <h3>Coach Brayden Castiglia</h3>
+                <p className="coach-role">Owner &amp; Lead Coach · Jr Hockey Player</p>
+                <ul className="chips"><li>Jr Hockey Player</li><li>Program Founder</li><li>Lead Coach</li></ul>
                 <p>Coach Brayden owns the business and set every development system here — the 7-point rubric, the six pillars and the standard the whole staff coaches to. Still on the ice and in the film room every week, and the person who answers your first message.</p>
               </div>
             </article>
             <article className="coach rv">
               <div className="coach-photo">
                 <span className="coach-badge blue">Development Coach</span>
-                <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
+                <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack Magill, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Jack</h3>
-                <p className="coach-role">Development Coach · Junior A Player</p>
-                <ul className="chips"><li>Junior A Player</li><li>NCAA Prospect</li><li>Player Mentor</li></ul>
-                <p>Broke his collarbone and wrist at 16 playing Single-A, rebuilt his shot from the ground up, and reached Junior A by 20. He&apos;s currently exploring NCAA opportunities — and he coaches the climb he&apos;s still on.</p>
+                <h3>Coach Jack Magill</h3>
+                <p className="coach-role">Development Coach · Jr Hockey Player</p>
+                <ul className="chips"><li>Jr Hockey Player</li><li>NCAA Prospect</li><li>Player Mentor</li></ul>
+                <p>Broke his collarbone and wrist at 16 playing Single-A, rebuilt his shot from the ground up, and reached the Jr hockey level by 20. He&apos;s currently exploring NCAA opportunities — and he coaches the climb he&apos;s still on.</p>
               </div>
             </article>
           </div>

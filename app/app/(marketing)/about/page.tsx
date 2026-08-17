@@ -5,12 +5,12 @@ import Breadcrumbs from '@/components/marketing/Breadcrumbs';
 export const metadata: Metadata = {
   title: 'About Mindset Hockey | Founder-Led Hockey Training in Waldorf, MD',
   description:
-    "The story behind Mindset Hockey: a 16U A player who broke his rib twice, rebuilt his shot and mindset, reached AAA, signed Junior A — and founded a hockey development program in Waldorf, Maryland.",
+    "The story behind Mindset Hockey: a 16U A player who broke his rib twice, rebuilt his shot and mindset, reached AAA, signed to play Jr hockey — and founded a hockey development program in Waldorf, Maryland.",
   alternates: { canonical: 'https://mindsethockey.com/about' },
   openGraph: {
     title: 'About Mindset Hockey | Founder-Led Hockey Training in Waldorf, MD',
     description:
-      "The story behind Mindset Hockey: a 16U A player who broke his rib twice, rebuilt his shot and mindset, reached AAA, signed Junior A — and founded a hockey development program in Waldorf, Maryland.",
+      "The story behind Mindset Hockey: a 16U A player who broke his rib twice, rebuilt his shot and mindset, reached AAA, signed to play Jr hockey — and founded a hockey development program in Waldorf, Maryland.",
     url: 'https://mindsethockey.com/about',
     images: ['https://mindsethockey.com/assets/og-image.jpg'],
   },
@@ -33,8 +33,8 @@ const TIMELINE = [
   { when: 'The second setback', title: 'Broken rib — again', body: "The second one is harder, because the first already cost you a year. That's when I stopped training only my body and started training how I thought.", key: true },
   { when: 'The turn', title: 'Alternate captain', body: 'I came back more reliable, not more talented. Coaches started using me in the moments that mattered. Then they gave me a letter.', key: false },
   { when: 'The jump', title: 'AAA', body: "The level I was told I'd never reach. Same body. Different mechanics, different habits, different head.", key: false },
-  { when: 'Then', title: 'Signed — Junior A', body: 'Talent helps. Mindset, discipline and consistent work change careers. Everything I did is written down, filmed, and now coached.', key: true },
-  { when: 'Today', title: 'Founded Mindset Hockey', body: "I turned the system into a business, based at The Capital Clubhouse in Waldorf, Maryland. As owner I set the program's direction and standards — and I brought on a development coach who's currently playing Junior A and chasing NCAA opportunities, because your player should learn from people still living it.", key: true },
+  { when: 'Then', title: 'Signed — Jr Hockey', body: 'Talent helps. Mindset, discipline and consistent work change careers. Everything I did is written down, filmed, and now coached.', key: true },
+  { when: 'Today', title: 'Founded Mindset Hockey', body: "I turned the system into a business, based at The Capital Clubhouse in Waldorf, Maryland. As owner I set the program's direction and standards — and I brought on a development coach who's a current Jr hockey player, a former captain, and chasing NCAA opportunities, because your player should learn from people still living it.", key: true },
 ];
 
 export default function About() {
@@ -49,7 +49,7 @@ export default function About() {
           <div className="head center">
             <p className="eyebrow center">The story behind the program</p>
             <h1>It wasn&apos;t a<br />straight line</h1>
-            <p className="lede mt2">I&apos;m Coach Brayden — founder and owner of Mindset Hockey. I&apos;m not telling you what worked twenty years ago — I&apos;m telling you what worked recently, at the level your player is trying to reach.</p>
+            <p className="lede mt2">I&apos;m Coach Brayden Castiglia — founder and owner of Mindset Hockey. I&apos;m not telling you what worked twenty years ago — I&apos;m telling you what worked recently, at the level your player is trying to reach.</p>
           </div>
         </div>
       </section>
@@ -58,13 +58,13 @@ export default function About() {
         <div className="wrap">
           <div className="teamgrid rv">
             <figure className="teamphoto">
-              <img src="/media/photo-faceoff.jpg" alt="Coach Brayden, owner of Mindset Hockey, in a Team Maryland number 17 jersey lined up for a faceoff" width={1250} height={830} />
+              <img src="/media/photo-faceoff.jpg" alt="Coach Brayden Castiglia, owner of Mindset Hockey, in a Team Maryland number 17 jersey lined up for a faceoff" width={1250} height={830} />
               <figcaption>Team Maryland · #17</figcaption>
             </figure>
             <div className="teamside">
               <div className="card">
-                <h3>Coach Brayden</h3>
-                <p className="mt1">16U A player. Two broken ribs. Alternate captain. AAA. Signed Junior A. Every drill and rubric point on this site came out of that climb.</p>
+                <h3>Coach Brayden Castiglia</h3>
+                <p className="mt1">16U A player. Two broken ribs. Alternate captain. AAA. Signed to play Jr hockey. Every drill and rubric point on this site came out of that climb.</p>
                 <p className="mt1">I own and run Mindset Hockey — the vision, the training systems, the coaching standard and the day-to-day operation. I&apos;m also still on the ice with players, and I&apos;m the person who answers your first message.</p>
                 <p className="mt1"><Link className="btn btn-ghost btn-sm" href="/coaches" data-cta="about_to_coaches" data-cta-location="about">Meet the coaching staff</Link></p>
               </div>
@@ -112,31 +112,31 @@ export default function About() {
           <div className="head center rv">
             <p className="eyebrow center">The staff</p>
             <h2>I don&apos;t coach<br />this alone</h2>
-            <p className="lede mt2">I built the program and I run it — but your player also works with Coach Jack, a development coach who is currently playing Junior A and pursuing NCAA opportunities. Two coaches, one system, both still living the game.</p>
+            <p className="lede mt2">I built the program and I run it — but your player also works with Coach Jack Magill, a development coach who is a current Jr hockey player, a former captain, and pursuing NCAA opportunities. Two coaches, one system, both still living the game.</p>
           </div>
           <div className="staff">
             <article className="coach lead rv">
               <div className="coach-photo">
                 <span className="coach-badge">Coach &amp; Owner</span>
-                <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
+                <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden Castiglia, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Brayden</h3>
-                <p className="coach-role">Owner &amp; Lead Coach · Junior A Player</p>
-                <ul className="chips"><li>Junior A Player</li><li>Program Founder</li><li>Lead Coach</li></ul>
+                <h3>Coach Brayden Castiglia</h3>
+                <p className="coach-role">Owner &amp; Lead Coach · Jr Hockey Player</p>
+                <ul className="chips"><li>Jr Hockey Player</li><li>Program Founder</li><li>Lead Coach</li></ul>
                 <p>Coach Brayden owns the business and set every development system here — the 7-point rubric, the six pillars and the standard the whole staff coaches to. Still on the ice and in the film room every week, and the person who answers your first message.</p>
               </div>
             </article>
             <article className="coach rv">
               <div className="coach-photo">
                 <span className="coach-badge blue">Development Coach</span>
-                <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
+                <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack Magill, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Jack</h3>
-                <p className="coach-role">Development Coach · Junior A Player</p>
-                <ul className="chips"><li>Junior A Player</li><li>NCAA Prospect</li><li>Player Mentor</li></ul>
-                <p>Broke his collarbone and wrist at 16 playing Single-A, rebuilt his shot from the ground up, and reached Junior A by 20. He&apos;s currently exploring NCAA opportunities — and he coaches the climb he&apos;s still on.</p>
+                <h3>Coach Jack Magill</h3>
+                <p className="coach-role">Development Coach · Jr Hockey Player</p>
+                <ul className="chips"><li>Jr Hockey Player</li><li>NCAA Prospect</li><li>Player Mentor</li></ul>
+                <p>Broke his collarbone and wrist at 16 playing Single-A, rebuilt his shot from the ground up, and reached the Jr hockey level by 20. He&apos;s currently exploring NCAA opportunities — and he coaches the climb he&apos;s still on.</p>
               </div>
             </article>
           </div>

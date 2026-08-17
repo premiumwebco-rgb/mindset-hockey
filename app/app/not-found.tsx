@@ -40,7 +40,7 @@ export default function NotFound() {
             <p className="lede mt2" style={{ marginInline: 'auto' }}>The link&apos;s broken or the page moved. Here&apos;s where most people were heading:</p>
             <div className="cards c3 mt3" style={{ textAlign: 'left' }}>
               <article className="card"><h3>Programs</h3><p className="mt1">Shot analysis, mindset coaching and the full six-pillar system.</p><p className="mt1 small"><Link href="/programs">See programs →</Link></p></article>
-              <article className="card"><h3>Coaching staff</h3><p className="mt1">Meet Coach Brayden and our Junior A development coach.</p><p className="mt1 small"><Link href="/coaches">Meet the coaches →</Link></p></article>
+              <article className="card"><h3>Coaching staff</h3><p className="mt1">Meet Coach Brayden Castiglia and our Jr hockey development coach.</p><p className="mt1 small"><Link href="/coaches">Meet the coaches →</Link></p></article>
               <article className="card"><h3>Free assessment</h3><p className="mt1">Tell us about your player and get an honest recommendation.</p><p className="mt1 small"><Link href="/contact">Get started →</Link></p></article>
             </div>
             <p className="mt3"><Link className="btn btn-primary btn-lg" href="/" data-cta="404_home" data-cta-location="404">Back to Home</Link></p>

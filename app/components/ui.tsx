@@ -20,8 +20,12 @@ export function Button({
   type?: 'button' | 'submit';
   disabled?: boolean;
 }) {
+  // min-h-[44px] guarantees an accessible touch target on every size/variant,
+  // independent of font-size/padding math — Button is used across every
+  // player-facing surface, so this one line is the highest-leverage mobile
+  // touch-target fix available.
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-[10px] font-bold tracking-wide transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none';
+    'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[10px] font-bold tracking-wide transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none';
   const sizes = {
     sm: 'px-4 py-2 text-[13px]',
     md: 'px-6 py-3 text-[14px]',
@@ -199,7 +203,7 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
   return (
     <div>
       {label && (
-        <div className="mb-1.5 flex justify-between text-[12.5px]">
+        <div className="mb-1.5 flex justify-between text-[13.5px]">
           <span className="text-silver">{label}</span>
           <span className="text-silver-dim tabular-nums">{pct}%</span>
         </div>

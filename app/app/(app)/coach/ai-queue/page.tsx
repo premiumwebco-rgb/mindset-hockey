@@ -3,6 +3,7 @@ import { requireStaff, DEMO_MODE } from '@/lib/session';
 import { createServerClient } from '@/lib/supabase/server';
 import { createPlaybackUrl } from '@/lib/ai/storage';
 import { Card, PageHeading, Stat, EmptyState } from '@/components/ui';
+import { SmartVideo } from '@/components/media/SmartMedia';
 import { parseCategories, formatDate } from '@/lib/ai/present';
 
 export const metadata = { title: 'AI Review Queue — Mindset Hockey' };
@@ -120,11 +121,12 @@ export default async function AiReviewQueue() {
                 <div className="grid gap-5 md:grid-cols-[240px_1fr]">
                   <div>
                     {videoUrl ? (
-                      <video
+                      <SmartVideo
                         src={videoUrl}
+                        fallbackLabel="clip"
                         controls
                         playsInline
-                        className="w-full rounded-lg border border-white/[.08] bg-black"
+                        className="aspect-video w-full rounded-lg border border-white/[.08] bg-black"
                       />
                     ) : (
                       <div className="grid aspect-video w-full place-items-center rounded-lg border border-dashed border-white/[.14] text-[12px] text-silver-dim">

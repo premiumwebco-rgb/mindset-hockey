@@ -47,7 +47,7 @@ export default function ThankYou() {
 
           <div className="cards c3 mt3" style={{ textAlign: 'left' }}>
             <article className="card"><span className="num">01</span><h3>Start filming</h3><p>Side angle at hip height, ten feet away. Front angle at the same distance. Five shots of the same type, good light. That&apos;s what makes a real breakdown possible.</p></article>
-            <article className="card"><span className="num">02</span><h3>Meet your coaches</h3><p>Two coaches, both currently playing Junior A. One of us owns the program; both of us coach it — and one of us will be working with your player.</p><p className="mt1 small"><Link href="/coaches">Meet the coaching staff →</Link></p></article>
+            <article className="card"><span className="num">02</span><h3>Meet your coaches</h3><p>Two coaches, both current Jr hockey players. One of us owns the program; both of us coach it — and one of us will be working with your player.</p><p className="mt1 small"><Link href="/coaches">Meet the coaching staff →</Link></p></article>
             <article className="card"><span className="num">03</span><h3>Compare programs</h3><p>Standard, Premium and Custom side by side, so you know what to ask about on the call.</p><p className="mt1 small"><Link href="/pricing">See pricing →</Link></p></article>
           </div>
 

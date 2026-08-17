@@ -23,13 +23,13 @@ export const metadata: Metadata = {
     template: '%s · Mindset Hockey',
   },
   description:
-    'A complete player development system for hockey players 10–18. Shot mechanics, mindset, habits and coach video analysis — built by a player who went from 16U A to Junior A.',
+    'A complete player development system for hockey players 10–18. Shot mechanics, mindset, habits and coach video analysis — built by a player who went from 16U A to Jr hockey.',
   openGraph: {
     type: 'website',
     siteName: 'Mindset Hockey',
     title: 'Mindset Hockey — Talent helps. Mindset changes careers.',
     description:
-      'The complete player development system from a player who went 16U A → AAA → Junior A.',
+      'The complete player development system from a player who went 16U A → AAA → Jr hockey.',
   },
   twitter: { card: 'summary_large_image' },
   robots: { index: true, follow: true },

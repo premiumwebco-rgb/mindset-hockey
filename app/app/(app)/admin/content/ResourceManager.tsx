@@ -97,10 +97,37 @@ function readDuration(file: File): Promise<number | null> {
   });
 }
 
+/**
+ * Rejects .mov/QuickTime video specifically for training resources.
+ *
+ * These are long, coach-recorded lessons (minutes, not seconds), so the
+ * lightweight in-browser transcode used for 5-second AI Shot Analysis clips
+ * (lib/ai/transcode.ts) is not a good fit here — converting a 10-minute video
+ * in a mobile browser tab could take minutes and stall the upload. There is
+ * also exactly one uploader (you or a coach), so a one-time re-export is a
+ * far smaller cost than shipping every member an unplayable-on-Android video.
+ *
+ * Chromium — Android Chrome above all — cannot play the QuickTime container
+ * at all, regardless of the codec inside it. iPhones default to recording
+ * that container, so this is caught here rather than discovered later by a
+ * parent whose phone silently shows nothing.
+ */
+function isQuickTime(file: File): boolean {
+  return file.type === 'video/quicktime' || /\.mov$/i.test(file.name);
+}
+
 function validate(file: File): string | null {
   if (file.size === 0) return 'That file is empty.';
   if (file.size > MAX_BYTES) {
     return `That file is over ${Math.round(MAX_BYTES / 1024 / 1024)} MB.`;
+  }
+  if (isQuickTime(file)) {
+    return (
+      'This is a QuickTime (.mov) file — it will not play on Android phones. ' +
+      'Re-export it as an MP4 (H.264) first: on iPhone, Settings → Camera → Formats → ' +
+      '"Most Compatible" before recording, or use any free video converter on an existing ' +
+      'clip, then upload the .mp4.'
+    );
   }
   return null;
 }

@@ -97,7 +97,7 @@ export default function Locations() {
               </div>
               <div className="card mt2">
                 <h3>Both coaches are on site</h3>
-                <p className="mt1 muted">Sessions at The Capital Clubhouse are run by Coach Brayden, the owner of the program, or by Coach Jack, our development coach — a current Junior A player and NCAA prospect. Never an assistant you&apos;ve never heard of.</p>
+                <p className="mt1 muted">Sessions at The Capital Clubhouse are run by Coach Brayden Castiglia, the owner of the program, or by Coach Jack Magill, our development coach — a current Jr hockey player and NCAA prospect. Never an assistant you&apos;ve never heard of.</p>
                 <p className="mt1 small"><Link href="/coaches">Meet the coaching staff →</Link></p>
               </div>
               <div className="card mt2">
@@ -162,31 +162,31 @@ export default function Locations() {
           <div className="head center rv">
             <p className="eyebrow center">Who you&apos;ll train with</p>
             <h2>Two coaches at<br />the Waldorf rink</h2>
-            <p className="lede mt2">Every session at The Capital Clubhouse is run by one of these two — both currently playing Junior A. One of us owns the program; both of us coach it.</p>
+            <p className="lede mt2">Every session at The Capital Clubhouse is run by one of these two — both current Jr hockey players. One of us owns the program; both of us coach it.</p>
           </div>
           <div className="staff">
             <article className="coach lead rv">
               <div className="coach-photo">
                 <span className="coach-badge">Coach &amp; Owner</span>
-                <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
+                <img src="/media/coach-brayden-headshot.jpg" alt="Coach Brayden Castiglia, owner and lead coach at Mindset Hockey, in a Team Maryland jersey" width={560} height={560} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Brayden</h3>
-                <p className="coach-role">Owner &amp; Lead Coach · Junior A Player</p>
-                <ul className="chips"><li>Junior A Player</li><li>Program Founder</li><li>Lead Coach</li></ul>
+                <h3>Coach Brayden Castiglia</h3>
+                <p className="coach-role">Owner &amp; Lead Coach · Jr Hockey Player</p>
+                <ul className="chips"><li>Jr Hockey Player</li><li>Program Founder</li><li>Lead Coach</li></ul>
                 <p>Coach Brayden owns the business and set every development system here — the 7-point rubric, the six pillars and the standard the whole staff coaches to. Still on the ice and in the film room every week, and the person who answers your first message.</p>
               </div>
             </article>
             <article className="coach rv">
               <div className="coach-photo">
                 <span className="coach-badge blue">Development Coach</span>
-                <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
+                <img src="/media/coach-jack-headshot.jpg" alt="Coach Jack Magill, Mindset Hockey development coach, in a Utica Jr. Comets USPHL jersey" width={620} height={619} loading="lazy" />
               </div>
               <div className="coach-body">
-                <h3>Coach Jack</h3>
-                <p className="coach-role">Development Coach · Junior A Player</p>
-                <ul className="chips"><li>Junior A Player</li><li>NCAA Prospect</li><li>Player Mentor</li></ul>
-                <p>Broke his collarbone and wrist at 16 playing Single-A, rebuilt his shot from the ground up, and reached Junior A by 20. He&apos;s currently exploring NCAA opportunities — and he coaches the climb he&apos;s still on.</p>
+                <h3>Coach Jack Magill</h3>
+                <p className="coach-role">Development Coach · Jr Hockey Player</p>
+                <ul className="chips"><li>Jr Hockey Player</li><li>NCAA Prospect</li><li>Player Mentor</li></ul>
+                <p>Broke his collarbone and wrist at 16 playing Single-A, rebuilt his shot from the ground up, and reached the Jr hockey level by 20. He&apos;s currently exploring NCAA opportunities — and he coaches the climb he&apos;s still on.</p>
               </div>
             </article>
           </div>

@@ -138,7 +138,7 @@ p:last-child{margin-bottom:0}
 .nav-cta{display:flex;align-items:center;gap:12px}
 .nav-phone{display:none;font-size:13.5px;font-weight:600;color:var(--silver)}
 .nav-phone:hover{color:#fff}
-.burger{display:grid;gap:5px;padding:10px;margin-right:-10px}
+.burger{display:grid;gap:5px;padding:14px;margin-right:-14px}
 .burger i{display:block;width:20px;height:2px;background:var(--silver);border-radius:2px}
 @media(min-width:1000px){
   .nav-links{display:flex}.nav-phone{display:block}.burger{display:none}

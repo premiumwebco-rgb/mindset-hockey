@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { requireFeature, DEMO_MODE } from '@/lib/session';
 import { createServerClient } from '@/lib/supabase/server';
 import { createPlaybackUrl } from '@/lib/ai/storage';
-import { Card, Eyebrow } from '@/components/ui';
+import { Card, Eyebrow, Button } from '@/components/ui';
+import { SmartVideo } from '@/components/media/SmartMedia';
 import { RUBRIC_BY_CATEGORY, type CategoryScore } from '@/lib/ai/rubric';
 import {
   STATUS_LABEL,
@@ -15,6 +16,13 @@ import {
   formatDate,
   type AnalysisStatus,
 } from '@/lib/ai/present';
+import {
+  getWeakCategories,
+  tagsForWeakCategories,
+  buildRecommendations,
+  type Recommendation,
+} from '@/lib/ai/recommendations';
+import { getRecommendableResources } from '@/lib/library';
 import DeleteAnalysis from './DeleteAnalysis';
 import AnalysisProgress from './AnalysisProgress';
 import RetryAnalysis from './RetryAnalysis';
@@ -122,7 +130,7 @@ function List({ title, items, tone }: { title: string; items: string[]; tone: st
 }
 
 export default async function AnalysisReport({ params }: { params: Promise<{ id: string }> }) {
-  await requireFeature('ai_shot_analysis');
+  const session = await requireFeature('ai_shot_analysis');
   const { id } = await params;
 
   if (DEMO_MODE) notFound();
@@ -158,6 +166,30 @@ export default async function AnalysisReport({ params }: { params: Promise<{ id:
   // rather than offered and then failed.
   const retryable = (row.frame_paths?.length ?? 0) > 0;
 
+  // --------------------------------------------------------------------
+  // AI-recommended training (Phase 4). Deterministic, non-AI mapping from
+  // this analysis's own weak categories onto the training library — see
+  // lib/ai/recommendations.ts for the ranking logic and lib/library.ts's
+  // getRecommendableResources() for the entitlement-aware lookup.
+  //
+  // Wrapped defensively: a bug or a down dependency here must never take
+  // out the page that shows the actual analysis a player is here to see.
+  // Worst case, the "Your Biggest Opportunities" section just doesn't
+  // render — the rest of the report is unaffected either way.
+  // --------------------------------------------------------------------
+  const weakCategories = isComplete ? getWeakCategories(categories) : [];
+  let recommendations: Recommendation[] = [];
+  if (weakCategories.length > 0) {
+    try {
+      const tags = tagsForWeakCategories(weakCategories);
+      const candidates = await getRecommendableResources(session, tags);
+      recommendations = buildRecommendations(weakCategories, candidates);
+    } catch (err) {
+      console.error('[analysis] recommendation lookup failed:', (err as Error).message);
+      recommendations = [];
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -180,7 +212,7 @@ export default async function AnalysisReport({ params }: { params: Promise<{ id:
           </span>
           <Link
             href="/analysis"
-            className="text-[14px] font-semibold text-silver-dim underline underline-offset-4 hover:text-white"
+            className="-m-2 inline-block p-2 text-[14px] font-semibold text-silver-dim underline underline-offset-4 hover:text-white"
           >
             All analyses
           </Link>
@@ -260,7 +292,7 @@ export default async function AnalysisReport({ params }: { params: Promise<{ id:
                       </p>
                       {confidencePct !== null && (
                         <div className="mt-3">
-                          <div className="mb-1.5 flex justify-between text-[12.5px]">
+                          <div className="mb-1.5 flex justify-between text-[13.5px]">
                             <span className="text-silver">Overall confidence</span>
                             <span className="tabular-nums text-silver-dim">{confidencePct}%</span>
                           </div>
@@ -310,6 +342,57 @@ export default async function AnalysisReport({ params }: { params: Promise<{ id:
           <List title="Areas to improve" items={row.improvement_areas ?? []} tone="text-amber" />
           <List title="Coaching recommendations" items={row.recommendations ?? []} tone="text-electric-glow" />
 
+          {/* ------------------------------- your biggest opportunities --- */}
+          {isComplete && categories.length > 0 && weakCategories.length === 0 && (
+            <Card className="p-6">
+              <h2 className="display text-[19px]">Your Biggest Opportunities</h2>
+              <p className="mt-2 text-[14.5px] text-silver">
+                Your shot is looking strong across the board. Keep building consistency and
+                continue working through your training plan.
+              </p>
+            </Card>
+          )}
+
+          {isComplete && recommendations.length > 0 && (
+            <Card className="p-6">
+              <h2 className="display text-[19px]">Your Biggest Opportunities</h2>
+              <p className="mt-1.5 text-[13.5px] text-silver-dim">
+                Your analysis identified a few areas that could have the biggest impact on your
+                shot.
+              </p>
+              <div className="mt-5 grid gap-5">
+                {recommendations.map((rec) => (
+                  <div
+                    key={rec.resourceId}
+                    className="border-t border-white/[.06] pt-5 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <h3 className="text-[15.5px] font-semibold text-white">
+                        Improve Your {rec.categoryLabel}
+                      </h3>
+                      <span className={`display text-[18px] leading-none ${scoreClass(rec.score)}`}>
+                        {rec.score}
+                        <span className="text-[12px] text-silver-dim">/10</span>
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-[13.5px] text-silver">
+                      {rec.reason} Watch this training clip to work on it.
+                    </p>
+                    <div className="mt-3">
+                      <Button
+                        href={rec.locked ? `/upgrade?need=${rec.requiredTier}` : `/library/${rec.resourceId}`}
+                        size="sm"
+                        variant={rec.locked ? 'ghost' : 'primary'}
+                      >
+                        {rec.locked ? `Unlock — ${rec.title}` : 'Watch Training'}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           <DeleteAnalysis id={row.id} canRequestReview={!row.requested_review} />
         </div>
 
@@ -318,11 +401,12 @@ export default async function AnalysisReport({ params }: { params: Promise<{ id:
           {videoUrl && (
             <Card className="p-6">
               <h3 className="display text-[18px]">Your clip</h3>
-              <video
+              <SmartVideo
                 src={videoUrl}
+                fallbackLabel="clip"
                 controls
                 playsInline
-                className="mt-4 w-full rounded-xl border border-white/[.08] bg-black"
+                className="mt-4 aspect-video w-full rounded-xl border border-white/[.08] bg-black"
               />
               <p className="mt-3 text-[12.5px] text-silver-dim">
                 Stored privately. This playback link is signed and expires — it is not a public URL.
