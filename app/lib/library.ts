@@ -329,6 +329,90 @@ export async function getRecommendableResources(
 }
 
 /* ==========================================================================
+   AI COACHING — ADMIN-CONTROLLED DRILL RECOMMENDATIONS (Phase 6, Part 3)
+
+   Reads ai_drill_recommendations (migration 0014): an admin-maintained,
+   priority-ordered mapping of AI rubric category -> drill (training_resources
+   row). This is deliberately NOT the tag-based CATEGORY_SKILL_TAGS system in
+   lib/ai/recommendations.ts — that one stays exactly as it was, still
+   powering the existing, already-tested multi-recommendation list on
+   /analysis/[id]. This is a second, simpler, single-result lookup built
+   specifically for the dashboard's one-recommendation "AI Insight" card,
+   and it is 100% data-driven: there is no `if (category === '...')` anywhere
+   in this function. Every category/drill/priority/active value comes out of
+   the database, edited only from Admin > AI Coaching > Drill Recommendations.
+   ========================================================================== */
+
+export interface DrillRecommendation {
+  mappingId: string;
+  resourceId: string;
+  title: string;
+  requiredTier: Tier;
+  locked: boolean;
+}
+
+/**
+ * The single top-priority active drill mapped to `category`, or null if no
+ * active mapping exists (or every mapped drill turned out to be unpublished
+ * or deleted — a mapping is never allowed to surface a dead link).
+ *
+ * RLS on ai_drill_recommendations (0014) already restricts a non-staff
+ * session to `is_active = true` rows, so the `.eq('is_active', true)` below
+ * is belt-and-suspenders, not the actual security boundary.
+ */
+export async function getDrillRecommendation(
+  session: Session,
+  category: string
+): Promise<DrillRecommendation | null> {
+  if (DEMO_MODE) return null;
+
+  const { createServerClient, createAdminClient } = await import('./supabase/server');
+  const supabase = await createServerClient();
+  const staff = session.role === 'admin' || session.role === 'coach';
+
+  const { data: mappings, error: mapError } = await supabase
+    .from('ai_drill_recommendations')
+    .select('id, resource_id, priority')
+    .eq('ai_category', category)
+    .eq('recommendation_kind', 'drill')
+    .eq('is_active', true)
+    .order('priority', { ascending: true });
+
+  if (mapError) {
+    console.error('[drill-recommendations] mapping lookup failed:', mapError.message);
+    return null;
+  }
+  if (!mappings || mappings.length === 0) return null;
+
+  // Admin client to resolve each candidate drill's title/tier regardless of
+  // this member's own entitlement (so a locked drill can still be shown as
+  // an upsell, same convention as getRecommendableResources above);
+  // `hasTier` — the same server-authoritative check every feature gate uses —
+  // decides `locked`, not client input.
+  const admin = await createAdminClient();
+  for (const m of mappings as { id: string; resource_id: string; priority: number }[]) {
+    const { data: resource } = await admin
+      .from('training_resources')
+      .select('id, title, required_tier, is_published')
+      .eq('id', m.resource_id)
+      .maybeSingle();
+
+    if (!resource || !resource.is_published) continue;
+
+    const requiredTier = (resource.required_tier as Tier) ?? 'basic';
+    return {
+      mappingId: m.id,
+      resourceId: resource.id as string,
+      title: resource.title as string,
+      requiredTier,
+      locked: !staff && !hasTier(session, requiredTier),
+    };
+  }
+
+  return null;
+}
+
+/* ==========================================================================
    PLAYBACK
    ========================================================================== */
 

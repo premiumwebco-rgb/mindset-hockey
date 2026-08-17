@@ -7,6 +7,7 @@ import {
   ROUTINE_OCCASIONS,
   ROUTINE_DIFFICULTIES,
   isRoutineOccasion,
+  TODAY_OCCASION_OPTIONS,
   type RoutineDifficulty,
 } from '@/lib/data';
 import { Card, Eyebrow, EmptyState } from '@/components/ui';
@@ -70,6 +71,26 @@ export default async function WorkoutsPage({
         blocks are below.
       </p>
 
+      {/* --------------------------------------------------- today selector --- */}
+      <div className="mt-6 rounded-xl border border-white/[.08] bg-white/[.02] p-4 sm:p-5">
+        <h2 className="display text-[16px] sm:text-[17px]">What should I do today?</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {TODAY_OCCASION_OPTIONS.map((opt) => (
+            <Link
+              key={opt.key}
+              href={buildHref({ occasion: activeOccasion === opt.occasion ? null : opt.occasion })}
+              className={`min-h-[40px] rounded-lg px-3.5 py-2.5 text-[13px] font-semibold ${
+                activeOccasion === opt.occasion
+                  ? 'bg-electric text-white'
+                  : 'border border-white/[.1] text-silver-dim hover:text-white'
+              }`}
+            >
+              {opt.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* -------------------------------------------------- routine browser --- */}
       <div className="mt-8">
         <h2 className="display text-[20px]">Structured routines</h2>
@@ -115,7 +136,7 @@ export default async function WorkoutsPage({
             <Link
               key={b.key}
               href={buildHref({ duration: activeDuration?.key === b.key ? null : b.key })}
-              className={`rounded-md px-2.5 py-1.5 text-[12.5px] font-semibold ${
+              className={`inline-flex min-h-[40px] items-center rounded-md px-3 py-1.5 text-[13px] font-semibold ${
                 activeDuration?.key === b.key
                   ? 'bg-electric/20 text-electric-glow ring-1 ring-electric/50'
                   : 'bg-white/[.05] text-silver-dim hover:text-white'
@@ -129,7 +150,7 @@ export default async function WorkoutsPage({
             <Link
               key={d}
               href={buildHref({ difficulty: activeDifficulty === d ? null : d })}
-              className={`rounded-md px-2.5 py-1.5 text-[12.5px] font-semibold capitalize ${
+              className={`inline-flex min-h-[40px] items-center rounded-md px-3 py-1.5 text-[13px] font-semibold capitalize ${
                 activeDifficulty === d
                   ? 'bg-electric/20 text-electric-glow ring-1 ring-electric/50'
                   : 'bg-white/[.05] text-silver-dim hover:text-white'
@@ -168,9 +189,10 @@ export default async function WorkoutsPage({
                   </div>
                   <h3 className="display mt-4 text-[19px]">{r.title}</h3>
                   {r.purpose && <p className="mt-2 text-[14px] text-silver-dim">{r.purpose}</p>}
-                  {r.durationMin !== null && (
-                    <p className="mt-4 text-[12.5px] font-semibold text-silver-dim">{r.durationMin} minutes</p>
-                  )}
+                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] font-semibold text-silver-dim">
+                    {r.durationMin !== null && <span>{r.durationMin} minutes</span>}
+                    <span>{r.equipment.length > 0 ? r.equipment.join(', ') : 'No equipment needed'}</span>
+                  </div>
                 </Card>
               </Link>
             ))}

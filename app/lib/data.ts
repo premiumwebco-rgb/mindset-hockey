@@ -1,5 +1,6 @@
 import { DEMO_MODE, type Session } from './session';
 import { createServerClient } from './supabase/server';
+import type { RecipeCategory } from './nutrition';
 
 /* ==========================================================================
    Server-side data access.
@@ -155,6 +156,7 @@ interface RoutineBlocksShape {
   difficulty?: string;
   whenToUse?: string;
   coachTip?: string;
+  equipment?: string[];
   sections?: RoutineSection[];
 }
 
@@ -171,6 +173,9 @@ export interface WorkoutRoutineCard {
   occasion: string;
   difficulty: string | null;
   durationMin: number | null;
+  equipment: string[];
+  /** workout_sessions.id — the row workout_completions.session_id points at. */
+  sessionId: string | null;
 }
 
 export interface WorkoutRoutineDetail extends WorkoutRoutineCard {
@@ -185,7 +190,10 @@ interface RoutinePlanRow {
   title: string;
   description: string | null;
   focus: string;
-  workout_sessions: { blocks: unknown; duration_min: number | null }[] | { blocks: unknown; duration_min: number | null } | null;
+  workout_sessions:
+    | { id: string; blocks: unknown; duration_min: number | null }[]
+    | { id: string; blocks: unknown; duration_min: number | null }
+    | null;
 }
 
 function firstSession(row: RoutinePlanRow) {
@@ -203,10 +211,37 @@ function toRoutineCard(row: RoutinePlanRow): WorkoutRoutineCard {
     occasion: row.focus,
     difficulty: blocks.difficulty ?? null,
     durationMin: session?.duration_min ?? null,
+    equipment: blocks.equipment ?? [],
+    sessionId: session?.id ?? null,
   };
 }
 
-const ROUTINE_SELECT = 'id, slug, title, description, focus, workout_sessions(blocks, duration_min)';
+const ROUTINE_SELECT = 'id, slug, title, description, focus, workout_sessions(id, blocks, duration_min)';
+
+/** Occasion -> routine slug, for a simple "what should I do today?" picker.
+ *  Deliberately a plain lookup table, not a recommendation engine. */
+export const TODAY_OCCASION_OPTIONS: { key: string; label: string; occasion: RoutineOccasion }[] = [
+  { key: 'game', label: 'Game', occasion: 'pre-game' },
+  { key: 'practice', label: 'Practice', occasion: 'pre-practice' },
+  { key: 'gym', label: 'Gym', occasion: 'strength-day' },
+  { key: 'speed', label: 'Speed Training', occasion: 'speed-agility' },
+  { key: 'recovery', label: 'Recovery', occasion: 'recovery-day' },
+  { key: 'travel', label: 'Travel', occasion: 'travel-hotel' },
+  { key: 'off', label: 'Off Day', occasion: 'quick-15' },
+  { key: 'tournament', label: 'Tournament', occasion: 'game-day' },
+];
+
+/** Session IDs (from workout_completions) the caller has already marked done.
+ *  Small dataset — one row per routine ever completed — so no pagination. */
+export async function getCompletedSessionIds(session: Session): Promise<Set<string>> {
+  if (DEMO_MODE) return new Set();
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from('workout_completions')
+    .select('session_id')
+    .eq('profile_id', session.userId);
+  return new Set((data ?? []).map((r) => r.session_id as string));
+}
 
 /** Every published routine, in library order. Small, fixed-size content — filtering happens in JS, same as /drills. */
 export async function getWorkoutRoutines(): Promise<WorkoutRoutineCard[]> {
@@ -243,6 +278,64 @@ export async function getWorkoutRoutineBySlug(slug: string): Promise<WorkoutRout
     coachTip: blocks.coachTip ?? null,
     sections: blocks.sections ?? [],
   };
+}
+
+/** Occasion -> nutrition category, for a simple "pairs well with"/"recommended
+ *  fuel" surface shared by the routine detail page and the dashboard. A
+ *  plain lookup table, not a recommendation engine. */
+export const OCCASION_NUTRITION_CATEGORY: Partial<Record<RoutineOccasion, RecipeCategory>> = {
+  'pre-game': 'pre_game',
+  'pre-practice': 'pre_practice',
+  'post-practice-recovery': 'post_practice',
+  'game-day': 'pre_game',
+  'strength-day': 'pre_workout',
+  'speed-agility': 'pre_workout',
+  'recovery-day': 'recovery',
+  'off-ice-shooting': 'pre_workout',
+  'travel-hotel': 'road',
+  'quick-15': 'post_workout',
+};
+
+export interface WorkoutActivityStats {
+  /** Consecutive calendar days (ending today or yesterday) with at least one completion. */
+  streakDays: number;
+  /** Completions in the trailing 7 days — the dashboard's single "Quick Progress" metric. */
+  completedThisWeek: number;
+}
+
+/** Read-only rollup over the existing workout_completions table — no new
+ *  table, no new tracking, just arithmetic over rows the completion-toggle
+ *  feature already writes. RLS scopes this to the caller's own rows. */
+export async function getWorkoutActivityStats(session: Session): Promise<WorkoutActivityStats> {
+  if (DEMO_MODE) return { streakDays: 0, completedThisWeek: 0 };
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from('workout_completions')
+    .select('completed_at')
+    .eq('profile_id', session.userId)
+    .order('completed_at', { ascending: false });
+
+  const rows = (data ?? []) as { completed_at: string }[];
+  if (rows.length === 0) return { streakDays: 0, completedThisWeek: 0 };
+
+  const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+  const days = new Set(rows.map((r) => dayKey(new Date(r.completed_at))));
+
+  // Streak counts consecutive calendar days ending today or yesterday — a
+  // day that simply hasn't happened yet today doesn't zero out yesterday's streak.
+  let streakDays = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!days.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(dayKey(cursor))) {
+    streakDays += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const completedThisWeek = rows.filter((r) => new Date(r.completed_at).getTime() >= weekAgo).length;
+
+  return { streakDays, completedThisWeek };
 }
 
 /* --------------------------------------------------------------- nutrition */

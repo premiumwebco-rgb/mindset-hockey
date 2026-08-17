@@ -20,6 +20,11 @@
 --
 -- This file matches exactly what was applied via execute_sql (plain ASCII
 -- quotes throughout to avoid encoding issues across tools).
+--
+-- UPDATE (Mobile UX + Workout System build): an `equipment` text[] key was
+-- added to every routine's `blocks` jsonb via a plain `UPDATE ... blocks ||
+-- jsonb_build_object('equipment', ...)` — additive, no other key touched, no
+-- schema change. Reflected inline below so this file matches the live rows.
 -- ============================================================================
 
 with plan as (
@@ -33,6 +38,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Pre-Game Activation', 15, $j${
   "difficulty": "easy",
   "whenToUse": "60-90 minutes before puck drop, once you're dressed and the room is quiet enough to move.",
+  "equipment": [],
   "coachTip": "This is about waking the body up, not tiring it out — stay light and controlled the whole way through.",
   "sections": [
     { "name": "WARM-UP", "items": [
@@ -64,6 +70,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Pre-Practice Activation', 10, $j${
   "difficulty": "easy",
   "whenToUse": "In the room or the lobby, 15-20 minutes before you step on the ice.",
+  "equipment": ["None — resistance band optional"],
   "coachTip": "Practice moves fast — this is meant to be quick enough that you can do it every single time, not just when you remember.",
   "sections": [
     { "name": "WARM-UP", "items": [
@@ -91,6 +98,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Post-Practice Recovery', 15, $j${
   "difficulty": "easy",
   "whenToUse": "Right after practice, before you get in the car — even a few minutes here beats skipping it entirely.",
+  "equipment": [],
   "coachTip": "The breathing at the end matters more than it looks like it should — it is what actually shifts your body out of game mode.",
   "sections": [
     { "name": "COOLDOWN", "items": [
@@ -118,6 +126,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Game Day Routine', null, $j${
   "difficulty": "moderate",
   "whenToUse": "The full day of a game, structured around puck drop rather than the clock.",
+  "equipment": [],
   "coachTip": "The routine matters more than the exact times — the goal is a predictable day, not a rigid schedule you stress about hitting to the minute.",
   "sections": [
     { "name": "MORNING", "items": [
@@ -156,6 +165,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Strength Day', 45, $j${
   "difficulty": "moderate",
   "whenToUse": "Off-ice training days, ideally not the day right before a game.",
+  "equipment": ["Dumbbells (or bodyweight)", "Resistance band (optional)"],
   "coachTip": "Add weight only when every rep of every set looks the same as the first one — form breaking down is the signal to hold, not push.",
   "sections": [
     { "name": "WARM-UP", "items": [
@@ -188,6 +198,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Speed & Agility Day', 30, $j${
   "difficulty": "moderate",
   "whenToUse": "Off-ice training days when legs are fresh — this is quality-over-fatigue work, not a conditioning grind.",
+  "equipment": ["Open space", "Cones (optional)"],
   "coachTip": "Full recovery between reps matters here more than in a strength session — you are training speed, and tired legs teach slow mechanics.",
   "sections": [
     { "name": "WARM-UP", "items": [
@@ -217,6 +228,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Recovery Day', 20, $j${
   "difficulty": "easy",
   "whenToUse": "The day after a game or a hard training day, or any day the body just feels beat up.",
+  "equipment": ["Foam roller (optional)"],
   "coachTip": "This is a real training day, not an off day — recovery work is what lets the next hard day actually be hard.",
   "sections": [
     { "name": "MOBILITY", "items": [
@@ -243,6 +255,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Off-Ice Shooting Day', 25, $j${
   "difficulty": "moderate",
   "whenToUse": "Any day you have a shooting pad, tarp or smooth surface and 25 minutes.",
+  "equipment": ["Stick", "Pucks or balls", "Shooting pad or smooth surface"],
   "coachTip": "If your AI Shot Analysis flagged a specific weak category — release, balance, weight transfer — spend extra reps there instead of splitting everything evenly.",
   "sections": [
     { "name": "WARM-UP", "items": [
@@ -271,6 +284,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Travel / Hotel Workout', 20, $j${
   "difficulty": "easy",
   "whenToUse": "Tournament weekends or any trip where the only equipment is the floor.",
+  "equipment": [],
   "coachTip": "Keep the noise down for the neighbors below you — this is all low-impact on purpose.",
   "sections": [
     { "name": "WARM-UP", "items": [
@@ -297,6 +311,7 @@ insert into workout_sessions (plan_id, week, day, title, duration_min, blocks)
 select id, 1, 1, 'Quick 15-Minute Workout', 15, $j${
   "difficulty": "easy",
   "whenToUse": "Busy days when a full strength or agility session is not going to happen, but something still can.",
+  "equipment": [],
   "coachTip": "Fifteen consistent minutes most days beats one long session a week — this routine exists so no time is rarely a real excuse.",
   "sections": [
     { "name": "WARM-UP", "items": [

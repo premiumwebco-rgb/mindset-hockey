@@ -57,6 +57,8 @@ export default async function AdminPage() {
     { href: '/admin/subscriptions', title: 'Subscriptions', body: 'Billing status and lifecycle history.' },
     { href: '/coach/queue', title: 'Review queue', body: `${c.pendingReviews} submission${c.pendingReviews === 1 ? '' : 's'} waiting.` },
     { href: '/admin/content', title: 'Content', body: 'Workouts, meal plans and mindset lessons.' },
+    { href: '/admin/mindset', title: 'Mindset Training', body: 'Video lessons across confidence, focus, pressure and more.' },
+    { href: '/admin/ai-coaching', title: 'AI Coaching', body: 'Drill recommendation mappings for AI Shot Analysis weaknesses.' },
     { href: '/admin/leads', title: 'Leads', body: `${c.openLeads} unhandled enquir${c.openLeads === 1 ? 'y' : 'ies'}.` },
   ];
 

@@ -154,24 +154,37 @@ export default function Home() {
           <div>
             <p className="eyebrow">Hockey training · Waldorf, Maryland</p>
             <h1>
-              <span>Your kid isn&apos;t</span>
-              <span>short on effort.</span>
-              <span className="accent">He&apos;s short on a plan.</span>
+              <span className="show-desktop">Your kid isn&apos;t</span>
+              <span className="show-desktop">short on effort.</span>
+              <span className="accent show-desktop">He&apos;s short on a plan.</span>
+              <span className="show-mobile">Train Smarter.</span>
+              <span className="accent show-mobile">Play Better.</span>
             </h1>
-            <p className="hero-sub lede">
+            <p className="hero-sub lede show-desktop">
               I founded Mindset Hockey after going from a 16U A player with two broken ribs to an
               alternate captain, then AAA, then a signed Jr hockey contract. I own and run the program out
               of <b className="hl">The Capital Clubhouse in Waldorf, MD</b> — and I coach alongside Coach
               Jack. We&apos;re both coaches and both Jr hockey players; the difference is I own the business
               and set the system we both coach.
             </p>
+            <p className="hero-sub lede show-mobile">
+              AI shot analysis, structured training and mindset coaching — built for hockey players 10–18.
+            </p>
 
-            <div className="hero-actions">
+            <div className="hero-actions show-desktop">
               <Link className="btn btn-primary btn-lg" href="/contact" data-cta="free_assessment" data-cta-location="hero">
                 Book a Free Assessment
               </Link>
               <Link className="btn btn-ghost btn-lg" href="/pricing" data-cta="view_pricing" data-cta-location="hero">
                 See Programs &amp; Pricing
+              </Link>
+            </div>
+            <div className="hero-actions show-mobile">
+              <Link className="btn btn-primary btn-lg" href="/contact" data-cta="start_development" data-cta-location="hero_mobile">
+                Start Your Development
+              </Link>
+              <Link className="btn btn-ghost btn-lg" href="/programs" data-cta="explore_program" data-cta-location="hero_mobile">
+                Explore the Program
               </Link>
             </div>
 
@@ -235,33 +248,38 @@ export default function Home() {
               move a player.
             </p>
           </div>
-          <div className="cards c3">
-            <article className="card rv">
-              <span className="num">01</span>
-              <h3>No plan between sessions</h3>
-              <p>Team practice is 60 minutes of standing in lines. A private lesson is an hour twice a month. That leaves 167 hours a week with no structure and no idea what to work on next.</p>
-            </article>
-            <article className="card rv">
-              <span className="num">02</span>
-              <h3>No real feedback</h3>
-              <p>&quot;Compete harder.&quot; &quot;Want it more.&quot; Nobody can act on that. Your player has never had his shot broken down frame by frame and been told which mechanic is costing him velocity.</p>
-            </article>
-            <article className="card rv">
-              <span className="num">03</span>
-              <h3>Nobody coaches the mind</h3>
-              <p>He trains hard and still disappears after a bad shift. Confidence, bounce-back and composure are trainable skills — and in youth hockey almost nobody is teaching them.</p>
-            </article>
-          </div>
-          <div className="contactstrip mt3 rv">
-            <div>
-              <h3>Not sure which program fits?</h3>
-              <p>Tell us your player&apos;s age and level. We&apos;ll tell you honestly what we&apos;d work on first — even if the answer is &quot;not yet.&quot;</p>
+          <details className="acc">
+            <summary className="acc-summary">See the three reasons</summary>
+            <div className="acc-body">
+              <div className="cards c3">
+                <article className="card rv">
+                  <span className="num">01</span>
+                  <h3>No plan between sessions</h3>
+                  <p>Team practice is 60 minutes of standing in lines. A private lesson is an hour twice a month. That leaves 167 hours a week with no structure and no idea what to work on next.</p>
+                </article>
+                <article className="card rv">
+                  <span className="num">02</span>
+                  <h3>No real feedback</h3>
+                  <p>&quot;Compete harder.&quot; &quot;Want it more.&quot; Nobody can act on that. Your player has never had his shot broken down frame by frame and been told which mechanic is costing him velocity.</p>
+                </article>
+                <article className="card rv">
+                  <span className="num">03</span>
+                  <h3>Nobody coaches the mind</h3>
+                  <p>He trains hard and still disappears after a bad shift. Confidence, bounce-back and composure are trainable skills — and in youth hockey almost nobody is teaching them.</p>
+                </article>
+              </div>
+              <div className="contactstrip mt3 rv">
+                <div>
+                  <h3>Not sure which program fits?</h3>
+                  <p>Tell us your player&apos;s age and level. We&apos;ll tell you honestly what we&apos;d work on first — even if the answer is &quot;not yet.&quot;</p>
+                </div>
+                <div className="acts">
+                  <Link className="btn btn-primary" href="/contact" data-cta="talk_to_coach" data-cta-location="problem">Talk to a Coach</Link>
+                  <a className="btn btn-ghost" href="tel:+12404356511">Call Now</a>
+                </div>
+              </div>
             </div>
-            <div className="acts">
-              <Link className="btn btn-primary" href="/contact" data-cta="talk_to_coach" data-cta-location="problem">Talk to a Coach</Link>
-              <a className="btn btn-ghost" href="tel:+12404356511">Call Now</a>
-            </div>
-          </div>
+          </details>
         </div>
       </section>
 
@@ -276,6 +294,9 @@ export default function Home() {
               exactly one pillar — so your player always knows what he&apos;s working on and why.
             </p>
           </div>
+          <details className="acc">
+          <summary className="acc-summary">See all six pillars</summary>
+          <div className="acc-body">
           <div className="pillars">
             <article className="pillar rv"><span className="k">01</span>
               <div className="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3FA9FF" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 3a5 5 0 0 0-5 5c0 1.5.6 2.6 1.4 3.5.9 1 1.6 1.8 1.6 3.5v1h4v-1c0-1.7.7-2.5 1.6-3.5C16.4 10.6 17 9.5 17 8a5 5 0 0 0-5-5Z" /><path d="M10 20h4" /></svg></div>
@@ -303,6 +324,8 @@ export default function Home() {
             </article>
           </div>
           <p className="center mt3"><Link className="btn btn-ghost" href="/programs" data-cta="explore_programs" data-cta-location="pillars">Explore the Programs</Link></p>
+          </div>
+          </details>
         </div>
       </section>
 
@@ -320,6 +343,9 @@ export default function Home() {
             </p>
           </div>
 
+          <details className="acc">
+          <summary className="acc-summary">See the full 7-point breakdown</summary>
+          <div className="acc-body">
           <div className="rubric rv">
             <div className="rb"><b>POINT 01</b><h3>Weight Transfer</h3><p>Loading the back leg and driving through to the front. Hips lead the hands.</p></div>
             <div className="rb"><b>POINT 02</b><h3>Stick Flex</h3><p>Puck ahead of the blade, loading the shaft into the ice instead of slapping at it.</p></div>
@@ -366,6 +392,8 @@ export default function Home() {
               </div>
             </div>
           </div>
+          </div>
+          </details>
         </div>
       </section>
 
@@ -383,6 +411,9 @@ export default function Home() {
             </p>
           </div>
 
+          <details className="acc">
+          <summary className="acc-summary">Watch the film</summary>
+          <div className="acc-body">
           <div className="compare rv">
             <div className="facade" data-lf-video="" data-video-src="/media/brayden-shot-slowmo.mp4" data-video-title="Coach Brayden game film — the shot, slowed at the release" role="button" tabIndex={0} aria-label="Play Coach Brayden's game film, slowed down through the shot">
               <span className="tag">Coach Brayden · slowed at the shot</span>
@@ -419,6 +450,8 @@ export default function Home() {
               LiveBarn is guessing.
             </p>
           </div>
+          </div>
+          </details>
         </div>
       </section>
 
@@ -436,6 +469,9 @@ export default function Home() {
             </p>
           </div>
 
+          <details className="acc">
+          <summary className="acc-summary">Meet Coach Brayden &amp; Coach Jack</summary>
+          <div className="acc-body">
           <div className="staff">
             <article className="coach lead rv">
               <div className="coach-photo">
@@ -494,6 +530,8 @@ export default function Home() {
           </div>
 
           <p className="center mt3"><Link className="btn btn-ghost" href="/coaches" data-cta="view_staff" data-cta-location="home_staff">Meet the Full Coaching Staff</Link></p>
+          </div>
+          </details>
         </div>
       </section>
 
@@ -513,6 +551,9 @@ export default function Home() {
             </p>
           </div>
 
+          <details className="acc">
+          <summary className="acc-summary">See all ten mindset topics</summary>
+          <div className="acc-body">
           <div className="mindgrid rv">
             <div className="mind"><b>01</b><h3>Confidence building</h3><p>Confidence follows evidence. We build the evidence on purpose — tracked reps and scores that visibly move.</p></div>
             <div className="mind"><b>02</b><h3>Mental toughness</h3><p>Finishing the shift, the session and the season when it stops being fun. Trained through standards, not slogans.</p></div>
@@ -538,6 +579,8 @@ export default function Home() {
           <p className="center mt3">
             <Link className="btn btn-primary btn-lg" href="/pricing#premium" data-plan="premium" data-cta="mindset_to_premium" data-cta-location="home_mindset">Mindset Training Comes With Premium</Link>
           </p>
+          </div>
+          </details>
         </div>
       </section>
 
@@ -555,6 +598,9 @@ export default function Home() {
             </p>
           </div>
 
+          <details className="acc">
+          <summary className="acc-summary">Read both case studies</summary>
+          <div className="acc-body">
           <div className="cards c2">
             <article className="case rv">
               <div className="case-head"><p>Case study 01 · Coach Brayden</p></div>
@@ -592,6 +638,8 @@ export default function Home() {
               </div>
             </article>
           </div>
+          </div>
+          </details>
         </div>
       </section>
 
@@ -704,6 +752,9 @@ export default function Home() {
             <p className="eyebrow center">Straight answers</p>
             <h2>Hockey training FAQ</h2>
           </div>
+          <details className="acc">
+          <summary className="acc-summary">See all FAQ</summary>
+          <div className="acc-body">
           <div className="faq">
             <details open>
               <summary>What age players do you train?</summary>
@@ -758,6 +809,8 @@ export default function Home() {
               <div className="ans">Yes. Team and association packages are quoted per roster and include a live mindset session with the team. <Link href="/contact?plan=custom">Request a custom quote</Link> with your roster size and level.</div>
             </details>
           </div>
+          </div>
+          </details>
         </div>
       </section>
 

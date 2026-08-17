@@ -543,3 +543,85 @@ footer{background:var(--ink);border-top:1px solid var(--line);padding-block:52px
   padding:9px 16px;border-radius:99px}
 .founding h3{font-size:21px;color:var(--white)}
 .founding p{font-size:14.8px;color:var(--silver);margin:0}
+
+/* ============================================================================
+   MOBILE HOMEPAGE CLEANUP (Mobile UX Cleanup + Workout System build)
+
+   Purely additive, appended last so it wins the cascade at equal specificity.
+   Nothing above this point is edited or removed — every existing desktop
+   rule (including the mobile-first grid breakpoints throughout this file)
+   is untouched. This block does three things, all scoped to <760px so
+   desktop is pixel-identical to before:
+
+   1. .show-desktop / .show-mobile — lets page.tsx render one short mobile
+      hero (headline, one line of copy, "Start Your Development" / "Explore
+      the Program") and one long desktop hero from the same markup, instead
+      of shrinking the desktop version down.
+   2. Hides the hero ladder, second coach photo and duo-note on mobile only,
+      so the first screen is headline + one line + two buttons + one photo,
+      not five stacked elements.
+   3. Tightens section rhythm (--sec floors at 64px per section, x13
+      sections = a lot of dead space) and turns the four-stat trust bar into
+      a horizontal-scroll strip instead of a stacked column.
+   ========================================================================= */
+@media(max-width:759px){
+  .show-desktop{display:none}
+  .ladder,.duo-note,.duo .hero-shot:not(.lead){display:none}
+  .hero{padding-top:28px}
+  section{padding-block:40px}
+  .head{margin-bottom:26px}
+
+  section .cards.c4{
+    display:flex;overflow-x:auto;gap:14px;scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;padding-bottom:6px;
+    margin-inline:calc(var(--pad) * -1);padding-inline:var(--pad);
+  }
+  section .cards.c4>div{flex:0 0 auto;min-width:150px;scroll-snap-align:start}
+}
+@media(min-width:760px){
+  .show-mobile{display:none}
+}
+
+/* ============================================================================
+   HOMEPAGE MOBILE DECLUTTER (Phase 6, Part 2)
+
+   Purely additive, appended last so it wins the cascade at equal specificity.
+   Nothing above this point is edited or removed, and nothing here applies
+   above 759px — desktop renders exactly as before, pixel for pixel.
+
+   Target mobile hierarchy: Hero -> Social Proof (trust bar) -> Program
+   Overview (pricing preview) -> Primary CTA (final section), reached with far
+   less scrolling than before. Everything else (Problem, Six Pillars, Shot
+   Analysis, Film, Coaching Staff, Mindset Development, Case Studies, FAQ) is
+   secondary detail that stays on the page — nothing is deleted — but is
+   collapsed into a native <details>/<summary> accordion on mobile only, the
+   same zero-JS disclosure pattern already used by the FAQ answers and the
+   dashboard's "View More".
+
+   Each collapsible section keeps its eyebrow/heading/intro paragraph (.head)
+   visible above the accordion as a teaser, so a scanning visitor still sees
+   every section title without opening anything.
+
+   .acc-summary is force-hidden on desktop and .acc-body is force-shown on
+   desktop with `display:block!important`, which overrides the browser's own
+   UA-level "hide children of a closed <details>" behavior — a standard,
+   well-supported technique for making a native <details> render as a plain,
+   always-open block on larger screens without a second markup path.
+   ========================================================================= */
+@media(max-width:759px){
+  .acc{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  .acc-summary{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    cursor:pointer;list-style:none;padding:15px 18px;
+    font-size:13.5px;font-weight:700;letter-spacing:.04em;color:var(--silver);
+    background:var(--navy-800);
+  }
+  .acc-summary::-webkit-details-marker{display:none}
+  .acc-summary::after{content:'+';font-size:18px;line-height:1;color:var(--electric-glow)}
+  .acc[open] .acc-summary::after{content:'\2212'}
+  .acc-body{padding:22px var(--pad) 4px}
+}
+@media(min-width:760px){
+  .acc-summary{display:none}
+  .acc-body{display:block!important;padding:0}
+}
