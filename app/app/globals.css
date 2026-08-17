@@ -40,6 +40,10 @@ body {
   color: var(--color-silver);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  /* Safety net matching site.css (marketing pages) — stops any stray wide
+     element (a card, a badge row, a long unbroken string) from creating
+     sideways scroll on phones. Does not affect desktop layout width. */
+  overflow-x: hidden;
 }
 
 .display {

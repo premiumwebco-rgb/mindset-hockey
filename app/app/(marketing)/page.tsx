@@ -411,7 +411,7 @@ export default function Home() {
             </p>
           </div>
 
-          <details className="acc">
+          <details className="acc" open>
           <summary className="acc-summary">Watch the film</summary>
           <div className="acc-body">
           <div className="compare rv">
