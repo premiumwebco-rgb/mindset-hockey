@@ -1,12 +1,13 @@
 import Link from 'next/link';
-import { requireSession, canUse, DEMO_MODE } from '@/lib/session';
-import { createServerClient } from '@/lib/supabase/server';
+import { requireSession, canUse } from '@/lib/session';
 import {
   getSubmissions,
   getWorkoutRoutines,
   getWorkoutActivityStats,
   getMindsetLessons,
   getPlayerProfile,
+  getLatestAnalysis,
+  pickOfTheDay,
   OCCASION_LABEL,
   OCCASION_NUTRITION_CATEGORY,
   isRoutineOccasion,
@@ -19,41 +20,10 @@ import {
   type DrillRecommendation,
   type PillarRecommendation,
 } from '@/lib/library';
-import { parseCategories, formatDate, type AnalysisStatus } from '@/lib/ai/present';
+import { parseCategories, formatDate } from '@/lib/ai/present';
 import { Button, Card, Eyebrow, PillarChip } from '@/components/ui';
 
 export const metadata = { title: 'Dashboard — Mindset Hockey' };
-
-interface RecentAnalysis {
-  id: string;
-  status: AnalysisStatus;
-  overall_score: number | null;
-  shot_type: string;
-  angle: string;
-  created_at: string;
-  category_scores: unknown;
-}
-
-async function loadLatestAnalysis(): Promise<RecentAnalysis | null> {
-  if (DEMO_MODE) return null;
-  const supabase = await createServerClient();
-  // RLS scopes this to the caller's own rows.
-  const { data } = await supabase
-    .from('shot_analyses')
-    .select('id, status, overall_score, shot_type, angle, created_at, category_scores')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data as RecentAnalysis | null) ?? null;
-}
-
-/** Deterministic "pick of the day" — no client JS, no fake AI, just a stable
- *  rotation so the same routine shows all day and a different one tomorrow. */
-function pickOfTheDay<T>(items: T[]): T | null {
-  if (items.length === 0) return null;
-  const dayIndex = Math.floor(Date.now() / 86_400_000);
-  return items[dayIndex % items.length];
-}
 
 function timeOfDayGreeting(): string {
   const hour = new Date().getHours();
@@ -95,7 +65,7 @@ export default async function DashboardPage() {
   const [submissions, latestAnalysis, routines, activity, mindsetLessons, pillarRecommendations] =
     await Promise.all([
       premium ? getSubmissions(session) : Promise.resolve([]),
-      aiShotAnalysis ? loadLatestAnalysis() : Promise.resolve(null),
+      aiShotAnalysis ? getLatestAnalysis(session) : Promise.resolve(null),
       workoutPlans ? getWorkoutRoutines() : Promise.resolve([]),
       workoutPlans ? getWorkoutActivityStats(session) : Promise.resolve({ streakDays: 0, completedThisWeek: 0 }),
       premium ? getMindsetLessons(session) : Promise.resolve([]),

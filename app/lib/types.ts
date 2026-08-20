@@ -272,4 +272,7 @@ export interface Player {
   /** Which of the six pillars this player is training right now. */
   focusPillars: Pillar[];
   trainingDaysGoal: number;
+  /** When the player row was created — used to derive a deterministic
+   *  "week N of the program" without a separate enrollment/assignment table. */
+  createdAt: string;
 }

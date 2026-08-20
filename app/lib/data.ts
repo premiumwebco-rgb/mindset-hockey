@@ -2,6 +2,7 @@ import { DEMO_MODE, hasTier, type Session } from './session';
 import { createServerClient } from './supabase/server';
 import type { RecipeCategory } from './nutrition';
 import type { Tier, Player } from './types';
+import type { AnalysisStatus } from './ai/present';
 
 /* ==========================================================================
    Server-side data access.
@@ -697,6 +698,7 @@ export async function getPlayerProfile(session: Session): Promise<Player | null>
       teamName: null,
       focusPillars: ['mechanics', 'mindset'],
       trainingDaysGoal: 4,
+      createdAt: new Date(Date.now() - 21 * 864e5).toISOString(),
     };
   }
 
@@ -704,7 +706,7 @@ export async function getPlayerProfile(session: Session): Promise<Player | null>
   const { data } = await supabase
     .from('players')
     .select(
-      'id, profile_id, first_name, last_name, birth_year, level, position, shoots, stick_flex, team_name, focus_pillars, training_days_goal'
+      'id, profile_id, first_name, last_name, birth_year, level, position, shoots, stick_flex, team_name, focus_pillars, training_days_goal, created_at'
     )
     .eq('profile_id', session.userId)
     .maybeSingle();
@@ -724,5 +726,53 @@ export async function getPlayerProfile(session: Session): Promise<Player | null>
     teamName: data.team_name,
     focusPillars: (data.focus_pillars ?? []) as Player['focusPillars'],
     trainingDaysGoal: data.training_days_goal,
+    createdAt: data.created_at,
   };
+}
+
+
+/* ------------------------------------------------------------- misc shared */
+
+/**
+ * Deterministic "pick of the day" from a fixed-size list — no client JS, no
+ * randomness, just a stable day-seeded rotation so the same item shows all
+ * day and a different one tomorrow. Shared by the dashboard's "Today's
+ * Focus" and the Development Plan's "This Week" so both pick the same
+ * routine on the same day rather than each inventing their own selection.
+ */
+export function pickOfTheDay<T>(items: T[]): T | null {
+  if (items.length === 0) return null;
+  const dayIndex = Math.floor(Date.now() / 86_400_000);
+  return items[dayIndex % items.length];
+}
+
+export interface RecentAnalysis {
+  id: string;
+  status: AnalysisStatus;
+  overall_score: number | null;
+  shot_type: string;
+  angle: string;
+  created_at: string;
+  category_scores: unknown;
+}
+
+/**
+ * The caller's own most recent shot analysis, or null. Previously a local
+ * function inside app/(app)/dashboard/page.tsx; moved here so the
+ * Development Plan can show the same "your last analysis" card without a
+ * second implementation of the same query.
+ */
+export async function getLatestAnalysis(session: Session): Promise<RecentAnalysis | null> {
+  if (DEMO_MODE) return null;
+  const supabase = await createServerClient();
+  // RLS scopes this to the caller's own rows — session is accepted for a
+  // consistent signature with the rest of this file, not used to filter.
+  void session;
+  const { data } = await supabase
+    .from('shot_analyses')
+    .select('id, status, overall_score, shot_type, angle, created_at, category_scores')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as RecentAnalysis | null) ?? null;
 }

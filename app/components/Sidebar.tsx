@@ -17,6 +17,7 @@ interface NavItem {
 
 const MEMBER_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', feature: 'dashboard' },
+  { href: '/development', label: 'Development Plan', feature: 'dashboard' },
   // Included with Standard AND Premium — feature gate is 'basic'.
   { href: '/analysis', label: 'AI Shot Analysis', feature: 'ai_shot_analysis', badge: 'AI' },
   { href: '/reviews', label: 'Video Review', feature: 'video_review' },
