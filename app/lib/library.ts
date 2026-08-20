@@ -8,6 +8,7 @@ if (typeof window !== 'undefined') {
 
 import { hasTier, DEMO_MODE, type Session } from './session';
 import { PILLARS, type Pillar, type Tier } from './types';
+import { signPreviewPaths } from './admin-signed-urls';
 
 /* ==========================================================================
    TRAINING LIBRARY — DATA LAYER
@@ -77,6 +78,8 @@ export interface LibraryCard {
   isPublished: boolean;
   /** True when this user may not open the file. Sourced from RLS, not from code. */
   locked: boolean;
+  /** Short-lived signed URL for the uploaded cover photo, or null if none/unsigned. Never a raw storage path — see signPreviewPaths(). */
+  coverImageSignedUrl: string | null;
 }
 
 export type PillarCounts = Record<Pillar | 'all', number>;
@@ -109,7 +112,7 @@ export interface SupabaseLike {
 
 /** Columns safe to load for a card. `storage_path` is absent on purpose. */
 const CARD_COLUMNS =
-  'id, title, description, pillar, category, kind, required_tier, duration_sec, is_published, sort_order, created_at';
+  'id, title, description, pillar, category, kind, required_tier, duration_sec, is_published, sort_order, created_at, cover_image_url';
 
 interface RawRow {
   id: string;
@@ -121,9 +124,11 @@ interface RawRow {
   required_tier: string | null;
   duration_sec: number | null;
   is_published: boolean | null;
+  /** Private storage path (0016) — signed to a URL before ever reaching a card. Never shipped raw. */
+  cover_image_url?: string | null;
 }
 
-function toCard(row: RawRow, locked: boolean): LibraryCard | null {
+function toCard(row: RawRow, locked: boolean, coverImageSignedUrl: string | null = null): LibraryCard | null {
   // A row with no pillar cannot be placed. 0009 already makes this impossible
   // for published rows at the database level; this is the belt to that braces.
   // Dropping it is correct — there is no "Other" bucket to fall back to.
@@ -139,6 +144,7 @@ function toCard(row: RawRow, locked: boolean): LibraryCard | null {
     durationSec: row.duration_sec,
     isPublished: Boolean(row.is_published),
     locked,
+    coverImageSignedUrl,
   };
 }
 
@@ -167,13 +173,26 @@ export async function getLibrary(
   }
 
   const { createServerClient, createAdminClient } = await import('./supabase/server');
+  const supabase = await createServerClient();
+
   // Cast to the narrow structural type this module needs. The generated
   // Supabase client types are far deeper than the four methods used here and
   // resolving them structurally blows TypeScript's instantiation limit.
-  return buildLibraryView(session, pillar, {
-    supabase: (await createServerClient()) as unknown as SupabaseLike,
-    admin: (await createAdminClient()) as unknown as SupabaseLike,
-  });
+  return buildLibraryView(
+    session,
+    pillar,
+    {
+      supabase: supabase as unknown as SupabaseLike,
+      admin: (await createAdminClient()) as unknown as SupabaseLike,
+    },
+    // Cover photos are signed through the caller's OWN session client — same
+    // authorization boundary signPreviewPaths() already uses for the admin
+    // console (training_resources_member_read from 0008), reused as-is here
+    // rather than building a second signing path. A card the viewer isn't
+    // even 'basic'-tier for simply won't sign (resolves to null -> fallback
+    // design), which is fine: a cover photo is cosmetic, never the file itself.
+    (paths) => signPreviewPaths(supabase, paths)
+  );
 }
 
 /**
@@ -182,11 +201,17 @@ export async function getLibrary(
  * Split out so the access rules can be exercised against stub clients in a
  * test — the alternative is asserting on a code reading, which proves nothing
  * about what the function actually returns. Not part of the page-facing API.
+ *
+ * `signCoverImages` is injected the same way for the same reason: the two
+ * clients above are a narrow structural type with no `.storage`, so signing
+ * stays out of the pure/testable core and defaults to "no covers" when the
+ * caller doesn't supply one.
  */
 export async function buildLibraryView(
   session: Session,
   pillar: Pillar | null,
-  clients: { supabase: SupabaseLike; admin: SupabaseLike }
+  clients: { supabase: SupabaseLike; admin: SupabaseLike },
+  signCoverImages: (paths: (string | null | undefined)[]) => Promise<Map<string, string>> = async () => new Map()
 ): Promise<LibraryView> {
   const { supabase, admin } = clients;
 
@@ -242,8 +267,17 @@ export async function buildLibraryView(
     return { resources: [], counts, unavailable: false };
   }
 
-  const resources = (rows ?? [])
-    .map((row) => toCard(row as unknown as RawRow, !staff && !unlockedIds.has(row.id as string)))
+  // Cover photos are signed for EVERY returned card, locked or not — a locked
+  // card is shown deliberately, as an upsell teaser (see file header), and a
+  // cover photo is part of that teaser same as the title and description.
+  const castRows = (rows ?? []) as unknown as RawRow[];
+  const signedCovers = await signCoverImages(castRows.map((row) => row.cover_image_url));
+
+  const resources = castRows
+    .map((row) => {
+      const cover = row.cover_image_url ? (signedCovers.get(row.cover_image_url) ?? null) : null;
+      return toCard(row, !staff && !unlockedIds.has(row.id), cover);
+    })
     .filter((card): card is LibraryCard => card !== null);
 
   return { resources, counts, unavailable: false };
@@ -523,5 +557,14 @@ export async function resolveResourceAccess(
     return { ok: false, reason: 'unavailable' };
   }
 
-  return { ok: true, resource: { ...card, locked: false }, signedUrl };
+  // Cover photo for the hero — best-effort. A failed sign here should never
+  // take down the whole page; it just falls back to no cover image.
+  const coverPath = row.cover_image_url;
+  let coverImageSignedUrl: string | null = null;
+  if (coverPath) {
+    const { signedUrl: coverUrl } = await deps.sign(coverPath);
+    coverImageSignedUrl = coverUrl ?? null;
+  }
+
+  return { ok: true, resource: { ...card, locked: false, coverImageSignedUrl }, signedUrl };
 }

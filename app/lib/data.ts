@@ -1,6 +1,7 @@
-import { DEMO_MODE, type Session } from './session';
+import { DEMO_MODE, hasTier, type Session } from './session';
 import { createServerClient } from './supabase/server';
 import type { RecipeCategory } from './nutrition';
+import type { Tier } from './types';
 
 /* ==========================================================================
    Server-side data access.
@@ -375,29 +376,40 @@ export interface MindsetLessonRow {
   topic: string;
   title: string;
   summary: string | null;
+  /** Part 6 taxonomy (0015) — separate from the legacy `topic` field above. */
+  category: string | null;
+  /** Private storage path in the training-resources bucket, or null. Never a public URL. */
+  thumbnail_path: string | null;
+  /** Private storage path in the training-resources bucket, or null. Never a public URL. */
+  video_url: string | null;
+  duration_sec: number | null;
+  required_tier: Tier;
   completed?: boolean;
 }
 
 const DEMO_MINDSET: MindsetLessonRow[] = [
-  { id: 'l1', slug: 'confidence-evidence', week: 1, topic: 'confidence', title: 'Confidence Follows Evidence', summary: 'Why "just be confident" fails, and what to build instead.', completed: true },
-  { id: 'l2', slug: 'twenty-second-reset', week: 2, topic: 'mistakes', title: 'The 20-Second Reset', summary: 'What to do between the turnover and the next puck drop.', completed: true },
-  { id: 'l3', slug: 'pre-game-routine', week: 3, topic: 'preparation', title: 'Building a Pre-Game Routine', summary: 'A repeatable sequence so you arrive ready instead of hoping.', completed: false },
-  { id: 'l4', slug: 'mental-toughness', week: 4, topic: 'toughness', title: 'Finishing What You Start', summary: 'Standards over motivation on the days it stops being fun.', completed: false },
-  { id: 'l5', slug: 'accountability', week: 5, topic: 'accountability', title: 'Owning the Tape', summary: 'How to watch your own bad shifts without spiralling.', completed: false },
-  { id: 'l6', slug: 'pressure', week: 6, topic: 'pressure', title: 'Performing Under Pressure', summary: 'Tryouts, showcases and overtime — narrowing to the next play.', completed: false },
-  { id: 'l7', slug: 'goal-setting', week: 7, topic: 'goals', title: 'Process Over Outcome', summary: 'Goals you control instead of goals you can only hope for.', completed: false },
-  { id: 'l8', slug: 'leadership', week: 8, topic: 'leadership', title: 'Earning the Letter', summary: 'Becoming the player a coach uses when it matters.', completed: false },
+  { id: 'l1', slug: 'confidence-evidence', week: 1, topic: 'confidence', title: 'Confidence Follows Evidence', summary: 'Why "just be confident" fails, and what to build instead.', category: 'confidence', thumbnail_path: null, video_url: null, duration_sec: null, required_tier: 'premium', completed: true },
+  { id: 'l2', slug: 'twenty-second-reset', week: 2, topic: 'mistakes', title: 'The 20-Second Reset', summary: 'What to do between the turnover and the next puck drop.', category: 'resilience', thumbnail_path: null, video_url: null, duration_sec: null, required_tier: 'premium', completed: true },
+  { id: 'l3', slug: 'pre-game-routine', week: 3, topic: 'preparation', title: 'Building a Pre-Game Routine', summary: 'A repeatable sequence so you arrive ready instead of hoping.', category: 'focus', thumbnail_path: null, video_url: null, duration_sec: null, required_tier: 'premium', completed: false },
+  { id: 'l4', slug: 'mental-toughness', week: 4, topic: 'toughness', title: 'Finishing What You Start', summary: 'Standards over motivation on the days it stops being fun.', category: 'resilience', thumbnail_path: null, video_url: null, duration_sec: null, required_tier: 'premium', completed: false },
+  { id: 'l5', slug: 'accountability', week: 5, topic: 'accountability', title: 'Owning the Tape', summary: 'How to watch your own bad shifts without spiralling.', category: 'mental_recovery', thumbnail_path: null, video_url: null, duration_sec: null, required_tier: 'premium', completed: false },
+  { id: 'l6', slug: 'pressure', week: 6, topic: 'pressure', title: 'Performing Under Pressure', summary: 'Tryouts, showcases and overtime — narrowing to the next play.', category: 'pressure_performance', thumbnail_path: null, video_url: null, duration_sec: null, required_tier: 'premium', completed: false },
+  { id: 'l7', slug: 'goal-setting', week: 7, topic: 'goals', title: 'Process Over Outcome', summary: 'Goals you control instead of goals you can only hope for.', category: 'goal_setting', thumbnail_path: null, video_url: null, duration_sec: null, required_tier: 'premium', completed: false },
+  { id: 'l8', slug: 'leadership', week: 8, topic: 'leadership', title: 'Earning the Letter', summary: 'Becoming the player a coach uses when it matters.', category: 'leadership', thumbnail_path: null, video_url: null, duration_sec: null, required_tier: 'premium', completed: false },
 ];
+
+const MINDSET_LIST_COLUMNS =
+  'id, slug, week, topic, title, summary, category, thumbnail_path, video_url, duration_sec, required_tier';
 
 export async function getMindsetLessons(session: Session): Promise<MindsetLessonRow[]> {
   if (DEMO_MODE) return DEMO_MINDSET;
   const supabase = await createServerClient();
   const { data } = await supabase
     .from('mindset_lessons')
-    .select('id, slug, week, topic, title, summary')
+    .select(MINDSET_LIST_COLUMNS)
     .eq('is_published', true)
     .order('sort_order');
-  const lessons = (data as MindsetLessonRow[]) ?? [];
+  const lessons = (data as unknown as MindsetLessonRow[]) ?? [];
 
   const { data: progress } = await supabase
     .from('mindset_progress')
@@ -406,6 +418,156 @@ export async function getMindsetLessons(session: Session): Promise<MindsetLesson
 
   const done = new Set((progress ?? []).filter((p) => p.completed_at).map((p) => p.lesson_id));
   return lessons.map((l) => ({ ...l, completed: done.has(l.id) }));
+}
+
+/* ------------------------------------------------------ mindset — playback
+   Mirrors getResourceForViewing() / resolveResourceAccess() in lib/library.ts
+   card-for-card: same bucket ('training-resources'), same TTL, same gate
+   order, same reason the row is read through the ADMIN client (so a
+   premium-only lesson can be told apart from one that genuinely doesn't
+   exist) while the signed URL is minted through the caller's own SESSION
+   client (so the storage policy from 0008 is what actually authorizes the
+   read — a service-role client would bypass storage RLS and prove nothing).
+   No new bucket, no new table, no new signing system. */
+
+export interface MindsetLessonDetail {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  category: string | null;
+  topic: string;
+  week: number;
+  durationSec: number | null;
+  requiredTier: Tier;
+  isPublished: boolean;
+  /** Short-lived signed URL, or null if this lesson has no cover photo. Never a raw storage path. */
+  thumbnailSignedUrl: string | null;
+  /** Short-lived signed URL, or null if this lesson has no video yet. Never a raw storage path. */
+  videoSignedUrl: string | null;
+  /** Whether THIS member has marked the lesson complete — from mindset_progress, never fabricated. */
+  completed: boolean;
+}
+
+export type MindsetLessonAccess =
+  | { ok: true; lesson: MindsetLessonDetail }
+  | { ok: false; reason: 'not_found' }
+  | { ok: false; reason: 'locked'; requiredTier: Tier }
+  | { ok: false; reason: 'unavailable' };
+
+/** How long a playback/preview URL stays valid. Same convention as lib/library.ts. */
+const MINDSET_SIGNED_URL_TTL_SECONDS = 60 * 60;
+const MINDSET_BUCKET = 'training-resources';
+
+/**
+ * Resolve one mindset lesson for viewing by slug, minting signed URLs only
+ * once the caller is genuinely entitled.
+ *
+ * GATE ORDER (same as resolveResourceAccess in lib/library.ts):
+ *   1. The row must be published, or the caller must be staff.
+ *   2. hasTier() must pass against the lesson's own required_tier.
+ *   3. Only then are the thumbnail/video paths signed, through the caller's
+ *      own session client.
+ */
+export async function getMindsetLessonForViewing(
+  session: Session,
+  slug: string
+): Promise<MindsetLessonAccess> {
+  if (DEMO_MODE) {
+    const lesson = DEMO_MINDSET.find((l) => l.slug === slug);
+    if (!lesson) return { ok: false, reason: 'not_found' };
+    if (!hasTier(session, lesson.required_tier)) {
+      return { ok: false, reason: 'locked', requiredTier: lesson.required_tier };
+    }
+    return {
+      ok: true,
+      lesson: {
+        id: lesson.id,
+        slug: lesson.slug,
+        title: lesson.title,
+        summary: lesson.summary,
+        category: lesson.category,
+        topic: lesson.topic,
+        week: lesson.week,
+        durationSec: lesson.duration_sec,
+        requiredTier: lesson.required_tier,
+        isPublished: true,
+        thumbnailSignedUrl: null,
+        videoSignedUrl: null,
+        completed: Boolean(lesson.completed),
+      },
+    };
+  }
+
+  const { createAdminClient } = await import('./supabase/server');
+  const admin = await createAdminClient();
+
+  const { data: row, error } = await admin
+    .from('mindset_lessons')
+    .select(`${MINDSET_LIST_COLUMNS}, is_published`)
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (error || !row) return { ok: false, reason: 'not_found' };
+
+  const staff = session.role === 'admin' || session.role === 'coach';
+  const lessonRow = row as unknown as MindsetLessonRow & { is_published: boolean };
+
+  // GATE 1 — drafts are invisible to members, whatever their tier. A member
+  // should not be able to discover an unpublished lesson exists by probing slugs.
+  if (!lessonRow.is_published && !staff) return { ok: false, reason: 'not_found' };
+
+  const requiredTier = lessonRow.required_tier ?? 'premium';
+
+  // GATE 2 — tier. hasTier() already returns true for admins.
+  if (!hasTier(session, requiredTier)) {
+    return { ok: false, reason: 'locked', requiredTier };
+  }
+
+  // GATE 3 — storage RLS. Signed through the caller's own session, and only
+  // reached once gates 1 and 2 have already passed.
+  const supabase = await createServerClient();
+  const sign = async (path: string | null): Promise<string | null> => {
+    if (!path) return null;
+    const { data, error: signError } = await supabase.storage
+      .from(MINDSET_BUCKET)
+      .createSignedUrl(path, MINDSET_SIGNED_URL_TTL_SECONDS);
+    if (signError) {
+      console.error('[mindset] signed url failed:', signError.message);
+      return null;
+    }
+    return data?.signedUrl ?? null;
+  };
+
+  const [thumbnailSignedUrl, videoSignedUrl, progress] = await Promise.all([
+    sign(lessonRow.thumbnail_path),
+    sign(lessonRow.video_url),
+    supabase
+      .from('mindset_progress')
+      .select('completed_at')
+      .eq('profile_id', session.userId)
+      .eq('lesson_id', lessonRow.id)
+      .maybeSingle(),
+  ]);
+
+  return {
+    ok: true,
+    lesson: {
+      id: lessonRow.id,
+      slug: lessonRow.slug,
+      title: lessonRow.title,
+      summary: lessonRow.summary,
+      category: lessonRow.category,
+      topic: lessonRow.topic,
+      week: lessonRow.week,
+      durationSec: lessonRow.duration_sec,
+      requiredTier,
+      isPublished: Boolean(lessonRow.is_published),
+      thumbnailSignedUrl,
+      videoSignedUrl,
+      completed: Boolean(progress.data?.completed_at),
+    },
+  };
 }
 
 /* -------------------------------------------------------- video submissions */
@@ -433,4 +595,79 @@ export async function getSubmissions(session: Session): Promise<SubmissionRow[]>
     .eq('profile_id', session.userId)
     .order('created_at', { ascending: false });
   return (data as SubmissionRow[]) ?? [];
+}
+
+export interface SubmissionDetail extends SubmissionRow {
+  videoSignedUrl: string | null;
+  feedback: { body: string; createdAt: string } | null;
+}
+
+export type SubmissionAccess =
+  | { ok: true; submission: SubmissionDetail }
+  | { ok: false; reason: 'not_found' };
+
+/**
+ * Single-submission view for the member-facing /reviews/[id] page.
+ *
+ * RLS (vsub_own_read) already restricts the row fetch to the caller's own
+ * submission, so a stranger's id here simply returns nothing rather than
+ * someone else's video — this function does not additionally check
+ * profile_id itself, the same trust-RLS pattern used by getSubmissions()
+ * above. Only a 'complete' feedback row is shown — a coach's saved-but-
+ * unpublished draft must never leak to the member it's about.
+ */
+export async function getSubmissionForViewing(session: Session, id: string): Promise<SubmissionAccess> {
+  if (DEMO_MODE) {
+    return {
+      ok: true,
+      submission: {
+        id,
+        title: 'Saturday game — 2nd period shifts',
+        kind: 'game',
+        status: 'reviewed',
+        created_at: new Date(Date.now() - 6 * 864e5).toISOString(),
+        notes: 'Felt slow on the forecheck.',
+        videoSignedUrl: null,
+        feedback: {
+          body: 'Good habits on the forecheck — you angle well. The slow start is your first three strides: you\'re flat-footed on the whistle. Work a reaction-start drill twice a week.',
+          createdAt: new Date(Date.now() - 4 * 864e5).toISOString(),
+        },
+      },
+    };
+  }
+
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from('video_submissions')
+    .select('id, title, kind, status, created_at, notes, video_path')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!data) return { ok: false, reason: 'not_found' };
+
+  const { createSubmissionPlaybackUrl } = await import('./reviews-storage');
+  const videoSignedUrl = await createSubmissionPlaybackUrl(supabase, data.video_path as string | null);
+
+  const { data: feedbackRow } = await supabase
+    .from('submission_feedback')
+    .select('body, created_at')
+    .eq('submission_id', id)
+    .eq('complete', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    ok: true,
+    submission: {
+      id: data.id,
+      title: data.title,
+      kind: data.kind,
+      status: data.status,
+      created_at: data.created_at,
+      notes: data.notes,
+      videoSignedUrl,
+      feedback: feedbackRow ? { body: feedbackRow.body as string, createdAt: feedbackRow.created_at as string } : null,
+    },
+  };
 }

@@ -5,6 +5,7 @@ import {
   getSubmissions,
   getWorkoutRoutines,
   getWorkoutActivityStats,
+  getMindsetLessons,
   OCCASION_LABEL,
   OCCASION_NUTRITION_CATEGORY,
   isRoutineOccasion,
@@ -65,12 +66,14 @@ export default async function DashboardPage() {
   const nutritionPlans = canUse(session, 'nutrition_plans');
   const inactive = !session.subscriptionActive && session.role !== 'admin';
 
-  const [submissions, latestAnalysis, routines, activity] = await Promise.all([
+  const [submissions, latestAnalysis, routines, activity, mindsetLessons] = await Promise.all([
     premium ? getSubmissions(session) : Promise.resolve([]),
     aiShotAnalysis ? loadLatestAnalysis() : Promise.resolve(null),
     workoutPlans ? getWorkoutRoutines() : Promise.resolve([]),
     workoutPlans ? getWorkoutActivityStats(session) : Promise.resolve({ streakDays: 0, completedThisWeek: 0 }),
+    premium ? getMindsetLessons(session) : Promise.resolve([]),
   ]);
+  const mindsetDone = mindsetLessons.filter((l) => l.completed).length;
 
   const todaysRoutine = pickOfTheDay(routines);
 
@@ -117,7 +120,7 @@ export default async function DashboardPage() {
 
   // "View More" — everything that isn't Today's Focus / AI Insight /
   // Nutrition Pick lives behind one disclosure instead of its own card.
-  const hasMore = workoutPlans || (premium && submissions.length > 0);
+  const hasMore = workoutPlans || (premium && submissions.length > 0) || (premium && mindsetLessons.length > 0);
 
   return (
     <div className="max-w-2xl overflow-x-hidden">
@@ -314,7 +317,7 @@ export default async function DashboardPage() {
                 <h2 className="display text-lg">Recent Activity</h2>
                 <div className="mt-3 grid gap-2">
                   {submissions.slice(0, 2).map((s) => (
-                    <Link key={s.id} href="/reviews">
+                    <Link key={s.id} href={`/reviews/${s.id}`}>
                       <Card hover className="flex items-center gap-4 p-3.5">
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-base font-semibold text-white">{s.title}</p>
@@ -328,6 +331,20 @@ export default async function DashboardPage() {
                   ))}
                 </div>
               </div>
+            )}
+
+            {premium && mindsetLessons.length > 0 && (
+              <Link href="/mindset">
+                <Card hover className="flex items-center justify-between gap-4 p-4">
+                  <div>
+                    <p className="text-base font-semibold text-white">Mindset Development</p>
+                    <p className="mt-0.5 text-sm text-silver-dim">
+                      {mindsetDone} of {mindsetLessons.length} lesson{mindsetLessons.length === 1 ? '' : 's'} complete
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-silver-dim">→</span>
+                </Card>
+              </Link>
             )}
 
             <Link href="/library">

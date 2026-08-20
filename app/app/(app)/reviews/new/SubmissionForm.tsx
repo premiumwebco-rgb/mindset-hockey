@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { validateVideo } from '@/lib/video';
+import { uploadWithProgress } from '@/lib/upload-with-progress';
 
 const KINDS = [
   { value: 'game', label: 'Game footage' },
@@ -17,6 +18,8 @@ export default function SubmissionForm() {
   const [kind, setKind] = useState('game');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [stage, setStage] = useState<'idle' | 'uploading' | 'finishing'>('idle');
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
@@ -29,18 +32,45 @@ export default function SubmissionForm() {
     if (!title.trim()) return setError('Give the submission a title.');
 
     setBusy(true);
+    setStage('uploading');
+    setProgress(0);
+
     try {
-      const res = await fetch('/api/reviews', {
+      // Step 1 — create the row and get a signed URL to upload straight to.
+      const initRes = await fetch('/api/reviews', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title, kind, notes, fileName: file.name, bytes: file.size }),
+        body: JSON.stringify({
+          title,
+          kind,
+          notes,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+        }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Submission failed.');
+      const init = await initRes.json();
+      if (!initRes.ok) throw new Error(init.error || 'Could not start the submission.');
+
+      // Step 2 — PUT the file straight to storage. Never touches this server.
+      await uploadWithProgress(init.signedUrl, file, setProgress);
+
+      // Step 3 — confirm the object landed, and move the submission to
+      // 'queued' so it appears in the coach queue.
+      setStage('finishing');
+      const confirmRes = await fetch(`/api/reviews/${init.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name }),
+      });
+      const confirmed = await confirmRes.json();
+      if (!confirmRes.ok) throw new Error(confirmed.error || 'The upload could not be confirmed.');
+
       router.push('/reviews');
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
+      setStage('idle');
     }
   }
 
@@ -52,7 +82,8 @@ export default function SubmissionForm() {
           type="file"
           accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="rounded-lg border border-white/[.14] bg-ink px-3 py-2.5 text-[14px] text-white file:mr-3 file:rounded file:border-0 file:bg-electric file:px-3 file:py-1.5 file:text-[13px] file:font-bold file:text-white"
+          disabled={busy}
+          className="rounded-lg border border-white/[.14] bg-ink px-3 py-2.5 text-[14px] text-white file:mr-3 file:rounded file:border-0 file:bg-electric file:px-3 file:py-1.5 file:text-[13px] file:font-bold file:text-white disabled:opacity-50"
         />
       </label>
 
@@ -62,8 +93,9 @@ export default function SubmissionForm() {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            disabled={busy}
             placeholder="Saturday game — 2nd period"
-            className="rounded-lg border border-white/[.14] bg-ink px-3 py-2.5 text-[14px] text-white placeholder:text-silver-dim/60"
+            className="rounded-lg border border-white/[.14] bg-ink px-3 py-2.5 text-[14px] text-white placeholder:text-silver-dim/60 disabled:opacity-50"
           />
         </label>
         <label className="grid gap-1.5">
@@ -71,7 +103,8 @@ export default function SubmissionForm() {
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="rounded-lg border border-white/[.14] bg-ink px-3 py-2.5 text-[14px] text-white"
+            disabled={busy}
+            className="rounded-lg border border-white/[.14] bg-ink px-3 py-2.5 text-[14px] text-white disabled:opacity-50"
           >
             {KINDS.map((k) => (
               <option key={k.value} value={k.value}>{k.label}</option>
@@ -88,10 +121,26 @@ export default function SubmissionForm() {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={4}
+          disabled={busy}
           placeholder="White #17. I keep losing puck battles along the wall and I want to know why."
-          className="rounded-lg border border-white/[.14] bg-ink px-3 py-2.5 text-[14px] text-white placeholder:text-silver-dim/60"
+          className="rounded-lg border border-white/[.14] bg-ink px-3 py-2.5 text-[14px] text-white placeholder:text-silver-dim/60 disabled:opacity-50"
         />
       </label>
+
+      {stage === 'uploading' && (
+        <div>
+          <div className="h-2 overflow-hidden rounded-full bg-white/[.08]">
+            <div
+              className="h-full rounded-full bg-electric transition-[width] duration-200"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-[12.5px] text-silver-dim">Uploading — {progress}%</p>
+        </div>
+      )}
+      {stage === 'finishing' && (
+        <p className="text-[12.5px] text-silver-dim">Confirming upload…</p>
+      )}
 
       {error && (
         <p className="rounded-lg border border-rink-red/40 bg-rink-red/[.08] px-4 py-3 text-[14px] text-white">

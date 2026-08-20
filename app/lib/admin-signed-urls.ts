@@ -1,18 +1,22 @@
 import type { createServerClient } from './supabase/server';
 
 /* ==========================================================================
-   ADMIN PREVIEW SIGNED URLs
+   PREVIEW SIGNED URLs
 
-   Small shared helper used only by admin CMS list routes (resources,
-   mindset lessons) to turn a private storage_path/cover_image_url/
-   thumbnail_path/video_url into a short-lived signed URL the admin browser
-   can render as an <img>/<video> preview.
+   Small shared helper used by admin CMS list routes (resources, mindset
+   lessons) AND by lib/library.ts's member-facing card views to turn a
+   private storage_path/cover_image_url/thumbnail_path/video_url into a
+   short-lived signed URL the browser can render as an <img>/<video> preview.
 
-   NOT the member-facing playback path (lib/library.ts, lib/ai/storage.ts) —
-   those stay untouched. This is purely a display convenience for the admin
-   console; it grants no new access, since createSignedUrl still runs
-   through the session-scoped client and can only ever produce a link to an
-   object that client is already allowed to read.
+   NOT the member-facing PLAYBACK path for the resource file itself
+   (getResourceForViewing/getMindsetLessonForViewing already mint their own
+   signed URLs after their own tier gates) — this helper is only ever used
+   for cosmetic previews: admin thumbnails, and member-facing cover photos
+   that are deliberately shown even on a locked/teaser card. It grants no new
+   access either way, since createSignedUrl still runs through the
+   session-scoped client and can only ever produce a link to an object that
+   client is already allowed to read (training_resources_member_read, 0008 —
+   any signed-in member with at least 'basic' tier, or staff).
    ========================================================================== */
 
 const TTL_SECONDS = 60 * 60; // 1 hour — long enough for one admin session.

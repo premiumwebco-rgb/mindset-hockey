@@ -6,13 +6,19 @@ import CheckoutSuccessBanner, { type CheckoutState } from '@/components/Checkout
 
 export const metadata = { title: 'Set up your player' };
 
+const ERROR_MESSAGE: Record<string, string> = {
+  missing_first_name: "Enter the player's first name to continue.",
+  save_failed: "That didn't save — check your membership is active and try again.",
+};
+
 export default async function Onboarding({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string; session_id?: string }>;
+  searchParams: Promise<{ checkout?: string; session_id?: string; error?: string }>;
 }) {
   const session = await requireSession();
   const sp = await searchParams;
+  const formError = sp.error ? (ERROR_MESSAGE[sp.error] ?? 'Something went wrong. Try again.') : null;
 
   /* ---- Returning from Stripe Checkout ------------------------------------
      The query string is treated as a hint, never as proof. When it claims
@@ -58,7 +64,13 @@ export default async function Onboarding({
         sub="This is what the weekly plan is built from. Be honest about the level — an over-stated level produces a plan that's too hard, and a plan that's too hard gets abandoned."
       />
 
-      <form action="/dashboard" className="grid gap-4">
+      {formError && (
+        <p className="mb-4 rounded-lg border border-rink-red/40 bg-rink-red/[.08] px-4 py-3 text-[14px] text-white">
+          {formError}
+        </p>
+      )}
+
+      <form action="/api/onboarding" method="post" className="grid gap-4">
         <Card className="p-6">
           <p className="eyebrow mb-4">Step 1 — the basics</p>
           <div className="grid gap-4 sm:grid-cols-2">

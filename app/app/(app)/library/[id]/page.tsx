@@ -51,6 +51,21 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
         ← Training library
       </Link>
 
+      {/* Cover photo as a hero banner. Skipped when the resource itself IS an
+          image — the content area below already shows it, and repeating it
+          here would just be the same picture twice. */}
+      {resource.coverImageSignedUrl && !isImage && (
+        <div className="mb-6 overflow-hidden rounded-xl border border-white/[.08]">
+          <SmartImage
+            key={`${resource.id}-cover`}
+            src={resource.coverImageSignedUrl}
+            fallbackLabel="cover image"
+            alt=""
+            className="aspect-[21/9] w-full object-cover"
+          />
+        </div>
+      )}
+
       <div className="mb-6">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <PillarChip pillar={resource.pillar} />

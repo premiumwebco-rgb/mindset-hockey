@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/session';
 import { getLibrary, parsePillar } from '@/lib/library';
 import { PILLARS } from '@/lib/types';
 import { Card, EmptyState, LockBadge, PageHeading, PillarChip, formatDuration } from '@/components/ui';
+import { SmartImage } from '@/components/media/SmartMedia';
 
 export const metadata = { title: 'Training Library' };
 
@@ -81,9 +82,20 @@ export default async function Library({
             return (
               <Link key={r.id} href={href} className="block">
                 <Card hover className="h-full overflow-hidden">
-                  <div className="relative grid aspect-video place-items-center border-b border-white/[.06] bg-navy-800">
+                  <div className="relative grid aspect-video place-items-center overflow-hidden border-b border-white/[.06] bg-navy-800">
+                    {r.coverImageSignedUrl && (
+                      <>
+                        <SmartImage
+                          src={r.coverImageSignedUrl}
+                          fallbackLabel="cover image"
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-ink/35" />
+                      </>
+                    )}
                     <div
-                      className={`grid h-10 w-10 place-items-center rounded-full sm:h-12 sm:w-12 ${
+                      className={`relative grid h-10 w-10 place-items-center rounded-full sm:h-12 sm:w-12 ${
                         r.locked ? 'bg-white/[.06]' : 'bg-electric shadow-[0_8px_28px_rgba(10,132,255,.45)]'
                       }`}
                     >

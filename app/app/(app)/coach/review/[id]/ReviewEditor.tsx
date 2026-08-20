@@ -1,15 +1,59 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { RUBRIC } from '@/lib/types';
 import { DRILLS } from '@/lib/demo-data';
+import { SmartVideo } from '@/components/media/SmartMedia';
 
 interface ScoreState {
   score: number;
   note: string;
 }
 
-export default function ReviewEditor({ submissionId }: { submissionId: string }) {
+interface ExistingFeedback {
+  id: string;
+  body: string;
+  complete: boolean;
+  created_at: string;
+}
+
+/* ==========================================================================
+   COACH REVIEW EDITOR
+
+   Previously `publish()` was a no-op — `setPublished(true)` on local
+   component state with a comment describing an API route that did not exist.
+   Nothing survived a page refresh, and a member never received anything.
+
+   This now actually persists to `submission_feedback` (migration 0002) via
+   POST /api/coach/reviews/[id]/feedback, and updates video_submissions'
+   status/reviewed_at/reviewer_id.
+
+   submission_feedback only has a plain `body` column — there is no schema for
+   per-rubric-point scores or timestamped annotations against a video
+   submission (that richer structure — rubric_points / review_scores /
+   review_annotations — belongs to the AI Shot Analysis review flow at
+   /coach/ai-queue, keyed to shot_analyses, not video_submissions). Rather
+   than inventing a second scoring schema, the rubric sliders and timestamped
+   notes below stay as structuring input for the coach and are composed into
+   one formatted `body` on save — real, persisted, and honest about what it
+   is: a coach's written review, not stored per-point scores.
+   ========================================================================== */
+
+function formatMs(ms: number): string {
+  return `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
+}
+
+export default function ReviewEditor({
+  submissionId,
+  videoUrl,
+  existingFeedback,
+}: {
+  submissionId: string;
+  videoUrl: string | null;
+  existingFeedback: ExistingFeedback | null;
+}) {
+  const router = useRouter();
   const [scores, setScores] = useState<Record<number, ScoreState>>(
     Object.fromEntries(RUBRIC.map((r) => [r.id, { score: 5, note: '' }]))
   );
@@ -18,14 +62,16 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
   const [annMs, setAnnMs] = useState('');
   const [annPoint, setAnnPoint] = useState(1);
   const [annBody, setAnnBody] = useState('');
-  const [published, setPublished] = useState(false);
+  const [saving, setSaving] = useState<'draft' | 'publish' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [published, setPublished] = useState(existingFeedback?.complete ?? false);
 
   const total = useMemo(
     () => Object.values(scores).reduce((sum, s) => sum + s.score, 0),
     [scores]
   );
 
-  /** The two lowest points become the month's focus — auto, so it's consistent. */
+  /** The two lowest points become the focus — auto, so it's consistent. */
   const focusPoints = useMemo(
     () =>
       Object.entries(scores)
@@ -35,7 +81,7 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
     [scores]
   );
 
-  /** Drill prescriptions are derived from the focus points, not picked by hand. */
+  /** Suggested, not auto-scheduled — nothing writes these to a training plan. */
   const prescribed = useMemo(
     () => DRILLS.filter((d) => d.rubricPoints.some((p) => focusPoints.includes(p))).slice(0, 3),
     [focusPoints]
@@ -57,10 +103,53 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
     setAnnBody('');
   }
 
-  function publish() {
-    // Production: POST to /api/coach/review with scores, summary, annotations,
-    // prescriptions → sets analysis_reviews.published_at and emails the family.
-    setPublished(true);
+  /** Folds the rubric, timestamped notes and summary into one written review. */
+  function composeBody(): string {
+    const parts: string[] = [];
+    if (summary.trim()) parts.push(summary.trim());
+
+    const scoredPoints = RUBRIC.map((r) => ({ r, s: scores[r.id] })).filter(({ s }) => s.note.trim());
+    if (scoredPoints.length) {
+      parts.push(
+        'Rubric notes:\n' +
+          scoredPoints.map(({ r, s }) => `• ${r.label} (${s.score}/10) — ${s.note.trim()}`).join('\n')
+      );
+    }
+
+    if (annotations.length) {
+      parts.push(
+        'Timestamped notes:\n' +
+          annotations
+            .map((a) => `• ${formatMs(a.ms)} — ${RUBRIC.find((r) => r.id === a.point)?.label ?? ''}: ${a.body}`)
+            .join('\n')
+      );
+    }
+
+    parts.push(`Overall: ${total}/${RUBRIC.length * 10}`);
+    return parts.join('\n\n');
+  }
+
+  async function save(complete: boolean) {
+    setError(null);
+    setSaving(complete ? 'publish' : 'draft');
+    try {
+      const res = await fetch(`/api/coach/reviews/${submissionId}/feedback`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body: composeBody(), complete }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Could not save the review.');
+      if (complete) {
+        setPublished(true);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(null);
+    }
   }
 
   if (published) {
@@ -71,8 +160,7 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
         </div>
         <h2 className="display text-[26px]">Published</h2>
         <p className="mx-auto mt-3 max-w-[48ch] text-[15px] text-silver-dim">
-          Scored {total}/70. The family has been emailed and the three prescribed drills are on next
-          week&apos;s plan.
+          Scored {total}/{RUBRIC.length * 10}. The member can now see this feedback on their video review page.
         </p>
       </div>
     );
@@ -82,14 +170,29 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
     <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
       {/* left — video */}
       <div>
-        <div className="grid aspect-video place-items-center rounded-xl border border-white/[.08] bg-navy-900">
-          <p className="text-[11px] uppercase tracking-[.2em] text-silver-dim">
-            Side angle — frame-step
-          </p>
-        </div>
-        <div className="mt-3 grid aspect-video place-items-center rounded-xl border border-white/[.08] bg-navy-900">
-          <p className="text-[11px] uppercase tracking-[.2em] text-silver-dim">Front angle</p>
-        </div>
+        {videoUrl ? (
+          <SmartVideo
+            src={videoUrl}
+            fallbackLabel="submission"
+            controls
+            playsInline
+            preload="metadata"
+            className="aspect-video w-full rounded-xl border border-white/[.08] bg-navy-900"
+          />
+        ) : (
+          <div className="grid aspect-video place-items-center rounded-xl border border-dashed border-white/[.14] bg-navy-900">
+            <p className="text-[12px] uppercase tracking-[.2em] text-silver-dim">No video stored</p>
+          </div>
+        )}
+
+        {existingFeedback && (
+          <div className="card mt-4 p-5">
+            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[.16em] text-silver-dim">
+              {existingFeedback.complete ? 'Previously published review' : 'Saved draft'}
+            </h3>
+            <p className="whitespace-pre-line text-[13.5px] text-silver">{existingFeedback.body}</p>
+          </div>
+        )}
 
         {/* annotations */}
         <div className="card mt-4 p-5">
@@ -138,7 +241,7 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
               {annotations.map((a, i) => (
                 <li key={i} className="flex gap-3 rounded-lg border border-white/[.06] bg-ink px-3.5 py-2.5">
                   <span className="shrink-0 font-mono text-[12px] font-semibold text-electric-glow">
-                    {Math.floor(a.ms / 60000)}:{String(Math.floor((a.ms % 60000) / 1000)).padStart(2, '0')}
+                    {formatMs(a.ms)}
                   </span>
                   <span className="min-w-0 text-[13.5px] text-silver">{a.body}</span>
                 </li>
@@ -155,7 +258,7 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
             <h3 className="display text-[19px]">7-point rubric</h3>
             <span className="display text-[32px] leading-none">
               {total}
-              <span className="text-[14px] text-silver-dim">/70</span>
+              <span className="text-[14px] text-silver-dim">/{RUBRIC.length * 10}</span>
             </span>
           </div>
 
@@ -211,7 +314,7 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
 
           <div className="mt-4">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-[.16em] text-silver-dim">
-              Auto-prescribed drills
+              Suggested drills
             </p>
             <div className="flex flex-wrap gap-1.5">
               {prescribed.length ? (
@@ -229,16 +332,40 @@ export default function ReviewEditor({ submissionId }: { submissionId: string })
                 </span>
               )}
             </div>
+            <p className="mt-2 text-[11.5px] text-silver-dim">
+              Mention these in your summary if you want the player to see them — they are not added
+              to a training plan automatically.
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={publish}
-            disabled={!summary}
-            className="mt-5 w-full rounded-[10px] bg-electric px-6 py-3.5 text-[14px] font-bold text-white hover:bg-electric-glow disabled:pointer-events-none disabled:opacity-40"
-          >
-            {summary ? `Publish review — ${total}/70` : 'Write a summary to publish'}
-          </button>
+          {error && (
+            <p className="mt-4 rounded-lg border border-rink-red/40 bg-rink-red/[.08] px-4 py-3 text-[13.5px] text-white">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-5 grid gap-2">
+            <button
+              type="button"
+              onClick={() => save(true)}
+              disabled={!summary || saving !== null}
+              className="w-full rounded-[10px] bg-electric px-6 py-3.5 text-[14px] font-bold text-white hover:bg-electric-glow disabled:pointer-events-none disabled:opacity-40"
+            >
+              {saving === 'publish'
+                ? 'Publishing…'
+                : summary
+                  ? `Publish review — ${total}/${RUBRIC.length * 10}`
+                  : 'Write a summary to publish'}
+            </button>
+            <button
+              type="button"
+              onClick={() => save(false)}
+              disabled={!summary || saving !== null}
+              className="w-full rounded-[10px] border border-white/[.14] px-6 py-3 text-[13.5px] font-semibold text-silver hover:border-electric hover:text-white disabled:pointer-events-none disabled:opacity-40"
+            >
+              {saving === 'draft' ? 'Saving…' : 'Save draft'}
+            </button>
+          </div>
           <p className="mt-2 text-center text-[11.5px] text-silver-dim">
             Submission {submissionId}
           </p>

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireFeature } from '@/lib/session';
 import { getSubmissions } from '@/lib/data';
 import { Button, Card, Eyebrow, EmptyState } from '@/components/ui';
@@ -39,27 +40,29 @@ export default async function ReviewsPage() {
       ) : (
         <div className="mt-8 grid gap-3">
           {subs.map((s) => (
-            <Card key={s.id} hover className="flex flex-wrap items-center gap-4 p-5">
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-white">{s.title}</p>
-                <p className="mt-0.5 text-[13px] capitalize text-silver-dim">
-                  {s.kind} ·{' '}
-                  {new Date(s.created_at).toLocaleDateString(undefined, {
-                    day: 'numeric', month: 'short',
-                  })}
-                </p>
-                {s.notes && <p className="mt-1.5 text-[14px] text-silver-dim">{s.notes}</p>}
-              </div>
-              <span
-                className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[.14em] ${
-                  s.status === 'reviewed'
-                    ? 'border-[#3ddc84]/40 bg-[#3ddc84]/10 text-[#3ddc84]'
-                    : 'border-amber/40 bg-amber/10 text-amber'
-                }`}
-              >
-                {STATUS_LABEL[s.status] ?? s.status}
-              </span>
-            </Card>
+            <Link key={s.id} href={`/reviews/${s.id}`} className="block">
+              <Card hover className="flex flex-wrap items-center gap-4 p-5">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-white">{s.title}</p>
+                  <p className="mt-0.5 text-[13px] capitalize text-silver-dim">
+                    {s.kind} ·{' '}
+                    {new Date(s.created_at).toLocaleDateString(undefined, {
+                      day: 'numeric', month: 'short',
+                    })}
+                  </p>
+                  {s.notes && <p className="mt-1.5 text-[14px] text-silver-dim">{s.notes}</p>}
+                </div>
+                <span
+                  className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[.14em] ${
+                    s.status === 'reviewed'
+                      ? 'border-[#3ddc84]/40 bg-[#3ddc84]/10 text-[#3ddc84]'
+                      : 'border-amber/40 bg-amber/10 text-amber'
+                  }`}
+                >
+                  {STATUS_LABEL[s.status] ?? s.status}
+                </span>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
