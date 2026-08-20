@@ -1,17 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { uploadWithProgress } from '@/lib/upload-with-progress';
 
 /* ==========================================================================
    TRAINING RESOURCE MANAGER  —  ADMIN / COACH
 
-   Upload, publish, and delete training videos, PDFs and images.
+   Upload, edit, publish, and delete training videos, PDFs and images.
 
    THE FILE NEVER PASSES THROUGH THE APP SERVER.
    POST /api/admin/resources creates the catalogue row and returns a signed
    URL; the browser PUTs the file straight to Supabase Storage. That is what
    allows a 500 MB coach video to upload at all — a serverless request body
-   could never carry it.
+   could never carry it. Cover photos use the same pattern against
+   POST /api/admin/resources/cover.
 
    NOTHING HERE IS THE SECURITY BOUNDARY. Every action calls an endpoint
    guarded by requireStaff(), and beneath that the storage and table policies
@@ -23,6 +25,7 @@ const ACCEPT =
   'video/mp4,video/quicktime,video/webm,application/pdf,image/jpeg,image/png,image/webp,.mp4,.mov,.webm,.pdf,.jpg,.jpeg,.png,.webp';
 
 const MAX_BYTES = 500 * 1024 * 1024;
+const MAX_COVER_BYTES = 10 * 1024 * 1024;
 
 /**
  * The six pillars. Exactly one per lesson — no "none", no "other", no
@@ -40,16 +43,15 @@ const PILLARS = [
 
 type PillarKey = (typeof PILLARS)[number]['key'];
 
-const PILLAR_LABEL: Record<string, string> = Object.fromEntries(
-  PILLARS.map((p) => [p.key, p.label])
-);
-
 interface Resource {
   id: string;
   title: string;
+  description: string | null;
   kind: string;
   pillar: string | null;
   category: string | null;
+  cover_image_url: string | null;
+  cover_image_signed_url: string | null;
   required_tier: string;
   is_published: boolean;
   size_bytes: number | null;
@@ -63,6 +65,14 @@ function prettySize(bytes: number | null): string {
   if (!bytes) return '—';
   const mb = bytes / 1024 / 1024;
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+}
+
+function prettyDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return '—';
+  }
 }
 
 /**
@@ -134,9 +144,12 @@ function validate(file: File): string | null {
 
 export default function ResourceManager() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
@@ -147,10 +160,17 @@ export default function ResourceManager() {
   const [pillar, setPillar] = useState<PillarKey | ''>('');
   const [durationSec, setDurationSec] = useState<number | null>(null);
 
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPath, setCoverPath] = useState<string | null>(null);
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+
   const [phase, setPhase] = useState<Phase>('idle');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const editing = editingId !== null;
 
   const load = useCallback(async () => {
     try {
@@ -169,6 +189,42 @@ export default function ResourceManager() {
     void load();
   }, [load]);
 
+  function resetForm() {
+    setEditingId(null);
+    setFile(null);
+    setTitle('');
+    setCategory('');
+    setDescription('');
+    setRequiredTier('basic');
+    setPillar('');
+    setDurationSec(null);
+    setCoverFile(null);
+    setCoverPath(null);
+    setCoverPreviewUrl(null);
+    setPhase('idle');
+    setProgress(0);
+    if (inputRef.current) inputRef.current.value = '';
+    if (coverInputRef.current) coverInputRef.current.value = '';
+  }
+
+  function editResource(r: Resource) {
+    setEditingId(r.id);
+    setFile(null);
+    setTitle(r.title);
+    setCategory(r.category ?? '');
+    setDescription(r.description ?? '');
+    setRequiredTier(r.required_tier === 'premium' ? 'premium' : 'basic');
+    setPillar((r.pillar as PillarKey) ?? '');
+    setDurationSec(r.duration_sec);
+    setCoverPath(r.cover_image_url);
+    setCoverFile(null);
+    setCoverPreviewUrl(r.cover_image_signed_url);
+    setPhase('idle');
+    setError(null);
+    setNotice(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   function pick(f: File | null) {
     if (!f) return;
     const problem = validate(f);
@@ -182,6 +238,104 @@ export default function ResourceManager() {
     if (!title) setTitle(f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '));
     setDurationSec(null);
     void readDuration(f).then(setDurationSec);
+  }
+
+  async function uploadCover(f: File) {
+    setError(null);
+    setCoverUploading(true);
+    try {
+      const initRes = await fetch('/api/admin/resources/cover', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fileName: f.name, fileType: f.type, fileSize: f.size }),
+      });
+      const init = await initRes.json();
+      if (!initRes.ok) throw new Error(init.error ?? 'Could not start the upload.');
+
+      await uploadWithProgress(init.signedUrl, f, () => {});
+      setCoverPath(init.path);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setCoverUploading(false);
+    }
+  }
+
+  function pickCover(f: File | null) {
+    if (!f) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) {
+      setError('Cover photo must be JPEG, PNG or WebP.');
+      return;
+    }
+    if (f.size > MAX_COVER_BYTES) {
+      setError('Cover photo must be under 10 MB.');
+      return;
+    }
+    setError(null);
+    setCoverFile(f);
+    setCoverPreviewUrl(URL.createObjectURL(f));
+    void uploadCover(f);
+  }
+
+  /** Removes the resource's cover photo immediately — no separate save step. */
+  async function removeCover() {
+    setCoverFile(null);
+    setCoverPath(null);
+    setCoverPreviewUrl(null);
+    if (coverInputRef.current) coverInputRef.current.value = '';
+    if (!editing || !editingId) return; // Nothing persisted yet — just a local reset.
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/resources', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: editingId, removeCoverImage: true }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'Could not remove that cover photo.');
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function saveEdits() {
+    if (!editingId) return;
+    if (!title.trim()) {
+      setError('A title is required.');
+      return;
+    }
+    if (!pillar) {
+      setError('Choose a pillar. Every lesson belongs to exactly one.');
+      return;
+    }
+    setError(null);
+    setNotice(null);
+    setPhase('creating');
+    try {
+      const res = await fetch('/api/admin/resources', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          id: editingId,
+          title: title.trim(),
+          description,
+          category,
+          pillar,
+          requiredTier,
+          coverImagePath: coverPath,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'Could not save those changes.');
+      setNotice('Saved.');
+      setPhase('done');
+      resetForm();
+      await load();
+    } catch (err) {
+      setPhase('error');
+      setError((err as Error).message);
+    }
   }
 
   async function upload() {
@@ -210,6 +364,7 @@ export default function ResourceManager() {
           pillar,
           requiredTier,
           durationSec,
+          coverImagePath: coverPath,
           fileName: file.name,
           fileType: file.type,
           fileSize: file.size,
@@ -220,30 +375,14 @@ export default function ResourceManager() {
 
       // 2. PUT the file straight to storage.
       setPhase('uploading');
-      setProgress(20);
-      const put = await fetch(init.signedUrl, {
-        method: 'PUT',
-        headers: { 'content-type': file.type || 'application/octet-stream' },
-        body: file,
-      });
-      if (!put.ok) {
-        throw new Error(
-          `The upload failed (${put.status}). If this persists, check the training-resources bucket exists.`
-        );
-      }
+      await uploadWithProgress(init.signedUrl, file, setProgress);
 
-      setProgress(100);
       setPhase('done');
       setNotice(
         `"${title.trim()}" uploaded. It is saved as a draft — publish it below when you are ready for members to see it.`
       );
 
-      // Reset the form, keep the category for the next upload in a batch.
-      setFile(null);
-      setTitle('');
-      setDescription('');
-      setDurationSec(null);
-      if (inputRef.current) inputRef.current.value = '';
+      resetForm();
       await load();
     } catch (err) {
       setPhase('error');
@@ -309,38 +448,80 @@ export default function ResourceManager() {
     <div className="grid gap-5">
       {/* ---------------------------------------------------------- upload */}
       <div className="card p-6">
-        <h3 className="display text-[19px]">Upload a training resource</h3>
-        <p className="mt-2 text-[14px] text-silver-dim">
-          Video, PDF or image, up to 500 MB. Uploads save as a draft — nothing is visible to
-          members until you publish it.
-        </p>
+        <div className="flex items-center justify-between">
+          <h3 className="display text-[19px]">
+            {editing ? 'Edit training resource' : 'Upload a training resource'}
+          </h3>
+          {editing && (
+            <button onClick={resetForm} className="text-[13px] font-semibold text-silver-dim hover:text-white">
+              Cancel edit
+            </button>
+          )}
+        </div>
+        {!editing && (
+          <p className="mt-2 text-[14px] text-silver-dim">
+            Video, PDF or image, up to 500 MB. Uploads save as a draft — nothing is visible to
+            members until you publish it.
+          </p>
+        )}
 
         <div className="mt-5 grid gap-4">
+          {/* cover photo upload */}
           <div>
-            <label htmlFor="res-file" className={LABEL}>
-              File
-            </label>
+            <label htmlFor="res-cover" className={LABEL}>Cover photo</label>
             <input
-              ref={inputRef}
-              id="res-file"
+              ref={coverInputRef}
+              id="res-cover"
               type="file"
-              accept={ACCEPT}
-              disabled={busy}
-              onChange={(e) => pick(e.target.files?.[0] ?? null)}
+              accept="image/jpeg,image/png,image/webp"
+              disabled={coverUploading}
+              onChange={(e) => pickCover(e.target.files?.[0] ?? null)}
               className="block w-full text-[14px] text-silver file:mr-4 file:rounded-[10px] file:border-0 file:bg-electric file:px-4 file:py-2.5 file:text-[13.5px] file:font-bold file:text-white hover:file:bg-electric-glow"
             />
-            {file && (
-              <p className="mt-2 text-[13px] text-silver-dim">
-                {file.name} · {prettySize(file.size)}
-                {durationSec !== null &&
-                  ` · ${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, '0')}`}
-              </p>
+            {coverPreviewUrl && (
+              <div className="mt-3 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={coverPreviewUrl} alt="Cover preview" className="h-20 w-32 rounded-lg border border-white/[.1] object-cover" />
+                <button
+                  onClick={removeCover}
+                  className="rounded-[8px] border border-rink-red/40 px-3 py-1.5 text-[12.5px] font-semibold text-rink-red hover:bg-rink-red/10"
+                >
+                  Remove cover photo
+                </button>
+              </div>
             )}
             <p className="mt-2 text-[12.5px] text-silver-dim">
-              No length limit — a full lesson can run 6, 11 or 20 minutes. The 5-second cap applies
-              only to AI Shot Analysis clips, which is a separate upload.
+              {coverUploading ? 'Uploading…' : 'JPEG, PNG or WebP, up to 10 MB. Shown as the card thumbnail.'}
             </p>
           </div>
+
+          {!editing && (
+            <div>
+              <label htmlFor="res-file" className={LABEL}>
+                File
+              </label>
+              <input
+                ref={inputRef}
+                id="res-file"
+                type="file"
+                accept={ACCEPT}
+                disabled={busy}
+                onChange={(e) => pick(e.target.files?.[0] ?? null)}
+                className="block w-full text-[14px] text-silver file:mr-4 file:rounded-[10px] file:border-0 file:bg-electric file:px-4 file:py-2.5 file:text-[13.5px] file:font-bold file:text-white hover:file:bg-electric-glow"
+              />
+              {file && (
+                <p className="mt-2 text-[13px] text-silver-dim">
+                  {file.name} · {prettySize(file.size)}
+                  {durationSec !== null &&
+                    ` · ${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, '0')}`}
+                </p>
+              )}
+              <p className="mt-2 text-[12.5px] text-silver-dim">
+                No length limit — a full lesson can run 6, 11 or 20 minutes. The 5-second cap applies
+                only to AI Shot Analysis clips, which is a separate upload.
+              </p>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -440,17 +621,15 @@ export default function ResourceManager() {
             </p>
           )}
 
-          {busy ? (
+          {phase === 'uploading' ? (
             <div>
               <div className="flex items-center justify-between text-[13.5px]">
-                <span className="font-semibold text-white">
-                  {phase === 'creating' ? 'Preparing upload…' : 'Uploading…'}
-                </span>
+                <span className="font-semibold text-white">Uploading…</span>
                 <span className="tabular-nums text-silver-dim">{progress}%</span>
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-navy-700">
                 <div
-                  className="h-full rounded-full bg-electric transition-[width] duration-500"
+                  className="h-full rounded-full bg-electric transition-[width] duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -458,13 +637,21 @@ export default function ResourceManager() {
                 Keep this tab open until it finishes.
               </p>
             </div>
+          ) : editing ? (
+            <button
+              onClick={saveEdits}
+              disabled={busy || !title.trim() || !pillar}
+              className="inline-flex items-center justify-center rounded-[10px] bg-electric px-6 py-3 text-[14.5px] font-bold text-white transition-colors hover:bg-electric-glow disabled:pointer-events-none disabled:opacity-40"
+            >
+              Save changes
+            </button>
           ) : (
             <button
               onClick={upload}
-              disabled={!file || !title.trim() || !pillar}
+              disabled={busy || !file || !title.trim() || !pillar}
               className="inline-flex items-center justify-center rounded-[10px] bg-electric px-6 py-3 text-[14.5px] font-bold text-white transition-colors hover:bg-electric-glow disabled:pointer-events-none disabled:opacity-40"
             >
-              Upload resource
+              {phase === 'creating' ? 'Preparing upload…' : 'Upload resource'}
             </button>
           )}
         </div>
@@ -490,49 +677,64 @@ export default function ResourceManager() {
                   <h4 className="text-[12px] font-bold uppercase tracking-[.16em] text-electric-glow">
                     {p.label} ({inPillar.length})
                   </h4>
-                  <div className="mt-2 grid gap-2">
+                  <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {inPillar.map((r) => (
-              <div
-                key={r.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[.08] px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14.5px] font-semibold text-white">{r.title}</p>
-                  <p className="mt-0.5 text-[12.5px] text-silver-dim">
-                    {r.pillar ? `${PILLAR_LABEL[r.pillar]} · ` : ''}
-                    {r.kind} · {prettySize(r.size_bytes)}
-                    {r.duration_sec
-                      ? ` · ${Math.floor(r.duration_sec / 60)}:${String(r.duration_sec % 60).padStart(2, '0')}`
-                      : ''}
-                    {r.category ? ` · ${r.category}` : ''} ·{' '}
-                    {r.required_tier === 'premium' ? 'Premium only' : 'Standard and above'}
-                  </p>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2">
-                  <span
-                    className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[.12em] ${
-                      r.is_published
-                        ? 'border-[#3ddc84]/40 bg-[#3ddc84]/10 text-[#3ddc84]'
-                        : 'border-white/20 text-silver-dim'
-                    }`}
-                  >
-                    {r.is_published ? 'Live' : 'Draft'}
-                  </span>
-                  <button
-                    onClick={() => togglePublish(r)}
-                    className="rounded-[8px] border border-white/[.14] px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:border-electric"
-                  >
-                    {r.is_published ? 'Unpublish' : 'Publish'}
-                  </button>
-                  <button
-                    onClick={() => remove(r)}
-                    className="rounded-[8px] border border-rink-red/40 px-3 py-1.5 text-[12.5px] font-semibold text-rink-red transition-colors hover:bg-rink-red/10"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+                      <div key={r.id} className="overflow-hidden rounded-xl border border-white/[.08]">
+                        <div className="relative aspect-video bg-navy-900">
+                          {r.cover_image_signed_url ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={r.cover_image_signed_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="grid h-full place-items-center text-[11px] font-bold uppercase tracking-[.14em] text-silver-dim">
+                              No cover photo
+                            </div>
+                          )}
+                          <span
+                            className={`absolute right-2 top-2 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[.12em] ${
+                              r.is_published
+                                ? 'border-[#3ddc84]/40 bg-[#3ddc84]/90 text-ink'
+                                : 'border-white/20 bg-ink/80 text-silver-dim'
+                            }`}
+                          >
+                            {r.is_published ? 'Live' : 'Draft'}
+                          </span>
+                        </div>
+                        <div className="p-4">
+                          <p className="truncate text-[14.5px] font-semibold text-white">{r.title}</p>
+                          {r.description && (
+                            <p className="mt-1 line-clamp-2 text-[12.5px] text-silver-dim">{r.description}</p>
+                          )}
+                          <p className="mt-2 text-[11.5px] text-silver-dim">
+                            {r.kind} · {prettySize(r.size_bytes)}
+                            {r.duration_sec
+                              ? ` · ${Math.floor(r.duration_sec / 60)}:${String(r.duration_sec % 60).padStart(2, '0')}`
+                              : ''}
+                            {r.category ? ` · ${r.category}` : ''} ·{' '}
+                            {r.required_tier === 'premium' ? 'Premium only' : 'Standard and above'}
+                          </p>
+                          <p className="mt-1 text-[11.5px] text-silver-dim">Uploaded {prettyDate(r.created_at)}</p>
+                          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                            <button
+                              onClick={() => togglePublish(r)}
+                              className="rounded-[8px] border border-white/[.14] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:border-electric"
+                            >
+                              {r.is_published ? 'Unpublish' : 'Publish'}
+                            </button>
+                            <button
+                              onClick={() => editResource(r)}
+                              className="rounded-[8px] border border-white/[.14] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:border-electric"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => remove(r)}
+                              className="rounded-[8px] border border-rink-red/40 px-3 py-1.5 text-[12.5px] font-semibold text-rink-red hover:bg-rink-red/10"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

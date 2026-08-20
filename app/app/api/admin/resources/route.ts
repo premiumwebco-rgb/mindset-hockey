@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireStaff, DEMO_MODE } from '@/lib/session';
 import { createServerClient, createAdminClient } from '@/lib/supabase/server';
+import { signPreviewPaths } from '@/lib/admin-signed-urls';
 
 export const runtime = 'nodejs';
 
@@ -74,7 +75,7 @@ export async function GET() {
   const { data, error } = await admin
     .from('training_resources')
     .select(
-      'id, title, kind, pillar, category, required_tier, is_published, size_bytes, duration_sec, created_at'
+      'id, title, description, kind, pillar, category, cover_image_url, required_tier, is_published, size_bytes, duration_sec, created_at'
     )
     .order('created_at', { ascending: false })
     .limit(200);
@@ -83,7 +84,22 @@ export async function GET() {
     console.error('[resources] list failed:', error.message);
     return NextResponse.json({ error: 'Could not load resources.' }, { status: 500 });
   }
-  return NextResponse.json({ resources: data ?? [] });
+
+  // Cover thumbnails are private storage paths — sign them here so the admin
+  // console can render <img> tags without a per-card round trip. Uses the
+  // STAFF session client, same authorization boundary as every read below.
+  const rows = data ?? [];
+  const supabase = await createServerClient();
+  const signed = await signPreviewPaths(
+    supabase,
+    rows.map((r) => (r as { cover_image_url: string | null }).cover_image_url)
+  );
+  const resources = rows.map((r) => {
+    const row = r as { cover_image_url: string | null };
+    return { ...r, cover_image_signed_url: row.cover_image_url ? signed.get(row.cover_image_url) ?? null : null };
+  });
+
+  return NextResponse.json({ resources });
 }
 
 /**
@@ -111,6 +127,7 @@ export async function POST(req: Request) {
     requiredTier?: string;
     pillar?: string;
     durationSec?: number | null;
+    coverImagePath?: string | null;
   };
   try {
     body = await req.json();
@@ -176,6 +193,7 @@ export async function POST(req: Request) {
       title,
       description: String(body.description ?? '').trim().slice(0, 2000) || null,
       category: String(body.category ?? '').trim().slice(0, 80) || null,
+      cover_image_url: typeof body.coverImagePath === 'string' ? body.coverImagePath : null,
       pillar,
       kind,
       // Placeholder until the path is derived from the new row's id.
@@ -240,6 +258,8 @@ export async function PATCH(req: Request) {
     isPublished?: boolean;
     sortOrder?: number;
     pillar?: string;
+    coverImagePath?: string | null;
+    removeCoverImage?: boolean;
   };
   try {
     body = await req.json();
@@ -249,7 +269,25 @@ export async function PATCH(req: Request) {
 
   if (!body.id) return NextResponse.json({ error: 'id is required.' }, { status: 400 });
 
+  // Cover image replace/remove — delete the old stored object first so a
+  // replace or a removal never leaves an orphaned file behind.
+  if (typeof body.coverImagePath === 'string' || body.removeCoverImage) {
+    const admin = await createAdminClient();
+    const { data: row } = await admin
+      .from('training_resources')
+      .select('cover_image_url')
+      .eq('id', body.id)
+      .maybeSingle();
+    const oldPath = (row as { cover_image_url: string | null } | null)?.cover_image_url;
+    if (oldPath) {
+      const supabase = await createServerClient();
+      await supabase.storage.from('training-resources').remove([oldPath]);
+    }
+  }
+
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (typeof body.coverImagePath === 'string') patch.cover_image_url = body.coverImagePath;
+  if (body.removeCoverImage) patch.cover_image_url = null;
   if (typeof body.title === 'string') patch.title = body.title.trim().slice(0, 200);
   if (typeof body.description === 'string') patch.description = body.description.trim().slice(0, 2000);
   if (typeof body.category === 'string') patch.category = body.category.trim().slice(0, 80);
@@ -301,13 +339,18 @@ export async function DELETE(req: Request) {
   const admin = await createAdminClient();
   const { data: row } = await admin
     .from('training_resources')
-    .select('storage_path')
+    .select('storage_path, cover_image_url')
     .eq('id', id)
     .maybeSingle();
 
-  if (row?.storage_path && row.storage_path !== 'pending') {
+  const toRemove = [
+    row?.storage_path && row.storage_path !== 'pending' ? (row.storage_path as string) : null,
+    (row as { cover_image_url: string | null } | null)?.cover_image_url ?? null,
+  ].filter((p): p is string => Boolean(p));
+
+  if (toRemove.length > 0) {
     const supabase = await createServerClient();
-    await supabase.storage.from(BUCKET).remove([row.storage_path as string]);
+    await supabase.storage.from(BUCKET).remove(toRemove);
   }
 
   const { error } = await admin.from('training_resources').delete().eq('id', id);

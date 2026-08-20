@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, DEMO_MODE } from '@/lib/session';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, createServerClient } from '@/lib/supabase/server';
 import { toSlug } from '@/lib/nutrition-admin';
+import { signPreviewPaths } from '@/lib/admin-signed-urls';
 
 export const runtime = 'nodejs';
 
@@ -48,7 +49,26 @@ export async function GET() {
     .order('title', { ascending: true });
 
   if (error) return fail('list', error, 'Could not load mindset lessons.');
-  return NextResponse.json({ lessons: data ?? [] });
+
+  // thumbnail_path and video_url are both private storage paths — sign them
+  // here so the admin console can render preview thumbnails/players without
+  // a per-card round trip.
+  const rows = (data ?? []) as unknown as Array<Record<string, unknown> & {
+    thumbnail_path: string | null;
+    video_url: string | null;
+  }>;
+  const supabase = await createServerClient();
+  const signed = await signPreviewPaths(
+    supabase,
+    rows.flatMap((r) => [r.thumbnail_path, r.video_url])
+  );
+  const lessons = rows.map((r) => ({
+    ...r,
+    thumbnail_signed_url: r.thumbnail_path ? signed.get(r.thumbnail_path) ?? null : null,
+    video_signed_url: r.video_url ? signed.get(r.video_url) ?? null : null,
+  }));
+
+  return NextResponse.json({ lessons });
 }
 
 /* --------------------------------------------------------------------------
@@ -145,7 +165,29 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Video/thumbnail replace or remove — delete the old stored object first
+  // so neither leaves an orphaned file behind.
+  if (typeof body.videoUrl === 'string' || body.removeVideo || typeof body.thumbnailPath === 'string' || body.removeThumbnail) {
+    const { data: row } = await admin
+      .from('mindset_lessons')
+      .select('video_url, thumbnail_path')
+      .eq('id', id)
+      .maybeSingle();
+    const current = row as { video_url: string | null; thumbnail_path: string | null } | null;
+    const toRemove: string[] = [];
+    if ((typeof body.videoUrl === 'string' || body.removeVideo) && current?.video_url) toRemove.push(current.video_url);
+    if ((typeof body.thumbnailPath === 'string' || body.removeThumbnail) && current?.thumbnail_path) {
+      toRemove.push(current.thumbnail_path);
+    }
+    if (toRemove.length > 0) {
+      const supabase = await createServerClient();
+      await supabase.storage.from('training-resources').remove(toRemove);
+    }
+  }
+
   const patch: Record<string, unknown> = {};
+  if (body.removeVideo) patch.video_url = null;
+  if (body.removeThumbnail) patch.thumbnail_path = null;
   if (typeof body.title === 'string' && body.title.trim().length >= 3) patch.title = body.title.trim();
   if (typeof body.description === 'string') patch.summary = body.description.slice(0, 2000);
   if (body.category === null || inCategories(body.category)) {
@@ -190,6 +232,20 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: 'id is required.' }, { status: 400 });
 
   const admin = await createAdminClient();
+  const { data: row } = await admin
+    .from('mindset_lessons')
+    .select('video_url, thumbnail_path')
+    .eq('id', id)
+    .maybeSingle();
+  const toRemove = [
+    (row as { video_url: string | null } | null)?.video_url ?? null,
+    (row as { thumbnail_path: string | null } | null)?.thumbnail_path ?? null,
+  ].filter((p): p is string => Boolean(p));
+  if (toRemove.length > 0) {
+    const supabase = await createServerClient();
+    await supabase.storage.from('training-resources').remove(toRemove);
+  }
+
   const { error } = await admin.from('mindset_lessons').delete().eq('id', id);
   if (error) return fail('delete', error, 'Could not delete that lesson.');
 

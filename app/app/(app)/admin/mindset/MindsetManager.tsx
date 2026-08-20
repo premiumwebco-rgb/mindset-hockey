@@ -1,9 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { uploadWithProgress } from '@/lib/upload-with-progress';
 
 /* ==========================================================================
    MINDSET TRAINING MANAGER  —  ADMIN ONLY
+
+   Deliberately mirrors ResourceManager.tsx (Admin → Content → Training
+   Resources) card-for-card: same `card p-6` containers, the same FIELD/
+   LABEL classes, the same busy/progress/error/notice states, and the same
+   thumbnail-card grid for the library list. The two screens should look and
+   behave like one design system, not two.
 
    Every action calls an endpoint guarded by requireAdmin(); beneath that,
    mindset_lessons' existing RLS write policy (mindset_lessons_admin, 0002)
@@ -23,7 +30,9 @@ const CATEGORIES = [
   { key: 'mental_recovery', label: 'Mental Recovery' },
 ] as const;
 
-const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]));
+const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+const MAX_THUMB_BYTES = 10 * 1024 * 1024;
 
 interface Lesson {
   id: string;
@@ -32,7 +41,9 @@ interface Lesson {
   summary: string | null;
   category: string | null;
   thumbnail_path: string | null;
+  thumbnail_signed_url: string | null;
   video_url: string | null;
+  video_signed_url: string | null;
   duration_sec: number | null;
   required_tier: string;
   is_published: boolean;
@@ -45,7 +56,6 @@ const EMPTY_FORM = {
   slug: '',
   description: '',
   category: '' as string,
-  videoUrl: '',
   durationSec: '',
   requiredTier: 'premium' as 'basic' | 'premium',
   sortOrder: '0',
@@ -58,6 +68,7 @@ function prettyDuration(sec: number | null): string {
 
 export default function MindsetManager() {
   const thumbInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,9 +77,17 @@ export default function MindsetManager() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState(EMPTY_FORM);
+
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [thumbPath, setThumbPath] = useState<string | null>(null);
+  const [thumbPreviewUrl, setThumbPreviewUrl] = useState<string | null>(null);
   const [thumbUploading, setThumbUploading] = useState(false);
+
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPath, setVideoPath] = useState<string | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
 
   const editing = form.id !== '';
 
@@ -93,7 +112,13 @@ export default function MindsetManager() {
     setForm(EMPTY_FORM);
     setThumbFile(null);
     setThumbPath(null);
+    setThumbPreviewUrl(null);
+    setVideoFile(null);
+    setVideoPath(null);
+    setVideoPreviewUrl(null);
+    setVideoProgress(0);
     if (thumbInputRef.current) thumbInputRef.current.value = '';
+    if (videoInputRef.current) videoInputRef.current.value = '';
   }
 
   function editLesson(l: Lesson) {
@@ -103,13 +128,19 @@ export default function MindsetManager() {
       slug: l.slug,
       description: l.summary ?? '',
       category: l.category ?? '',
-      videoUrl: l.video_url ?? '',
       durationSec: l.duration_sec !== null ? String(l.duration_sec) : '',
       requiredTier: l.required_tier === 'basic' ? 'basic' : 'premium',
       sortOrder: String(l.sort_order),
     });
     setThumbPath(l.thumbnail_path);
     setThumbFile(null);
+    setThumbPreviewUrl(l.thumbnail_signed_url);
+    setVideoPath(l.video_url);
+    setVideoFile(null);
+    setVideoPreviewUrl(l.video_signed_url);
+    setVideoProgress(0);
+    setError(null);
+    setNotice(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -146,13 +177,101 @@ export default function MindsetManager() {
       setError('Cover photo must be JPEG, PNG or WebP.');
       return;
     }
-    if (f.size > 10 * 1024 * 1024) {
+    if (f.size > MAX_THUMB_BYTES) {
       setError('Cover photo must be under 10 MB.');
       return;
     }
     setError(null);
     setThumbFile(f);
+    setThumbPreviewUrl(URL.createObjectURL(f));
     void uploadThumbnail(f);
+  }
+
+  /** Removes the lesson's cover photo immediately — no separate save step. */
+  async function removeThumbnail() {
+    setThumbFile(null);
+    setThumbPath(null);
+    setThumbPreviewUrl(null);
+    if (thumbInputRef.current) thumbInputRef.current.value = '';
+    if (!editing) return; // Nothing persisted yet — just a local reset.
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/mindset/lessons', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: form.id, removeThumbnail: true }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'Could not remove that cover photo.');
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function uploadVideo(file: File) {
+    setError(null);
+    setNotice(null);
+    setVideoUploading(true);
+    setVideoProgress(0);
+    try {
+      const initRes = await fetch('/api/admin/mindset/video', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size }),
+      });
+      const init = await initRes.json();
+      if (!initRes.ok) throw new Error(init.error ?? 'Could not start the upload.');
+
+      await uploadWithProgress(init.signedUrl, file, setVideoProgress);
+
+      setVideoPath(init.path);
+      setNotice('Video uploaded. Save this lesson to keep it.');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setVideoUploading(false);
+    }
+  }
+
+  function pickVideo(f: File | null) {
+    if (!f) return;
+    if (!VIDEO_TYPES.includes(f.type)) {
+      setError('Video must be MP4, MOV or WebM.');
+      return;
+    }
+    if (f.size > MAX_VIDEO_BYTES) {
+      setError(`That file is over ${Math.round(MAX_VIDEO_BYTES / 1024 / 1024)} MB.`);
+      return;
+    }
+    setError(null);
+    setVideoFile(f);
+    setVideoPreviewUrl(URL.createObjectURL(f));
+    void uploadVideo(f);
+  }
+
+  /** Removes the lesson's video immediately — no separate save step. */
+  async function removeVideo() {
+    setVideoFile(null);
+    setVideoPath(null);
+    setVideoPreviewUrl(null);
+    setVideoProgress(0);
+    if (videoInputRef.current) videoInputRef.current.value = '';
+    if (!editing) return; // Nothing persisted yet — just a local reset.
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/mindset/lessons', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: form.id, removeVideo: true }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'Could not remove that video.');
+      setNotice('Video removed.');
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
   }
 
   async function save() {
@@ -169,7 +288,7 @@ export default function MindsetManager() {
       slug: form.slug.trim() || undefined,
       description: form.description,
       category: form.category || null,
-      videoUrl: form.videoUrl.trim(),
+      videoUrl: videoPath ?? '',
       durationSec: form.durationSec ? Number(form.durationSec) : null,
       requiredTier: form.requiredTier,
       thumbnailPath: thumbPath,
@@ -235,7 +354,7 @@ export default function MindsetManager() {
   }
 
   async function remove(l: Lesson) {
-    if (!window.confirm(`Delete "${l.title}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${l.title}"? This also removes the stored video and cover photo.`)) return;
     setError(null);
     try {
       const res = await fetch(`/api/admin/mindset/lessons?id=${encodeURIComponent(l.id)}`, { method: 'DELETE' });
@@ -247,6 +366,7 @@ export default function MindsetManager() {
     }
   }
 
+  const busy = thumbUploading || videoUploading || saving;
   const FIELD =
     'w-full rounded-[10px] border border-white/[.14] bg-ink px-4 py-3 text-[15px] text-white placeholder:text-silver-dim/60';
   const LABEL = 'mb-2 block text-[11.5px] font-bold uppercase tracking-[.14em] text-silver-dim';
@@ -277,12 +397,20 @@ export default function MindsetManager() {
               onChange={(e) => pickThumb(e.target.files?.[0] ?? null)}
               className="block w-full text-[14px] text-silver file:mr-4 file:rounded-[10px] file:border-0 file:bg-electric file:px-4 file:py-2.5 file:text-[13.5px] file:font-bold file:text-white hover:file:bg-electric-glow"
             />
+            {thumbPreviewUrl && (
+              <div className="mt-3 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={thumbPreviewUrl} alt="Cover preview" className="h-20 w-32 rounded-lg border border-white/[.1] object-cover" />
+                <button
+                  onClick={removeThumbnail}
+                  className="rounded-[8px] border border-rink-red/40 px-3 py-1.5 text-[12.5px] font-semibold text-rink-red hover:bg-rink-red/10"
+                >
+                  Remove cover photo
+                </button>
+              </div>
+            )}
             <p className="mt-2 text-[12.5px] text-silver-dim">
-              {thumbUploading
-                ? 'Uploading…'
-                : thumbPath
-                  ? `Saved: ${thumbFile?.name ?? thumbPath.split('/').pop()}`
-                  : 'JPEG, PNG or WebP, up to 10 MB.'}
+              {thumbUploading ? 'Uploading…' : 'JPEG, PNG or WebP, up to 10 MB.'}
             </p>
           </div>
 
@@ -350,15 +478,53 @@ export default function MindsetManager() {
             </div>
           </div>
 
+          {/* video file upload */}
           <div>
-            <label htmlFor="mind-video" className={LABEL}>Video URL</label>
+            <label htmlFor="mind-video" className={LABEL}>Lesson video</label>
             <input
+              ref={videoInputRef}
               id="mind-video"
-              value={form.videoUrl}
-              onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-              placeholder="https://…"
-              className={FIELD}
+              type="file"
+              accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+              disabled={videoUploading}
+              onChange={(e) => pickVideo(e.target.files?.[0] ?? null)}
+              className="block w-full text-[14px] text-silver file:mr-4 file:rounded-[10px] file:border-0 file:bg-electric file:px-4 file:py-2.5 file:text-[13.5px] file:font-bold file:text-white hover:file:bg-electric-glow"
             />
+
+            {videoUploading ? (
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-[13.5px]">
+                  <span className="font-semibold text-white">Uploading…</span>
+                  <span className="tabular-nums text-silver-dim">{videoProgress}%</span>
+                </div>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-navy-700">
+                  <div
+                    className="h-full rounded-full bg-electric transition-[width] duration-300"
+                    style={{ width: `${videoProgress}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[12.5px] text-silver-dim">Keep this tab open until it finishes.</p>
+              </div>
+            ) : videoPreviewUrl ? (
+              <div className="mt-3 grid gap-2">
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video src={videoPreviewUrl} controls className="max-h-64 w-full rounded-lg border border-white/[.1] bg-ink" />
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-[#3ddc84]/40 bg-[#3ddc84]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[.12em] text-[#3ddc84]">
+                    Video attached
+                  </span>
+                  <button
+                    onClick={removeVideo}
+                    className="rounded-[8px] border border-rink-red/40 px-3 py-1.5 text-[12.5px] font-semibold text-rink-red hover:bg-rink-red/10"
+                  >
+                    Remove video
+                  </button>
+                </div>
+                <p className="text-[12.5px] text-silver-dim">Pick a new file above to replace this video.</p>
+              </div>
+            ) : (
+              <p className="mt-2 text-[12.5px] text-silver-dim">MP4, MOV or WebM, up to 500 MB.</p>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -399,7 +565,7 @@ export default function MindsetManager() {
 
           <button
             onClick={save}
-            disabled={saving || thumbUploading || form.title.trim().length < 3}
+            disabled={busy || form.title.trim().length < 3}
             className="inline-flex items-center justify-center rounded-[10px] bg-electric px-6 py-3 text-[14.5px] font-bold text-white transition-colors hover:bg-electric-glow disabled:pointer-events-none disabled:opacity-40"
           >
             {editing ? 'Save changes' : 'Create lesson'}
@@ -425,30 +591,48 @@ export default function MindsetManager() {
                   <h4 className="text-[12px] font-bold uppercase tracking-[.16em] text-electric-glow">
                     {c.label} ({inCat.length})
                   </h4>
-                  <div className="mt-2 grid gap-2">
+                  <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {inCat.map((l, i) => (
-                      <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[.08] px-4 py-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14.5px] font-semibold text-white">{l.title}</p>
-                          <p className="mt-0.5 text-[12.5px] text-silver-dim">
-                            {prettyDuration(l.duration_sec)} · {l.required_tier === 'premium' ? 'Premium only' : 'Standard and above'}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <button onClick={() => reorder(inCat, i, -1)} disabled={i === 0} aria-label="Move up" className="rounded-[8px] border border-white/[.14] px-2.5 py-1.5 text-[13px] font-semibold text-white hover:border-electric disabled:pointer-events-none disabled:opacity-30">↑</button>
-                          <button onClick={() => reorder(inCat, i, 1)} disabled={i === inCat.length - 1} aria-label="Move down" className="rounded-[8px] border border-white/[.14] px-2.5 py-1.5 text-[13px] font-semibold text-white hover:border-electric disabled:pointer-events-none disabled:opacity-30">↓</button>
-                          <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[.12em] ${l.is_published ? 'border-[#3ddc84]/40 bg-[#3ddc84]/10 text-[#3ddc84]' : 'border-white/20 text-silver-dim'}`}>
+                      <div key={l.id} className="overflow-hidden rounded-xl border border-white/[.08]">
+                        <div className="relative aspect-video bg-navy-900">
+                          {l.thumbnail_signed_url ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={l.thumbnail_signed_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="grid h-full place-items-center text-[11px] font-bold uppercase tracking-[.14em] text-silver-dim">
+                              No cover photo
+                            </div>
+                          )}
+                          <span
+                            className={`absolute right-2 top-2 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[.12em] ${
+                              l.is_published
+                                ? 'border-[#3ddc84]/40 bg-[#3ddc84]/90 text-ink'
+                                : 'border-white/20 bg-ink/80 text-silver-dim'
+                            }`}
+                          >
                             {l.is_published ? 'Live' : 'Draft'}
                           </span>
-                          <button onClick={() => togglePublish(l)} className="rounded-[8px] border border-white/[.14] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:border-electric">
-                            {l.is_published ? 'Unpublish' : 'Publish'}
-                          </button>
-                          <button onClick={() => editLesson(l)} className="rounded-[8px] border border-white/[.14] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:border-electric">
-                            Edit
-                          </button>
-                          <button onClick={() => remove(l)} className="rounded-[8px] border border-rink-red/40 px-3 py-1.5 text-[12.5px] font-semibold text-rink-red hover:bg-rink-red/10">
-                            Delete
-                          </button>
+                        </div>
+                        <div className="p-4">
+                          <p className="truncate text-[14.5px] font-semibold text-white">{l.title}</p>
+                          {l.summary && <p className="mt-1 line-clamp-2 text-[12.5px] text-silver-dim">{l.summary}</p>}
+                          <p className="mt-2 text-[11.5px] text-silver-dim">
+                            {prettyDuration(l.duration_sec)} · {l.required_tier === 'premium' ? 'Premium only' : 'Standard and above'}
+                            {l.video_url ? ' · Video attached' : ' · No video'}
+                          </p>
+                          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                            <button onClick={() => reorder(inCat, i, -1)} disabled={i === 0} aria-label="Move up" className="rounded-[8px] border border-white/[.14] px-2.5 py-1.5 text-[13px] font-semibold text-white hover:border-electric disabled:pointer-events-none disabled:opacity-30">↑</button>
+                            <button onClick={() => reorder(inCat, i, 1)} disabled={i === inCat.length - 1} aria-label="Move down" className="rounded-[8px] border border-white/[.14] px-2.5 py-1.5 text-[13px] font-semibold text-white hover:border-electric disabled:pointer-events-none disabled:opacity-30">↓</button>
+                            <button onClick={() => togglePublish(l)} className="rounded-[8px] border border-white/[.14] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:border-electric">
+                              {l.is_published ? 'Unpublish' : 'Publish'}
+                            </button>
+                            <button onClick={() => editLesson(l)} className="rounded-[8px] border border-white/[.14] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:border-electric">
+                              Edit
+                            </button>
+                            <button onClick={() => remove(l)} className="rounded-[8px] border border-rink-red/40 px-3 py-1.5 text-[12.5px] font-semibold text-rink-red hover:bg-rink-red/10">
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
