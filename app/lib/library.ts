@@ -568,3 +568,111 @@ export async function resolveResourceAccess(
 
   return { ok: true, resource: { ...card, locked: false, coverImageSignedUrl }, signedUrl };
 }
+
+/* ==========================================================================
+   DEVELOPMENT FOCUS — PILLAR-BASED RECOMMENDATIONS (Player Profile phase)
+
+   Deterministic, not AI: a player's `focus_pillars` (players table, set at
+   onboarding / Edit Profile) are matched directly against
+   `training_resources.pillar` (migration 0009) — the exact same column
+   getLibrary()'s pillar filter already uses.
+
+   Deliberately NOT built on top of getLibrary(): calling getLibrary() once
+   per focus pillar was the first cut here, but getLibrary() is shaped for
+   the full /library page — its entitlement and counts queries are
+   unfiltered (every published row, regardless of pillar) and its cards query
+   has no limit, so it signs a cover photo for every published resource in
+   the pillar even though only a handful are ever shown. Called once per
+   focus pillar that is N unbounded row fetches and N unbounded rounds of
+   signed-URL generation for a section that displays at most a few cards.
+
+   This instead follows the SAME shape getRecommendableResources() below
+   already uses for the AI skill-tag recommendation feature: one entitlement
+   query and one bounded, LIMIT-ed teaser query covering every focus pillar at
+   once (`.in('pillar', ...)`), with covers signed only for the rows actually
+   fetched. Same RLS, same lock/upsell rule, same private cover-signing path
+   — only the query shape changes.
+   ========================================================================== */
+
+export interface PillarRecommendation {
+  pillar: Pillar;
+  resources: LibraryCard[];
+}
+
+/** Candidate rows fetched per pillar before grouping and slicing to `perPillar`. */
+const PILLAR_RECOMMENDATION_CANDIDATES_PER_PILLAR = 12;
+
+/**
+ * Up to `perPillar` published resources for each of the player's focus
+ * pillars, unlocked-first, in the library's normal (sort_order, newest)
+ * order within each pillar. A pillar with no published resources yet is
+ * simply omitted — never backfilled with unrelated content.
+ *
+ * Exactly two Supabase queries total, however many focus pillars the player
+ * has (onboarding asks for "two, not six", so in practice this is 1-2
+ * pillars) — not two queries per pillar.
+ */
+export async function getPillarRecommendations(
+  session: Session,
+  focusPillars: Pillar[],
+  perPillar = 3
+): Promise<PillarRecommendation[]> {
+  if (DEMO_MODE || focusPillars.length === 0) return [];
+
+  const { createServerClient, createAdminClient } = await import('./supabase/server');
+  const supabase = await createServerClient();
+  const admin = await createAdminClient();
+
+  const staff = session.role === 'admin' || session.role === 'coach';
+
+  /* -- 1. ENTITLEMENT: which of these pillars' rows may this user read? ---- */
+  const { data: allowedRows, error: allowedError } = await supabase
+    .from('training_resources')
+    .select('id')
+    .eq('is_published', true)
+    .in('pillar', focusPillars);
+
+  if (allowedError) {
+    console.error('[pillar-recommendations] entitlement query failed:', allowedError.message);
+  }
+  const unlockedIds = new Set((allowedRows ?? []).map((r) => r.id as string));
+
+  /* -- 2. TEASER: a bounded candidate set across all requested pillars ----- */
+  const candidateLimit = focusPillars.length * PILLAR_RECOMMENDATION_CANDIDATES_PER_PILLAR;
+  const { data: rows, error: rowsError } = await admin
+    .from('training_resources')
+    .select(CARD_COLUMNS)
+    .eq('is_published', true)
+    .in('pillar', focusPillars)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(candidateLimit);
+
+  if (rowsError) {
+    console.error('[pillar-recommendations] candidate query failed:', rowsError.message);
+    return [];
+  }
+
+  const castRows = (rows ?? []) as unknown as RawRow[];
+  const signedCovers = await signPreviewPaths(supabase, castRows.map((row) => row.cover_image_url));
+
+  const byPillar = new Map<Pillar, LibraryCard[]>();
+  for (const row of castRows) {
+    const cover = row.cover_image_url ? (signedCovers.get(row.cover_image_url) ?? null) : null;
+    const card = toCard(row, !staff && !unlockedIds.has(row.id), cover);
+    if (!card) continue;
+    const list = byPillar.get(card.pillar) ?? [];
+    list.push(card);
+    byPillar.set(card.pillar, list);
+  }
+
+  const results: PillarRecommendation[] = [];
+  for (const pillar of focusPillars) {
+    const cards = byPillar.get(pillar);
+    if (!cards || cards.length === 0) continue;
+    const sorted = [...cards].sort((a, b) => Number(a.locked) - Number(b.locked));
+    results.push({ pillar, resources: sorted.slice(0, perPillar) });
+  }
+
+  return results;
+}

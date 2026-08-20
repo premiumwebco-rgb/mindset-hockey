@@ -37,6 +37,11 @@ export default async function AccountPage() {
               Change password
             </a>
           </p>
+          <p className="mt-2 text-[13.5px]">
+            <a href="/profile" className="text-electric-glow underline underline-offset-4">
+              Edit player profile
+            </a>
+          </p>
         </Card>
 
         <Card className="p-6">

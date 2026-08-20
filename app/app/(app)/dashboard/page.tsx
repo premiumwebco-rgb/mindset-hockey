@@ -6,15 +6,21 @@ import {
   getWorkoutRoutines,
   getWorkoutActivityStats,
   getMindsetLessons,
+  getPlayerProfile,
   OCCASION_LABEL,
   OCCASION_NUTRITION_CATEGORY,
   isRoutineOccasion,
 } from '@/lib/data';
 import { getCookbook, type RecipeCard } from '@/lib/nutrition';
 import { CATEGORY_SHORT_LABEL } from '@/lib/ai/recommendations';
-import { getDrillRecommendation, type DrillRecommendation } from '@/lib/library';
+import {
+  getDrillRecommendation,
+  getPillarRecommendations,
+  type DrillRecommendation,
+  type PillarRecommendation,
+} from '@/lib/library';
 import { parseCategories, formatDate, type AnalysisStatus } from '@/lib/ai/present';
-import { Button, Card, Eyebrow } from '@/components/ui';
+import { Button, Card, Eyebrow, PillarChip } from '@/components/ui';
 
 export const metadata = { title: 'Dashboard — Mindset Hockey' };
 
@@ -57,6 +63,22 @@ function timeOfDayGreeting(): string {
   return 'Good Evening';
 }
 
+const POSITION_LABEL: Record<string, string> = {
+  forward: 'Forward',
+  defense: 'Defence',
+  goalie: 'Goaltender',
+};
+
+const LEVEL_LABEL: Record<string, string> = {
+  house: 'House / Rec',
+  a: 'A',
+  aa: 'AA',
+  aaa: 'AAA',
+  prep: 'Prep',
+  junior: 'Junior',
+  college: 'College',
+};
+
 export default async function DashboardPage() {
   const session = await requireSession();
 
@@ -66,13 +88,21 @@ export default async function DashboardPage() {
   const nutritionPlans = canUse(session, 'nutrition_plans');
   const inactive = !session.subscriptionActive && session.role !== 'admin';
 
-  const [submissions, latestAnalysis, routines, activity, mindsetLessons] = await Promise.all([
-    premium ? getSubmissions(session) : Promise.resolve([]),
-    aiShotAnalysis ? loadLatestAnalysis() : Promise.resolve(null),
-    workoutPlans ? getWorkoutRoutines() : Promise.resolve([]),
-    workoutPlans ? getWorkoutActivityStats(session) : Promise.resolve({ streakDays: 0, completedThisWeek: 0 }),
-    premium ? getMindsetLessons(session) : Promise.resolve([]),
-  ]);
+  // Read first — the pillar-recommendation fetch below depends on it, so it
+  // cannot join the Promise.all batch that only depends on tier/role.
+  const player = await getPlayerProfile(session);
+
+  const [submissions, latestAnalysis, routines, activity, mindsetLessons, pillarRecommendations] =
+    await Promise.all([
+      premium ? getSubmissions(session) : Promise.resolve([]),
+      aiShotAnalysis ? loadLatestAnalysis() : Promise.resolve(null),
+      workoutPlans ? getWorkoutRoutines() : Promise.resolve([]),
+      workoutPlans ? getWorkoutActivityStats(session) : Promise.resolve({ streakDays: 0, completedThisWeek: 0 }),
+      premium ? getMindsetLessons(session) : Promise.resolve([]),
+      player && player.focusPillars.length > 0
+        ? getPillarRecommendations(session, player.focusPillars)
+        : Promise.resolve<PillarRecommendation[]>([]),
+    ]);
   const mindsetDone = mindsetLessons.filter((l) => l.completed).length;
 
   const todaysRoutine = pickOfTheDay(routines);
@@ -110,7 +140,13 @@ export default async function DashboardPage() {
     }
   }
 
-  const firstName = (session.fullName || session.email).split(/[ @]/)[0];
+  const firstName = player?.firstName || (session.fullName || session.email).split(/[ @]/)[0];
+  const positionLevelLine =
+    player && (player.level || player.position)
+      ? `${POSITION_LABEL[player.position]} · ${LEVEL_LABEL[player.level]}${
+          player.trainingDaysGoal ? ` · ${player.trainingDaysGoal}x/week` : ''
+        }`
+      : null;
   const streakLine =
     activity.streakDays > 0
       ? `🔥 ${activity.streakDays}-day streak`
@@ -130,7 +166,25 @@ export default async function DashboardPage() {
         {timeOfDayGreeting()}
       </p>
       <h1 className="display mt-1 text-[clamp(28px,7vw,40px)]">{firstName}</h1>
+      {positionLevelLine && (
+        <p className="mt-1 text-[13.5px] font-semibold uppercase tracking-[.1em] text-electric-glow">
+          {positionLevelLine}
+        </p>
+      )}
       <p className="mt-2 text-lg text-silver-dim">{streakLine}</p>
+
+      {!player && session.role === 'member' && (
+        <Card className="mt-5 border-electric/30 bg-electric/[.06] p-5">
+          <h3 className="display text-lg">Finish setting up your player</h3>
+          <p className="mt-1.5 text-base text-silver-dim">
+            Level, position, stick flex and training days — about 60 seconds, and it&apos;s what
+            personalizes everything below.
+          </p>
+          <div className="mt-3">
+            <Button href="/onboarding" size="sm">Set Up Player</Button>
+          </div>
+        </Card>
+      )}
 
       {inactive && (
         <Card className="mt-5 border-amber/40 bg-amber/[.06] p-5">
@@ -185,6 +239,42 @@ export default async function DashboardPage() {
           </>
         )}
       </Card>
+
+      {/* DEVELOPMENT FOCUS — deterministic: the player's own focus_pillars
+          (players table) matched directly against training_resources.pillar
+          (same column /library filters on). No AI, no invented relevance —
+          a pillar with nothing published for it simply doesn't appear. */}
+      {pillarRecommendations.length > 0 && (
+        <Card hover className="mt-5 p-5">
+          <Eyebrow>Your Development Focus</Eyebrow>
+          <div className="mt-3 grid gap-4">
+            {pillarRecommendations.map(({ pillar, resources }) => (
+              <div key={pillar}>
+                <div className="mb-2 flex items-center gap-2">
+                  <PillarChip pillar={pillar} />
+                </div>
+                <div className="grid gap-2">
+                  {resources.map((r) => (
+                    <Link
+                      key={r.id}
+                      href={r.locked ? `/upgrade?need=${r.requiredTier}` : `/library/${r.id}`}
+                    >
+                      <Card hover className="flex items-center justify-between gap-3 p-3.5">
+                        <p className="min-w-0 truncate text-[14px] font-semibold text-white">
+                          {r.title}
+                        </p>
+                        <span className="shrink-0 text-silver-dim">
+                          {r.locked ? '🔒' : '→'}
+                        </span>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* AI INSIGHT — one weakness, one drill, one action. No score grid,
           no recommendation list. */}
@@ -353,6 +443,18 @@ export default async function DashboardPage() {
                   <p className="text-base font-semibold text-white">Browse the training library</p>
                   <p className="mt-0.5 text-sm text-silver-dim">
                     Lessons and drills across all six pillars, filtered to your tier.
+                  </p>
+                </div>
+                <span className="shrink-0 text-silver-dim">→</span>
+              </Card>
+            </Link>
+
+            <Link href="/profile">
+              <Card hover className="flex items-center justify-between gap-4 p-4">
+                <div>
+                  <p className="text-base font-semibold text-white">Player profile</p>
+                  <p className="mt-0.5 text-sm text-silver-dim">
+                    View or update level, position, stick flex, pillars and training days.
                   </p>
                 </div>
                 <span className="shrink-0 text-silver-dim">→</span>

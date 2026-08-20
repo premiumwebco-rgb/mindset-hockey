@@ -267,5 +267,9 @@ export interface Player {
   level: PlayLevel;
   position: Position;
   shoots: 'left' | 'right';
+  stickFlex: number | null;
   teamName: string | null;
+  /** Which of the six pillars this player is training right now. */
+  focusPillars: Pillar[];
+  trainingDaysGoal: number;
 }

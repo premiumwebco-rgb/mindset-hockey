@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import { requireSession, DEMO_MODE } from '@/lib/session';
+import { getPlayerProfile } from '@/lib/data';
 import { PILLARS } from '@/lib/types';
 import { planFromParam } from '@/lib/plans';
 import { Button, Card, PageHeading } from '@/components/ui';
@@ -19,6 +21,18 @@ export default async function Onboarding({
   const session = await requireSession();
   const sp = await searchParams;
   const formError = sp.error ? (ERROR_MESSAGE[sp.error] ?? 'Something went wrong. Try again.') : null;
+
+  // Onboarding is a one-time setup step, not a gate a returning member should
+  // hit repeatedly. A players row (migration 0001) existing at all IS "has
+  // completed onboarding" — the same signal savePlayerProfile() uses to
+  // decide insert vs. update. Skip straight to the profile rather than
+  // showing the form again. A Stripe-checkout return still needs to land
+  // here first so the success banner has somewhere to render, so only
+  // redirect on a plain visit.
+  if (!formError && sp.checkout !== 'success') {
+    const existingPlayer = await getPlayerProfile(session);
+    if (existingPlayer) redirect('/profile');
+  }
 
   /* ---- Returning from Stripe Checkout ------------------------------------
      The query string is treated as a hint, never as proof. When it claims

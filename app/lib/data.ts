@@ -1,7 +1,7 @@
 import { DEMO_MODE, hasTier, type Session } from './session';
 import { createServerClient } from './supabase/server';
 import type { RecipeCategory } from './nutrition';
-import type { Tier } from './types';
+import type { Tier, Player } from './types';
 
 /* ==========================================================================
    Server-side data access.
@@ -669,5 +669,60 @@ export async function getSubmissionForViewing(session: Session, id: string): Pro
       videoSignedUrl,
       feedback: feedbackRow ? { body: feedbackRow.body as string, createdAt: feedbackRow.created_at as string } : null,
     },
+  };
+}
+
+
+/* ------------------------------------------------------------ player profile */
+
+/**
+ * The signed-in member's own player row (migration 0001's `players` table —
+ * the same table the onboarding form and Edit Profile write to). Reads
+ * through the session-scoped client, so "own players" RLS is what actually
+ * scopes this to the caller; null means onboarding has not been completed
+ * yet, not an error.
+ */
+export async function getPlayerProfile(session: Session): Promise<Player | null> {
+  if (DEMO_MODE) {
+    return {
+      id: 'demo-player',
+      profileId: session.userId,
+      firstName: session.fullName.split(' ')[0] || 'Player',
+      lastName: null,
+      birthYear: 2011,
+      level: 'aa',
+      position: 'forward',
+      shoots: 'right',
+      stickFlex: 65,
+      teamName: null,
+      focusPillars: ['mechanics', 'mindset'],
+      trainingDaysGoal: 4,
+    };
+  }
+
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from('players')
+    .select(
+      'id, profile_id, first_name, last_name, birth_year, level, position, shoots, stick_flex, team_name, focus_pillars, training_days_goal'
+    )
+    .eq('profile_id', session.userId)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    profileId: data.profile_id,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    birthYear: data.birth_year,
+    level: data.level,
+    position: data.position,
+    shoots: data.shoots,
+    stickFlex: data.stick_flex,
+    teamName: data.team_name,
+    focusPillars: (data.focus_pillars ?? []) as Player['focusPillars'],
+    trainingDaysGoal: data.training_days_goal,
   };
 }

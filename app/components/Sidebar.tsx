@@ -141,7 +141,10 @@ export default function Sidebar({
       {section('Training', MEMBER_NAV)}
       {isStaff && section('Coaching', STAFF_NAV)}
       {isAdmin && section('Admin', ADMIN_NAV)}
-      {section('Account', [{ href: '/account', label: 'Account & Billing' }])}
+      {section('Account', [
+        { href: '/profile', label: 'Player Profile' },
+        { href: '/account', label: 'Account & Billing' },
+      ])}
     </>
   );
 
@@ -180,7 +183,11 @@ export default function Sidebar({
           </span>
         </Link>
 
-        <div className="mb-6 rounded-xl border border-white/[.08] bg-ink px-3.5 py-3">
+        <Link
+          href="/profile"
+          onClick={() => setOpen(false)}
+          className="mb-6 block rounded-xl border border-white/[.08] bg-ink px-3.5 py-3 transition-colors hover:border-white/20"
+        >
           <p className="truncate text-[13px] font-semibold text-white">{playerName}</p>
           <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-silver-dim">
             <span
@@ -192,7 +199,7 @@ export default function Sidebar({
             {isAdmin ? 'Admin' : TIER_LABEL[tier]}
             {!subscriptionActive && !isAdmin && tier !== 'none' && ' · inactive'}
           </p>
-        </div>
+        </Link>
 
         {body}
 
