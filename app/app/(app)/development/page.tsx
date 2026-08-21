@@ -13,6 +13,7 @@ import {
 } from '@/lib/data';
 import { getCookbook, type RecipeCard } from '@/lib/nutrition';
 import { getPillarRecommendations, type PillarRecommendation } from '@/lib/library';
+import { getActiveAssignmentsForPlayer } from '@/lib/assignments';
 import { CATEGORY_SHORT_LABEL } from '@/lib/ai/recommendations';
 import { parseCategories, formatDate } from '@/lib/ai/present';
 import { Button, Card, EmptyState, Eyebrow, PageHeading, PillarChip, ProgressBar } from '@/components/ui';
@@ -86,7 +87,7 @@ export default async function DevelopmentPlanPage() {
   const aiShotAnalysis = canUse(session, 'ai_shot_analysis');
   const nutritionPlans = canUse(session, 'nutrition_plans');
 
-  const [mindsetLessons, pillarRecommendations, routines, workoutActivity, submissions, latestAnalysis] =
+  const [mindsetLessons, pillarRecommendations, routines, workoutActivity, submissions, latestAnalysis, assignments] =
     await Promise.all([
       premiumMindset ? getMindsetLessons(session) : Promise.resolve([]),
       player && player.focusPillars.length > 0
@@ -96,6 +97,7 @@ export default async function DevelopmentPlanPage() {
       workoutPlans ? getWorkoutActivityStats(session) : Promise.resolve({ streakDays: 0, completedThisWeek: 0 }),
       videoReview ? getSubmissions(session) : Promise.resolve([]),
       aiShotAnalysis ? getLatestAnalysis(session) : Promise.resolve(null),
+      getActiveAssignmentsForPlayer(session),
     ]);
 
   // No player profile at all — nothing below can be personalized honestly.
@@ -171,6 +173,16 @@ export default async function DevelopmentPlanPage() {
     }
   }
 
+  // Coach assignments — sorted so anything overdue-and-not-done surfaces
+  // first, then the rest by due date, then no-due-date items last.
+  const sortedAssignments = [...assignments].sort((a, b) => {
+    if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+    if (!a.dueAt && !b.dueAt) return 0;
+    if (!a.dueAt) return 1;
+    if (!b.dueAt) return -1;
+    return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+  });
+
   // Today's short checklist — only items with something real behind them.
   const todayItems: { label: string; href: string }[] = [];
   if (todaysRoutine) {
@@ -198,8 +210,45 @@ export default async function DevelopmentPlanPage() {
         </p>
       )}
 
+      {/* ASSIGNED BY YOUR COACH — additive only. Recommendations below are
+          never suppressed or replaced by this section; the two coexist. */}
+      {sortedAssignments.length > 0 && (
+        <div id="assigned" className="scroll-mt-6">
+          <Card className="p-6">
+            <Eyebrow>Assigned By Your Coach</Eyebrow>
+            <div className="mt-3 grid gap-2.5">
+              {sortedAssignments.map((a) => (
+                <Link key={a.id} href={a.href}>
+                  <Card hover className="flex items-center justify-between gap-3 p-3.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-[14.5px] font-semibold text-white">{a.title}</p>
+                      <p className="mt-0.5 truncate text-[12.5px] text-silver-dim">
+                        {a.dueAt ? `Due ${formatDate(a.dueAt)}` : 'No due date'}
+                        {a.note ? ` · "${a.note}"` : ''}
+                      </p>
+                    </div>
+                    <span
+                      className={
+                        'shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[.08em] ' +
+                        (a.completed
+                          ? 'border-[#3ddc84]/40 bg-[#3ddc84]/10 text-[#3ddc84]'
+                          : a.overdue
+                            ? 'border-red-400/40 bg-red-400/10 text-red-300'
+                            : 'border-electric/40 bg-electric/10 text-electric-glow')
+                      }
+                    >
+                      {a.completed ? 'Completed' : a.overdue ? 'Overdue' : 'Active'}
+                    </span>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* CURRENT FOCUS */}
-      <Card className="p-6">
+      <Card className={sortedAssignments.length > 0 ? 'mt-5 p-6' : 'p-6'}>
         <Eyebrow>Current Focus</Eyebrow>
         {player.focusPillars.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">

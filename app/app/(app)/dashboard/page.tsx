@@ -21,6 +21,7 @@ import {
   type PillarRecommendation,
 } from '@/lib/library';
 import { parseCategories, formatDate } from '@/lib/ai/present';
+import { getActiveAssignmentsForPlayer } from '@/lib/assignments';
 import { Button, Card, Eyebrow, PillarChip } from '@/components/ui';
 
 export const metadata = { title: 'Dashboard — Mindset Hockey' };
@@ -62,7 +63,7 @@ export default async function DashboardPage() {
   // cannot join the Promise.all batch that only depends on tier/role.
   const player = await getPlayerProfile(session);
 
-  const [submissions, latestAnalysis, routines, activity, mindsetLessons, pillarRecommendations] =
+  const [submissions, latestAnalysis, routines, activity, mindsetLessons, pillarRecommendations, assignments] =
     await Promise.all([
       premium ? getSubmissions(session) : Promise.resolve([]),
       aiShotAnalysis ? getLatestAnalysis(session) : Promise.resolve(null),
@@ -72,7 +73,9 @@ export default async function DashboardPage() {
       player && player.focusPillars.length > 0
         ? getPillarRecommendations(session, player.focusPillars)
         : Promise.resolve<PillarRecommendation[]>([]),
+      getActiveAssignmentsForPlayer(session),
     ]);
+  const activeAssignmentCount = assignments.filter((a) => !a.completed).length;
   const mindsetDone = mindsetLessons.filter((l) => l.completed).length;
 
   const todaysRoutine = pickOfTheDay(routines);
@@ -142,6 +145,12 @@ export default async function DashboardPage() {
         </p>
       )}
       <p className="mt-2 text-lg text-silver-dim">{streakLine}</p>
+
+      {activeAssignmentCount > 0 && (
+        <Link href="/development#assigned" className="mt-2 inline-block text-base font-semibold text-electric-glow underline underline-offset-4">
+          {activeAssignmentCount} Active Coach Assignment{activeAssignmentCount === 1 ? '' : 's'}
+        </Link>
+      )}
 
       {!player && session.role === 'member' && (
         <Card className="mt-5 border-electric/30 bg-electric/[.06] p-5">

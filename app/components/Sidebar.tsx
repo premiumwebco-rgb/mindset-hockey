@@ -31,6 +31,7 @@ const MEMBER_NAV: NavItem[] = [
 const STAFF_NAV: NavItem[] = [
   { href: '/coach/queue', label: 'Review Queue' },
   { href: '/coach/ai-queue', label: 'AI Review Queue' },
+  { href: '/coach/assign', label: 'Assign to Player' },
 ];
 
 const ADMIN_NAV: NavItem[] = [
