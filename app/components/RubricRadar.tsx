@@ -32,7 +32,18 @@ export default function RubricRadar({
     }).join(' ') + ' Z';
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Shot mechanics radar">
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      role="img"
+      aria-label="Shot mechanics radar"
+      // Fixed intrinsic width/height (needed for the viewBox math above) would
+      // otherwise force this SVG past a narrow card on mobile — max-width:100% +
+      // height:auto lets it shrink to its container while the viewBox keeps the
+      // radar geometry correctly proportioned.
+      style={{ maxWidth: '100%', height: 'auto' }}
+    >
       {rings.map((ring) => (
         <polygon
           key={ring}

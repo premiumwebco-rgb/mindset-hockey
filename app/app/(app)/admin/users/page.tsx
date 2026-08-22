@@ -1,7 +1,7 @@
 import { requireAdmin, DEMO_MODE } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/server';
-import { Card, Eyebrow, TierPill } from '@/components/ui';
-import UserRow from '@/components/admin/UserRow';
+import { Card, Eyebrow } from '@/components/ui';
+import UserRow, { UserCard } from '@/components/admin/UserRow';
 
 export const metadata = { title: 'Users — Admin' };
 
@@ -42,7 +42,9 @@ export default async function AdminUsersPage() {
       <h1 className="display text-[clamp(28px,5vw,44px)]">Users</h1>
       <p className="mt-3 text-[15px] text-silver-dim">{users.length} accounts</p>
 
-      <Card className="mt-7 overflow-hidden p-0">
+      {/* Desktop/tablet: real table. Below md this becomes stacked cards
+          (below) instead of a horizontally-scrolled or crushed table. */}
+      <Card className="mt-7 hidden overflow-hidden p-0 md:block">
         <table className="w-full text-left text-[14px]">
           <thead className="border-b border-white/[.08] bg-navy-700/40">
             <tr className="text-[10px] uppercase tracking-[.14em] text-silver-dim">
@@ -60,6 +62,12 @@ export default async function AdminUsersPage() {
           </tbody>
         </table>
       </Card>
+
+      <div className="mt-7 grid gap-3 md:hidden">
+        {users.map((u) => (
+          <UserCard key={u.id} user={u} demo={DEMO_MODE} />
+        ))}
+      </div>
     </div>
   );
 }

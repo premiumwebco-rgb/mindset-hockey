@@ -201,18 +201,23 @@ export default function ReviewEditor({
           </h3>
 
           <div className="grid gap-2">
+            {/* w-24 fixed + a select at its default width:100% (from
+                globals.css) used to add up to more than the row — a genuine
+                horizontal-overflow bug on narrow phones. min-w-0 + flex-1 on
+                the select lets it actually shrink to the remaining space. */}
             <div className="flex gap-2">
               <input
                 aria-label="Timestamp"
                 placeholder="0:03"
                 value={annMs}
                 onChange={(e) => setAnnMs(e.target.value)}
-                className="w-24 shrink-0"
+                className="w-20 shrink-0 sm:w-24"
               />
               <select
                 aria-label="Rubric point"
                 value={annPoint}
                 onChange={(e) => setAnnPoint(Number(e.target.value))}
+                className="min-w-0 flex-1"
               >
                 {RUBRIC.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -230,7 +235,7 @@ export default function ReviewEditor({
             <button
               type="button"
               onClick={addAnnotation}
-              className="rounded-lg border border-white/[.14] px-4 py-2.5 text-[13px] font-semibold hover:border-electric hover:text-white"
+              className="min-h-[44px] w-full rounded-lg border border-white/[.14] px-4 py-2.5 text-[13px] font-semibold hover:border-electric hover:text-white sm:w-auto"
             >
               Add note
             </button>

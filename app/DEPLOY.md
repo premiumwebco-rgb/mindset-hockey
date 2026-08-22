@@ -33,12 +33,12 @@ The database is already live and migrations 0001–0004 are applied. What remain
 is configuration.
 
 1. **Auth → URL Configuration**
-   - Site URL: `https://mindsethockey.com`
+   - Site URL: `https://mindsethockey.company`
    - Redirect URLs — add both:
-     - `https://mindsethockey.com/auth/callback`
+     - `https://mindsethockey.company/auth/callback`
      - `http://localhost:3005/auth/callback` (keep for local dev)
    - Without the production entry, every confirmation email link fails.
-2. **Auth → Providers → Email** — confirm "Confirm email" is ON.
+2. **Auth → Providers → Email** — turn "Confirm email" **OFF**. Signup is designed to authenticate the member immediately and send them straight to checkout; requiring email confirmation first breaks that flow (they land signed out).
 3. **Auth → Rate limits** — leave the defaults on; they are your brute-force protection.
 4. **Storage** — confirm `member-videos` and `analysis-frames` are **private**.
    These hold video of minors. Re-check after any dashboard change:
@@ -72,7 +72,7 @@ Full detail in `../docs/STRIPE_PLAN.md`. Minimum to take money:
    against Stripe and returns 409 rather than building a session that would bill
    a family $249 every month — but fix it at the source.
 3. **Create the live event destination**
-   - URL: `https://mindsethockey.com/api/stripe/webhook`
+   - URL: `https://mindsethockey.company/api/stripe/webhook`
    - **API version: `2025-02-24.acacia`** — set it explicitly to match the pin
      in `lib/stripe.ts`. Leaving it on "account default" can silently write
      `null` into `subscriptions.current_period_end`.
@@ -85,7 +85,7 @@ Full detail in `../docs/STRIPE_PLAN.md`. Minimum to take money:
    and payment-method update. Leave "switch plans" **off** for now.
 5. **Enable Smart Retries** (Settings → Billing → Subscriptions and emails).
 6. **Set the Terms and Privacy URLs** in the portal and branding settings to
-   `https://mindsethockey.com/terms` and `/privacy`.
+   `https://mindsethockey.company/terms` and `/privacy`.
 
 ---
 
@@ -98,7 +98,7 @@ Full detail in `../docs/STRIPE_PLAN.md`. Minimum to take money:
 4. Add environment variables (Production scope), each marked **Sensitive**:
 
    ```
-   NEXT_PUBLIC_SITE_URL=https://mindsethockey.com
+   NEXT_PUBLIC_SITE_URL=https://mindsethockey.company
    NEXT_PUBLIC_SUPABASE_URL=
    NEXT_PUBLIC_SUPABASE_ANON_KEY=
    SUPABASE_SERVICE_ROLE_KEY=
@@ -124,7 +124,7 @@ Full detail in `../docs/STRIPE_PLAN.md`. Minimum to take money:
 
 ## 4. Domain
 
-1. Vercel → Settings → Domains → add `mindsethockey.com` and `www`.
+1. Vercel → Settings → Domains → add `mindsethockey.company` and `www`.
 2. At your registrar, point the records Vercel shows you.
 3. Redirect `www` → apex (or the reverse) so there is one canonical origin.
    The canonical tags across the marketing pages assume the bare apex.
@@ -160,7 +160,7 @@ Run these in order against production.
       where email = 'braydencastiglia@gmail.com';
       ```
 - [ ] Confirm Stripe webhook delivery is 100% in Workbench after 24h
-- [ ] Submit `https://mindsethockey.com/sitemap.xml` to Google Search Console
+- [ ] Submit `https://mindsethockey.company/sitemap.xml` to Google Search Console
 
 ---
 

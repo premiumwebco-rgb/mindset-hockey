@@ -43,7 +43,11 @@ button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
 
 .wrap{max-width:var(--maxw);margin:0 auto;padding-inline:var(--pad)}
 .wrap-narrow{max-width:820px;margin:0 auto;padding-inline:var(--pad)}
-section{padding-block:var(--sec);position:relative}
+section{padding-block:var(--sec);position:relative;overflow:hidden}
+/* Decorative watermarks (.faceoff/.crease) are inline-sized per usage for desktop
+   and bleed off the edge of wide sections on purpose. `overflow:hidden` above clips
+   them at the section boundary instead of letting their fixed pixel width/offset
+   push past a narrow mobile viewport and force horizontal scroll on the whole page. */
 
 h1,h2,h3,.display{
   font-family:var(--display);font-weight:400;color:var(--white);
@@ -119,6 +123,16 @@ p:last-child{margin-bottom:0}
 .btn-block{display:flex;width:100%}
 .btn-lg{padding:18px 36px;font-size:16px}
 .btn-sm{padding:11px 20px;font-size:13.5px}
+
+/* Member-login CTA — distinct outline style so it never competes visually
+   with the primary "book/start" CTA next to it, but is still a real
+   full-size tappable button (not a small text link) on the homepage hero. */
+.btn-login{
+  border:1px solid rgba(255,255,255,.16);color:var(--silver);background:rgba(255,255,255,.03);
+}
+.btn-login:hover{border-color:var(--electric);color:#fff;background:rgba(10,132,255,.08)}
+.btn-login svg{flex:none}
+
 
 /* ---------- nav ---------------------------------------------------------- */
 .nav{position:sticky;top:0;z-index:60;background:rgba(5,7,12,.78);backdrop-filter:blur(14px);

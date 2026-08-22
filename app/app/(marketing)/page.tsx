@@ -187,6 +187,26 @@ export default function Home() {
               </Link>
             </div>
 
+            {/* Large, unmissable Member Login CTA — visible above the fold on
+                phones without scrolling, styled distinctly (outline, not
+                filled) so it never competes with the primary "Start Your
+                Development" CTA above it. Links straight to the existing
+                /login page — no new auth flow. */}
+            <div className="hero-actions" style={{ marginTop: '10px' }}>
+              <Link
+                className="btn btn-login btn-lg btn-block"
+                href="/login"
+                data-cta="member_login"
+                data-cta-location="hero"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="12" cy="8" r="3.6" />
+                  <path d="M5 20c1.3-3.8 4.2-5.7 7-5.7s5.7 1.9 7 5.7" />
+                </svg>
+                Member Login
+              </Link>
+            </div>
+
             <p className="hero-note"><span className="pulse" aria-hidden="true" /> We respond to all inquiries within 24 hours.</p>
 
             <div className="ladder">

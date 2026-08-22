@@ -106,17 +106,31 @@ export async function signUpAction(
 
   if (error) return { error: error.message };
 
-  // With email confirmation on, there is no session until they click the link.
-  if (!data.session) {
-    return {
-      message: plan
-        ? `Check ${email} for a confirmation link. Once you confirm, we'll take you straight to checkout for the ${plan.name}.`
-        : `Check ${email} for a confirmation link to finish creating your account.`,
-    };
+  // Supabase's anti-enumeration guard: signing up with an email that already
+  // has a CONFIRMED account returns a success with a synthetic user object
+  // (empty `identities`) and no session, rather than an error — so a stranger
+  // can't use signup to probe which emails are registered. Catch it here and
+  // send them to log in instead of silently carrying on as if a new,
+  // signed-out account had been created.
+  if (data.user && data.user.identities && data.user.identities.length === 0) {
+    return { error: 'An account with that email already exists. Log in instead.' };
   }
 
-  revalidatePath('/', 'layout');
-  redirect(destination);
+  // Normal path: email confirmation is OFF for this project, so signUp()
+  // returns an authenticated session immediately. The SSR client above has
+  // already written the session cookies via createServerClient()'s setAll,
+  // so the redirect below carries the member in signed in.
+  if (data.session) {
+    revalidatePath('/', 'layout');
+    redirect(destination);
+  }
+
+  // Reachable only if email confirmation somehow is still required on this
+  // Supabase project (see DEPLOY.md) — signup itself still succeeded, so
+  // point them at login rather than stalling on a "check your email" screen.
+  return {
+    message: `Account created for ${email}. Log in to continue${plan ? ` to checkout for the ${plan.name}` : ''}.`,
+  };
 }
 
 export async function signOutAction(): Promise<void> {

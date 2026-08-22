@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Tier, Role } from '@/lib/types';
 import { TIER_LABEL } from '@/lib/types';
 import { FEATURE_MIN_TIER, type Feature } from '@/lib/plans';
@@ -78,6 +78,26 @@ export default function Sidebar({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  // Close the drawer automatically on route change (a link tap already does
+  // this via onClick, but this also covers back/forward navigation).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Body scroll lock while the drawer is open — without this, the page
+  // behind a fixed overlay drawer still scrolls, which reads as broken on a
+  // phone (content visibly shifting under a menu that's supposed to be
+  // modal). Restored on close/unmount so a stuck drawer can never leave
+  // scrolling disabled.
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
   const isAdmin = role === 'admin';
   const isStaff = role === 'admin' || role === 'coach';
 
@@ -152,8 +172,12 @@ export default function Sidebar({
 
   return (
     <>
-      {/* mobile bar */}
-      <div className="flex items-center justify-between border-b border-white/[.08] px-5 py-4 lg:hidden">
+      {/* mobile top bar — sticky so the hamburger stays reachable one-handed
+          while scrolled, with iPhone-notch safe-area padding. */}
+      <div
+        className="sticky top-0 z-30 flex items-center justify-between border-b border-white/[.08] bg-navy-900/95 px-5 py-4 backdrop-blur lg:hidden"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)' }}
+      >
         <Link href="/dashboard" className="flex flex-col leading-[.85]">
           <b className="display text-[18px]">MINDSET</b>
           <span className="pl-px text-[8px] font-bold tracking-[.42em] text-silver-dim">
@@ -163,22 +187,82 @@ export default function Sidebar({
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
+          aria-controls="mobile-sidebar-drawer"
           aria-label="Toggle menu"
-          className="grid gap-[5px] p-2"
+          className="grid min-h-[44px] min-w-[44px] place-items-center gap-[5px] p-2"
         >
-          <i className="block h-0.5 w-5 rounded bg-silver" />
-          <i className="block h-0.5 w-5 rounded bg-silver" />
-          <i className="block h-0.5 w-5 rounded bg-silver" />
+          <span className="grid gap-[5px]">
+            <i
+              className={`block h-0.5 w-5 rounded bg-silver transition-transform ${open ? 'translate-y-[7px] rotate-45' : ''}`}
+            />
+            <i className={`block h-0.5 w-5 rounded bg-silver transition-opacity ${open ? 'opacity-0' : ''}`} />
+            <i
+              className={`block h-0.5 w-5 rounded bg-silver transition-transform ${open ? '-translate-y-[7px] -rotate-45' : ''}`}
+            />
+          </span>
         </button>
       </div>
 
+      {/* mobile drawer — a real modal overlay (fixed, backdrop, body-scroll
+          locked above) rather than an inline push-down block, so it never
+          gets confused with normal page content and always closes back to
+          exactly where the user was. Desktop is untouched: lg:hidden removes
+          all of this and the persistent lg:block aside below takes over. */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+        />
+      )}
       <aside
+        id="mobile-sidebar-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
         className={[
-          'shrink-0 border-white/[.08] bg-navy-900/40 px-4 py-6 lg:block lg:w-[248px] lg:border-r',
-          open ? 'block border-b' : 'hidden',
+          'fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[320px] overflow-y-auto border-r border-white/[.08] bg-navy-900 px-4 py-6 transition-transform duration-200 ease-out lg:hidden',
+          open ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top), 1.5rem)',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 1.5rem)',
+        }}
       >
-        <Link href="/dashboard" className="mb-7 hidden flex-col px-3 leading-[.85] lg:flex">
+        <Link
+          href="/profile"
+          onClick={() => setOpen(false)}
+          className="mb-6 block rounded-xl border border-white/[.08] bg-ink px-3.5 py-3 transition-colors hover:border-white/20"
+        >
+          <p className="truncate text-[13px] font-semibold text-white">{playerName}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-silver-dim">
+            <span
+              className={[
+                'inline-block h-1.5 w-1.5 rounded-full',
+                subscriptionActive || isAdmin ? 'bg-[#3ddc84]' : 'bg-amber',
+              ].join(' ')}
+            />
+            {isAdmin ? 'Admin' : TIER_LABEL[tier]}
+            {!subscriptionActive && !isAdmin && tier !== 'none' && ' · inactive'}
+          </p>
+        </Link>
+
+        {body}
+
+        <div className="mt-6 border-t border-white/[.08] px-3 pt-4">
+          <SignOutButton />
+        </div>
+
+        {demo && (
+          <p className="mt-4 rounded-lg border border-dashed border-amber/40 bg-amber/[.06] px-3 py-2 text-[11px] text-amber">
+            Demo mode — no backend connected.
+          </p>
+        )}
+      </aside>
+
+      {/* desktop — persistent sidebar, unchanged */}
+      <aside className="hidden shrink-0 border-r border-white/[.08] bg-navy-900/40 px-4 py-6 lg:block lg:w-[248px]">
+        <Link href="/dashboard" className="mb-7 flex flex-col px-3 leading-[.85]">
           <b className="display text-[20px]">MINDSET</b>
           <span className="pl-px text-[9px] font-bold tracking-[.42em] text-silver-dim">
             HOCKEY
@@ -187,7 +271,6 @@ export default function Sidebar({
 
         <Link
           href="/profile"
-          onClick={() => setOpen(false)}
           className="mb-6 block rounded-xl border border-white/[.08] bg-ink px-3.5 py-3 transition-colors hover:border-white/20"
         >
           <p className="truncate text-[13px] font-semibold text-white">{playerName}</p>
