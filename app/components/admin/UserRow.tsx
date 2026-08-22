@@ -109,7 +109,7 @@ export function UserCard({ user, demo }: { user: AdminUser; demo: boolean }) {
   const { patch, pending, error } = useUserPatch(user, demo);
 
   return (
-    <div className="card p-4">
+    <div className="card p-3 sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-semibold text-white">{user.full_name || '—'}</p>
@@ -130,7 +130,7 @@ export function UserCard({ user, demo }: { user: AdminUser; demo: boolean }) {
 
       {error && <p className="mt-2 text-[12px] text-[#ff6b85]">{error}</p>}
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-2.5 grid grid-cols-2 gap-2 sm:mt-3">
         <label className="block">
           <span className="mb-1 block text-[10.5px] uppercase tracking-[.12em] text-silver-dim">Tier</span>
           <select
@@ -165,7 +165,7 @@ export function UserCard({ user, demo }: { user: AdminUser; demo: boolean }) {
       <button
         onClick={() => patch({ suspended: !user.suspended })}
         disabled={pending}
-        className="mt-3 min-h-[40px] w-full rounded-lg border border-white/[.14] text-[13px] text-silver-dim hover:text-white"
+        className="mt-2.5 min-h-[40px] w-full rounded-lg border border-white/[.14] text-[13px] text-silver-dim hover:text-white sm:mt-3"
       >
         {user.suspended ? 'Unsuspend' : 'Suspend'}
       </button>

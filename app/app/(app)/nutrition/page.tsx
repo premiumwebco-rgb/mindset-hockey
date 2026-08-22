@@ -84,7 +84,7 @@ export default async function NutritionPage({
       </p>
 
       {/* ---------------------------------------------------- quick choices */}
-      <div className="mt-5 grid gap-2 sm:mt-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 lg:grid-cols-4">
         {[
           { label: 'Before a game', href: buildHref({}, { category: 'pre_game' }) },
           { label: 'After a game', href: buildHref({}, { category: 'post_game' }) },
@@ -187,7 +187,7 @@ export default async function NutritionPage({
           <p className="mt-6 text-[13px] text-silver-dim">
             {total} {total === 1 ? 'recipe' : 'recipes'}
           </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
             {recipes.map((r) => (
               <RecipeTile key={r.id} recipe={r} />
             ))}
@@ -224,9 +224,9 @@ function FilterChip({
 function RecipeTile({ recipe: r }: { recipe: RecipeCard }) {
   return (
     <Link href={`/nutrition/${r.slug}`} className="block">
-      <Card hover className="h-full p-4 sm:p-5">
+      <Card hover className="h-full p-3 sm:p-5">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-[15px] font-semibold leading-snug text-white sm:text-[16px]">
+          <h3 className="text-[13.5px] font-semibold leading-snug text-white sm:text-[16px]">
             {r.title}
           </h3>
           {r.isQuick && (
@@ -242,7 +242,7 @@ function RecipeTile({ recipe: r }: { recipe: RecipeCard }) {
           </p>
         )}
 
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[13.5px] tabular-nums text-silver">
+        <div className="mt-2 flex flex-wrap gap-x-2.5 gap-y-1 text-[11.5px] tabular-nums text-silver sm:mt-3 sm:gap-x-4 sm:gap-y-1.5 sm:text-[13.5px]">
           <span>⚡ {formatMinutes(r.totalMinutes)}</span>
           {r.proteinG !== null && <span>💪 {r.proteinG}g protein</span>}
           {r.carbsG !== null && <span>🍚 {r.carbsG}g carbs</span>}

@@ -173,25 +173,25 @@ export default async function WorkoutsPage({
             />
           </div>
         ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             {filtered.map((r) => (
               <Link key={r.id} href={`/workouts/${r.slug}`} className="block">
-                <Card hover className="h-full p-6">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-electric/40 bg-electric/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-electric-glow">
+                <Card hover className="h-full p-3 sm:p-6">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span className="rounded-full border border-electric/40 bg-electric/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.1em] text-electric-glow sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[.14em]">
                       {isRoutineOccasion(r.occasion) ? OCCASION_LABEL[r.occasion] : r.occasion}
                     </span>
                     {r.difficulty && (
-                      <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.14em] capitalize text-silver-dim">
+                      <span className="hidden rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.14em] capitalize text-silver-dim sm:inline-block">
                         {r.difficulty}
                       </span>
                     )}
                   </div>
-                  <h3 className="display mt-4 text-[19px]">{r.title}</h3>
-                  {r.purpose && <p className="mt-2 text-[14px] text-silver-dim">{r.purpose}</p>}
-                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] font-semibold text-silver-dim">
-                    {r.durationMin !== null && <span>{r.durationMin} minutes</span>}
-                    <span>{r.equipment.length > 0 ? r.equipment.join(', ') : 'No equipment needed'}</span>
+                  <h3 className="display mt-2 text-[15px] sm:mt-4 sm:text-[19px]">{r.title}</h3>
+                  {r.purpose && <p className="mt-1 line-clamp-2 text-[12px] text-silver-dim sm:mt-2 sm:text-[14px]">{r.purpose}</p>}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-silver-dim sm:mt-4 sm:gap-x-3 sm:text-[12.5px]">
+                    {r.durationMin !== null && <span>{r.durationMin} min</span>}
+                    <span className="hidden sm:inline">{r.equipment.length > 0 ? r.equipment.join(', ') : 'No equipment needed'}</span>
                   </div>
                 </Card>
               </Link>
@@ -212,20 +212,20 @@ export default async function WorkoutsPage({
             <EmptyState title="No programs published yet" body="Your coach is building these now — check back shortly." />
           </div>
         ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
             {plans.map((p) => (
-              <Card key={p.id} hover className="p-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-electric/40 bg-electric/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-electric-glow">
+              <Card key={p.id} hover className="p-3 sm:p-6">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="rounded-full border border-electric/40 bg-electric/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.1em] text-electric-glow sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[.14em]">
                     {PHASE_LABEL[p.phase] ?? p.phase}
                   </span>
-                  <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-silver-dim">
+                  <span className="hidden rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-silver-dim sm:inline-block">
                     {p.focus}
                   </span>
                 </div>
-                <h3 className="display mt-4 text-[21px]">{p.title}</h3>
-                <p className="mt-2 text-[14.5px] text-silver-dim">{p.description}</p>
-                <p className="mt-4 text-[12.5px] text-silver-dim">{p.weeks} weeks</p>
+                <h3 className="display mt-2 text-[16px] sm:mt-4 sm:text-[21px]">{p.title}</h3>
+                <p className="mt-1 line-clamp-2 text-[12px] text-silver-dim sm:mt-2 sm:text-[14.5px]">{p.description}</p>
+                <p className="mt-2 text-[11px] text-silver-dim sm:mt-4 sm:text-[12.5px]">{p.weeks} weeks</p>
               </Card>
             ))}
           </div>

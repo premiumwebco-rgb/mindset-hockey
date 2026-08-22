@@ -639,3 +639,69 @@ footer{background:var(--ink);border-top:1px solid var(--line);padding-block:52px
   .acc-summary{display:none}
   .acc-body{display:block!important;padding:0}
 }
+
+
+/* ============================================================================
+   COMPACT MOBILE PASS (Task F)
+
+   Purely additive, appended last so it wins the cascade at equal
+   specificity. Nothing above this point is edited or removed — every
+   existing desktop rule and every prior mobile block (Phase 6 parts 1 & 2)
+   stays exactly as it was, so >=760px renders pixel-identical to before.
+
+   Goal: the mobile homepage/pricing should read like a compact modern
+   sports app, not a desktop layout that has merely stopped overflowing.
+   This tightens the hero headline/spacing, shrinks section rhythm further,
+   and turns pricing cards + generic content cards into compact blocks with
+   tighter internal padding, smaller type, and denser feature lists.
+   ========================================================================= */
+@media(max-width:759px){
+  h1{font-size:clamp(28px,9vw,40px);line-height:1.08}
+  .hero{padding-top:22px}
+  .hero-sub{margin-top:14px;font-size:15px}
+  .hero-actions{margin-top:18px;gap:10px}
+  .hero-note{margin-top:12px}
+  section{padding-block:28px}
+  .head{margin-bottom:18px}
+
+  /* generic content cards: less padding, tighter type */
+  .card{padding:16px 15px;border-radius:14px}
+  .card h3{font-size:15.5px;margin-bottom:6px}
+  .card p{font-size:13px}
+  .num{font-size:11px;margin-bottom:8px}
+
+  /* pricing cards: compact vertical blocks instead of enormous ones */
+  .plans{gap:14px}
+  .plan{padding:20px 18px;border-radius:16px}
+  .plan h3{font-size:18px;margin-bottom:4px}
+  .plan .who{font-size:12.5px;margin-bottom:14px;min-height:0}
+  .price-setup b{font-size:36px}
+  .price-monthly{margin-top:8px;padding-top:9px}
+  .price-monthly b{font-size:24px}
+  .price-note{font-size:12px;margin:10px 0 16px}
+  .plan ul{gap:7px;margin-bottom:18px}
+  .plan ul li{font-size:13.5px;padding-left:21px}
+  .plan ul li::before{top:5px}
+  .plan ul li.head{margin-top:2px}
+  .flag{top:-11px;font-size:9.5px;padding:6px 13px}
+
+  /* venue block */
+  .venue{padding:18px 16px}
+  .venue .vmeta{margin-top:12px;padding-top:12px}
+}
+
+@media(min-width:760px){
+  /* .hero h1 span{display:block} (base rule, ~line 190) has higher
+     specificity than the Phase 6 .show-mobile{display:none} rule above,
+     so the mobile-only hero lines were rendering on desktop too, stacked
+     after the desktop lines. Same-specificity-pattern override, scoped to
+     desktop only so mobile is untouched. */
+  .hero h1 .show-mobile{display:none!important}
+}
+@media(max-width:759px){
+  /* Mirror fix for mobile: the desktop-only hero lines were rendering
+     underneath the mobile ones for the same specificity reason, making the
+     hero headline roughly twice as tall as intended. */
+  .hero h1 .show-desktop{display:none!important}
+}
+

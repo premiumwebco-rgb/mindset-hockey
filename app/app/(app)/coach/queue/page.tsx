@@ -85,7 +85,7 @@ export default async function CoachQueue() {
         sub="Oldest first, always. Turnaround is the product — a fast, honest turnaround is what makes this membership defensible."
       />
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-3 gap-2 sm:mb-8 sm:gap-4">
         <Stat label="In queue" value={queue.length} />
         <Stat label="Overdue" value={overdue} />
         <Stat label="Capacity used" value={`${Math.round((queue.length / 40) * 100)}%`} />
@@ -104,16 +104,16 @@ export default async function CoachQueue() {
             const player = s.profiles?.full_name || s.profiles?.email || 'Member';
             const note = s.notes ?? s.player_notes;
             return (
-              <Card key={s.id} hover className="p-5">
-                <div className="flex flex-wrap items-center justify-between gap-4">
+              <Card key={s.id} hover className="p-3 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                   <div className="min-w-0">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1.5 sm:mb-2 sm:gap-2">
                       <span
-                        className={`rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[.14em] ${sla.cls}`}
+                        className={`rounded-full border px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[.14em] sm:px-2.5 sm:py-1 sm:text-[10.5px] ${sla.cls}`}
                       >
                         {sla.label}
                       </span>
-                      <span className="text-[11.5px] uppercase tracking-[.12em] text-silver-dim">
+                      <span className="text-[10.5px] uppercase tracking-[.12em] text-silver-dim sm:text-[11.5px]">
                         {s.kind}
                       </span>
                       {s.status === 'in_review' && (
@@ -122,21 +122,21 @@ export default async function CoachQueue() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[16px] font-semibold text-white">{player}</p>
-                    <p className="text-[13.5px] text-silver-dim">{s.title || 'Untitled submission'}</p>
+                    <p className="text-[14px] font-semibold text-white sm:text-[16px]">{player}</p>
+                    <p className="text-[12px] text-silver-dim sm:text-[13.5px]">{s.title || 'Untitled submission'}</p>
                     {note && (
-                      <p className="mt-1 max-w-[62ch] text-[13.5px] text-silver-dim">
+                      <p className="mt-1 max-w-[62ch] text-[12px] text-silver-dim sm:text-[13.5px]">
                         &ldquo;{note}&rdquo;
                       </p>
                     )}
-                    <p className="mt-1.5 text-[12px] text-silver-dim">
+                    <p className="mt-1 text-[11px] text-silver-dim sm:mt-1.5 sm:text-[12px]">
                       Submitted {new Date(submittedAt).toLocaleString()}
                     </p>
                   </div>
 
                   <Link
                     href={`/coach/review/${s.id}`}
-                    className="shrink-0 rounded-[10px] bg-electric px-6 py-3 text-[14px] font-bold text-white hover:bg-electric-glow"
+                    className="shrink-0 rounded-[10px] bg-electric px-4 py-2.5 text-[13px] font-bold text-white hover:bg-electric-glow sm:px-6 sm:py-3 sm:text-[14px]"
                   >
                     Review
                   </Link>
@@ -147,8 +147,8 @@ export default async function CoachQueue() {
         </div>
       )}
 
-      <Card className="mt-8 p-6">
-        <h3 className="display mb-2 text-[18px]">Capacity note</h3>
+      <Card className="mt-6 p-4 sm:mt-8 sm:p-6">
+        <h3 className="display mb-2 text-[15px] sm:text-[18px]">Capacity note</h3>
         <p className="max-w-[70ch] text-[14.5px] leading-relaxed text-silver-dim">
           At roughly 25 minutes of coach time per premium member per month, one reviewer caps out
           around 250 members. Hire or train a second reviewer <em>before</em> you hit that, not

@@ -75,7 +75,7 @@ export default async function Library({
           }
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
           {resources.map((r) => {
             // A locked card links to the upgrade page, never to the lesson.
             const href = r.locked ? `/upgrade?need=${r.requiredTier}` : `/library/${r.id}`;
@@ -117,21 +117,21 @@ export default async function Library({
                     )}
                   </div>
 
-                  <div className="p-3.5 sm:p-5">
-                    <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
+                  <div className="p-2.5 sm:p-5">
+                    <div className="mb-1.5 flex items-center justify-between gap-2 sm:mb-3">
                       <PillarChip pillar={r.pillar} />
                       {r.locked && <LockBadge tier={r.requiredTier} />}
                     </div>
-                    <h3 className="text-[14.5px] font-semibold leading-snug text-white sm:text-[16px]">
+                    <h3 className="text-[12.5px] font-semibold leading-snug text-white sm:text-[16px]">
                       {r.title}
                     </h3>
                     {r.description && (
-                      <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-silver-dim sm:mt-2 sm:line-clamp-none sm:text-[13.5px]">
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-silver-dim sm:mt-2 sm:text-[13.5px]">
                         {r.description}
                       </p>
                     )}
                     {r.category && (
-                      <p className="mt-2 text-[10.5px] uppercase tracking-[.14em] text-silver-dim sm:mt-3 sm:text-[11px]">
+                      <p className="mt-1.5 text-[9.5px] uppercase tracking-[.1em] text-silver-dim sm:mt-3 sm:text-[11px] sm:tracking-[.14em]">
                         {r.category}
                       </p>
                     )}

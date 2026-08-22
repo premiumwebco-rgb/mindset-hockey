@@ -180,26 +180,26 @@ export default async function DashboardPage() {
 
       {/* TODAY'S FOCUS — dominant. Nothing on this page outranks it: the
           largest type, the most padding, the only unmissable button. */}
-      <Card hover className="mt-7 border-electric/30 bg-electric/[.06] p-6">
+      <Card hover className="mt-5 border-electric/30 bg-electric/[.06] p-4 sm:mt-7 sm:p-6">
         <Eyebrow>Today&apos;s Focus</Eyebrow>
         {todaysRoutine ? (
           <>
-            <h2 className="display mt-3 text-3xl leading-tight sm:text-4xl">{todaysRoutine.title}</h2>
-            <p className="mt-3 text-lg text-silver-dim">
+            <h2 className="display mt-2 text-2xl leading-tight sm:mt-3 sm:text-4xl">{todaysRoutine.title}</h2>
+            <p className="mt-2 text-base text-silver-dim sm:mt-3 sm:text-lg">
               {OCCASION_LABEL[todaysRoutine.occasion as keyof typeof OCCASION_LABEL] ?? todaysRoutine.occasion}
               {todaysRoutine.durationMin ? ` · ${todaysRoutine.durationMin} min` : ''}
             </p>
-            <p className="mt-1 text-base text-silver-dim">
+            <p className="mt-1 text-[13.5px] text-silver-dim sm:text-base">
               {todaysRoutine.equipment.length > 0 ? todaysRoutine.equipment.join(', ') : 'No equipment needed'}
             </p>
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <Button href={`/workouts/${todaysRoutine.slug}`} size="lg">Start Workout</Button>
             </div>
           </>
         ) : workoutPlans ? (
           <>
-            <h2 className="display mt-3 text-2xl sm:text-3xl">Browse structured routines</h2>
-            <p className="mt-2 text-lg text-silver-dim">
+            <h2 className="display mt-2 text-xl sm:mt-3 sm:text-3xl">Browse structured routines</h2>
+            <p className="mt-1.5 text-[14.5px] text-silver-dim sm:mt-2 sm:text-lg">
               Pick an occasion — game day, practice, recovery — and get a routine ready to go.
             </p>
             <div className="mt-6">
@@ -208,8 +208,8 @@ export default async function DashboardPage() {
           </>
         ) : (
           <>
-            <h2 className="display mt-3 text-2xl sm:text-3xl">Structured workout routines</h2>
-            <p className="mt-2 text-lg text-silver-dim">
+            <h2 className="display mt-2 text-xl sm:mt-3 sm:text-3xl">Structured workout routines</h2>
+            <p className="mt-1.5 text-[14.5px] text-silver-dim sm:mt-2 sm:text-lg">
               Game-day, practice and recovery routines — included with Standard and Premium.
             </p>
             <div className="mt-6">
@@ -255,21 +255,22 @@ export default async function DashboardPage() {
         </Card>
       )}
 
+      <div className="mt-5 grid grid-cols-2 gap-3">
       {/* AI INSIGHT — one weakness, one drill, one action. No score grid,
           no recommendation list. */}
-      <Card hover className="mt-5 p-5">
+      <Card hover className="p-4">
         <Eyebrow>AI Insight</Eyebrow>
         {aiShotAnalysis ? (
           latestAnalysis ? (
             weakestCategoryLabel ? (
               <>
-                <p className="mt-3 text-base font-bold uppercase tracking-[.1em] text-silver-dim">Lowest Score</p>
-                <p className="mt-1 text-xl font-semibold text-white">{weakestCategoryLabel}</p>
+                <p className="mt-2.5 text-[10.5px] font-bold uppercase tracking-[.1em] text-silver-dim">Lowest Score</p>
+                <p className="mt-1 text-[15px] font-semibold text-white">{weakestCategoryLabel}</p>
                 {drillRecommendation ? (
                   <>
-                    <p className="mt-4 text-base font-bold uppercase tracking-[.1em] text-silver-dim">Recommended Drill</p>
-                    <p className="mt-1 text-xl font-semibold text-electric-glow">{drillRecommendation.title}</p>
-                    <div className="mt-5">
+                    <p className="mt-3 text-[10.5px] font-bold uppercase tracking-[.1em] text-silver-dim">Recommended Drill</p>
+                    <p className="mt-1 text-[15px] font-semibold text-electric-glow">{drillRecommendation.title}</p>
+                    <div className="mt-3">
                       {drillRecommendation.locked ? (
                         <Button href={`/upgrade?need=${drillRecommendation.requiredTier}`} size="sm" variant="ghost">
                           Unlock This Drill
@@ -282,7 +283,7 @@ export default async function DashboardPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="mt-5">
+                  <div className="mt-3">
                     <Button href={`/analysis/${latestAnalysis.id}`} size="sm" variant="ghost">
                       View Analysis
                     </Button>
@@ -291,28 +292,28 @@ export default async function DashboardPage() {
               </>
             ) : (
               <>
-                <p className="mt-3 text-lg text-silver-dim">Your last shot graded strong across the board.</p>
-                <div className="mt-5">
+                <p className="mt-3 text-[13px] text-silver-dim">Your last shot graded strong across the board.</p>
+                <div className="mt-3">
                   <Button href={`/analysis/${latestAnalysis.id}`} size="sm" variant="ghost">View Analysis</Button>
                 </div>
               </>
             )
           ) : (
             <>
-              <p className="mt-3 text-lg text-silver-dim">
+              <p className="mt-3 text-[13px] text-silver-dim">
                 Upload a clip and get it graded on ten mechanics categories in minutes.
               </p>
-              <div className="mt-5">
+              <div className="mt-3">
                 <Button href="/analysis/new" size="sm">Upload Shot</Button>
               </div>
             </>
           )
         ) : (
           <>
-            <p className="mt-3 text-lg text-silver-dim">
+            <p className="mt-3 text-[13px] text-silver-dim">
               Graded on ten mechanics categories — included with Standard and Premium.
             </p>
-            <div className="mt-5">
+            <div className="mt-3">
               <Button href="/upgrade?need=basic&f=ai_shot_analysis" size="sm" variant="ghost">
                 Unlock AI Shot Analysis
               </Button>
@@ -322,18 +323,18 @@ export default async function DashboardPage() {
       </Card>
 
       {/* NUTRITION PICK — exactly one recommendation. */}
-      <Card hover className="mt-5 p-5">
+      <Card hover className="p-4">
         <Eyebrow>Nutrition Pick</Eyebrow>
         {nutritionPlans ? (
           nutritionPick ? (
             <>
-              <p className="mt-3 text-xl font-semibold text-white">{nutritionPick.title}</p>
-              <p className="mt-1.5 text-base text-silver-dim">
+              <p className="mt-3 text-[15px] font-semibold text-white">{nutritionPick.title}</p>
+              <p className="mt-1 text-[12.5px] text-silver-dim">
                 {nutritionPick.proteinG !== null ? `${nutritionPick.proteinG}g Protein` : ''}
                 {nutritionPick.proteinG !== null && nutritionPick.prepMinutes !== null ? ' · ' : ''}
                 {nutritionPick.prepMinutes !== null ? `${nutritionPick.prepMinutes} min prep` : ''}
               </p>
-              <div className="mt-5">
+              <div className="mt-3">
                 <Button href={`/nutrition/${nutritionPick.slug}`} size="sm" variant="ghost">
                   View Recipe
                 </Button>
@@ -341,18 +342,18 @@ export default async function DashboardPage() {
             </>
           ) : (
             <>
-              <p className="mt-3 text-lg text-silver-dim">Fuel your next session with a recipe built for players.</p>
-              <div className="mt-5">
+              <p className="mt-3 text-[13px] text-silver-dim">Fuel your next session with a recipe built for players.</p>
+              <div className="mt-3">
                 <Button href="/nutrition" size="sm" variant="ghost">View Nutrition</Button>
               </div>
             </>
           )
         ) : (
           <>
-            <p className="mt-3 text-lg text-silver-dim">
+            <p className="mt-3 text-[13px] text-silver-dim">
               Recipes and guides for pre-game, recovery and travel — included with Premium.
             </p>
-            <div className="mt-5">
+            <div className="mt-3">
               <Button href="/upgrade?need=premium&f=nutrition_plans" size="sm" variant="ghost">
                 Unlock Nutrition
               </Button>
@@ -360,6 +361,8 @@ export default async function DashboardPage() {
           </>
         )}
       </Card>
+
+      </div>
 
       {/* VIEW MORE — everything secondary (weekly count, recent coach-review
           activity, full library) collapses behind one disclosure instead of

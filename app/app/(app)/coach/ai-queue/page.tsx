@@ -94,7 +94,7 @@ export default async function AiReviewQueue() {
         sub="Clips the AI could not confidently grade. Oldest first. These have no invented scores attached — that is the point."
       />
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-3 gap-2 sm:mb-8 sm:gap-4">
         <Stat label="Waiting" value={rows.length} />
         <Stat label="No AI scores" value={noAiAtAll} />
         <Stat
@@ -110,15 +110,15 @@ export default async function AiReviewQueue() {
           body="Every uploaded clip has been analyzed with enough confidence to stand on its own."
         />
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3 sm:gap-4">
           {withVideo.map(({ row, videoUrl }) => {
             const cats = parseCategories(row.category_scores);
             const graded = cats.filter((c) => c.score !== null);
             const player = row.profiles?.full_name || row.profiles?.email || 'Member';
 
             return (
-              <Card key={row.id} className="p-5">
-                <div className="grid gap-5 md:grid-cols-[240px_1fr]">
+              <Card key={row.id} className="p-3 sm:p-5">
+                <div className="grid gap-3 sm:gap-5 md:grid-cols-[240px_1fr]">
                   <div>
                     {videoUrl ? (
                       <SmartVideo
@@ -136,21 +136,21 @@ export default async function AiReviewQueue() {
                   </div>
 
                   <div className="min-w-0">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-amber/40 bg-amber/10 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[.14em] text-amber">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1.5 sm:mb-2 sm:gap-2">
+                      <span className="rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[.14em] text-amber sm:px-2.5 sm:py-1 sm:text-[10.5px]">
                         {row.status === 'failed' ? 'AI failed' : 'Needs a coach'}
                       </span>
-                      <span className="text-[11.5px] capitalize tracking-[.12em] text-silver-dim">
+                      <span className="text-[10.5px] capitalize tracking-[.12em] text-silver-dim sm:text-[11.5px]">
                         {row.shot_type.replace('_', ' ')} · {row.angle}
                       </span>
                     </div>
 
-                    <p className="text-[16px] font-semibold text-white">{player}</p>
-                    <p className="mt-0.5 text-[12px] text-silver-dim">
+                    <p className="text-[14px] font-semibold text-white sm:text-[16px]">{player}</p>
+                    <p className="mt-0.5 text-[11px] text-silver-dim sm:text-[12px]">
                       Submitted {formatDate(row.created_at)}
                     </p>
 
-                    <div className="mt-3 flex flex-wrap gap-4 text-[13px]">
+                    <div className="mt-2 flex flex-wrap gap-2.5 text-[11.5px] sm:mt-3 sm:gap-4 sm:text-[13px]">
                       <span className="text-silver-dim">
                         AI confidence:{' '}
                         <span className="font-semibold text-silver">
@@ -166,20 +166,20 @@ export default async function AiReviewQueue() {
                     </div>
 
                     {row.error_message && (
-                      <p className="mt-3 rounded-lg border border-white/[.08] bg-navy-900 px-3.5 py-2.5 text-[13px] text-silver-dim">
+                      <p className="mt-2.5 rounded-lg border border-white/[.08] bg-navy-900 px-3 py-2 text-[11.5px] text-silver-dim sm:mt-3 sm:px-3.5 sm:py-2.5 sm:text-[13px]">
                         {row.error_message}
                       </p>
                     )}
 
                     {row.player_notes && (
-                      <p className="mt-3 max-w-[62ch] text-[13.5px] text-silver">
+                      <p className="mt-2.5 max-w-[62ch] text-[12px] text-silver sm:mt-3 sm:text-[13.5px]">
                         <span className="font-semibold text-silver-dim">Member note: </span>
                         &ldquo;{row.player_notes}&rdquo;
                       </p>
                     )}
 
                     {graded.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 sm:mt-3">
                         {graded.map((c) => (
                           <span
                             key={c.key}
@@ -193,7 +193,7 @@ export default async function AiReviewQueue() {
 
                     <Link
                       href={`/analysis/${row.id}`}
-                      className="mt-4 inline-block rounded-[10px] bg-electric px-5 py-2.5 text-[13.5px] font-bold text-white hover:bg-electric-glow"
+                      className="mt-3 inline-block rounded-[10px] bg-electric px-4 py-2 text-[12.5px] font-bold text-white hover:bg-electric-glow sm:mt-4 sm:px-5 sm:py-2.5 sm:text-[13.5px]"
                     >
                       Open full analysis
                     </Link>

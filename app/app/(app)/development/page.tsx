@@ -204,7 +204,7 @@ export default async function DevelopmentPlanPage() {
       />
 
       {(player.position || player.level) && (
-        <p className="-mt-2 mb-1 text-[13.5px] font-semibold uppercase tracking-[.1em] text-electric-glow">
+        <p className="-mt-2 mb-1 text-[12px] font-semibold uppercase tracking-[.1em] text-electric-glow sm:text-[13.5px]">
           {POSITION_LABEL[player.position]} · {LEVEL_LABEL[player.level]}
           {player.trainingDaysGoal ? ` · ${player.trainingDaysGoal}x/week` : ''}
         </p>
@@ -214,14 +214,14 @@ export default async function DevelopmentPlanPage() {
           never suppressed or replaced by this section; the two coexist. */}
       {sortedAssignments.length > 0 && (
         <div id="assigned" className="scroll-mt-6">
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <Eyebrow>Assigned By Your Coach</Eyebrow>
-            <div className="mt-3 grid gap-2.5">
+            <div className="mt-2.5 grid gap-2 sm:mt-3 sm:gap-2.5">
               {sortedAssignments.map((a) => (
                 <Link key={a.id} href={a.href}>
-                  <Card hover className="flex items-center justify-between gap-3 p-3.5">
+                  <Card hover className="flex items-center justify-between gap-2.5 p-3 sm:gap-3 sm:p-3.5">
                     <div className="min-w-0">
-                      <p className="truncate text-[14.5px] font-semibold text-white">{a.title}</p>
+                      <p className="truncate text-[13.5px] font-semibold text-white sm:text-[14.5px]">{a.title}</p>
                       <p className="mt-0.5 truncate text-[12.5px] text-silver-dim">
                         {a.dueAt ? `Due ${formatDate(a.dueAt)}` : 'No due date'}
                         {a.note ? ` · "${a.note}"` : ''}
@@ -248,7 +248,7 @@ export default async function DevelopmentPlanPage() {
       )}
 
       {/* CURRENT FOCUS */}
-      <Card className={sortedAssignments.length > 0 ? 'mt-5 p-6' : 'p-6'}>
+      <Card className={sortedAssignments.length > 0 ? 'mt-4 p-4 sm:mt-5 sm:p-6' : 'p-4 sm:p-6'}>
         <Eyebrow>Current Focus</Eyebrow>
         {player.focusPillars.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -271,14 +271,14 @@ export default async function DevelopmentPlanPage() {
 
       {/* TODAY */}
       {todayItems.length > 0 && (
-        <Card hover className="mt-5 border-electric/30 bg-electric/[.06] p-6">
+        <Card hover className="mt-4 border-electric/30 bg-electric/[.06] p-4 sm:mt-5 sm:p-6">
           <Eyebrow>Today</Eyebrow>
-          <ol className="mt-3 grid gap-2.5">
+          <ol className="mt-2.5 grid gap-2 sm:mt-3 sm:gap-2.5">
             {todayItems.map((item, i) => (
-              <li key={item.href}>
+              <li key={item.href} className="min-w-0">
                 <Link
                   href={item.href}
-                  className="flex items-center gap-3 rounded-xl border border-white/[.08] bg-navy-900/60 px-4 py-3.5 transition-colors hover:border-electric/40"
+                  className="flex items-center gap-2.5 rounded-xl border border-white/[.08] bg-navy-900/60 px-3 py-3 transition-colors hover:border-electric/40 sm:gap-3 sm:px-4 sm:py-3.5"
                 >
                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-electric text-[12px] font-bold text-white">
                     {i + 1}
@@ -295,14 +295,14 @@ export default async function DevelopmentPlanPage() {
       )}
 
       {/* THIS WEEK */}
-      <Card className="mt-5 p-6">
+      <Card className="mt-4 p-4 sm:mt-5 sm:p-6">
         <Eyebrow>This Week{weekNumber ? ` · Week ${weekNumber}` : ''}</Eyebrow>
-        <div className="mt-3 grid gap-3">
+        <div className="mt-2.5 grid gap-2 sm:mt-3 sm:gap-3">
           {thisWeekLesson ? (
             <Link href={`/mindset/${thisWeekLesson.slug}`}>
-              <Card hover className="flex items-center justify-between gap-3 p-4">
+              <Card hover className="flex items-center justify-between gap-2.5 p-3 sm:gap-3 sm:p-4">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[.14em] text-silver-dim">
+                  <p className="text-[10px] font-bold uppercase tracking-[.14em] text-silver-dim sm:text-[11px]">
                     Mindset lesson
                   </p>
                   <p className="mt-1 truncate text-[14.5px] font-semibold text-white">
@@ -334,9 +334,9 @@ export default async function DevelopmentPlanPage() {
 
           {todaysRoutine ? (
             <Link href={`/workouts/${todaysRoutine.slug}`}>
-              <Card hover className="flex items-center justify-between gap-3 p-4">
+              <Card hover className="flex items-center justify-between gap-2.5 p-3 sm:gap-3 sm:p-4">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[.14em] text-silver-dim">Training</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[.14em] text-silver-dim sm:text-[11px]">Training</p>
                   <p className="mt-1 truncate text-[14.5px] font-semibold text-white">
                     {todaysRoutine.title}
                   </p>
@@ -358,9 +358,9 @@ export default async function DevelopmentPlanPage() {
 
           {nutritionPick && (
             <Link href={`/nutrition/${nutritionPick.slug}`}>
-              <Card hover className="flex items-center justify-between gap-3 p-4">
+              <Card hover className="flex items-center justify-between gap-2.5 p-3 sm:gap-3 sm:p-4">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[.14em] text-silver-dim">Nutrition</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[.14em] text-silver-dim sm:text-[11px]">Nutrition</p>
                   <p className="mt-1 truncate text-[14.5px] font-semibold text-white">{nutritionPick.title}</p>
                 </div>
                 <span className="shrink-0 text-silver-dim">→</span>
@@ -371,20 +371,20 @@ export default async function DevelopmentPlanPage() {
       </Card>
 
       {/* RECOMMENDED — pillar-matched training resources */}
-      <Card className="mt-5 p-6">
+      <Card className="mt-4 p-4 sm:mt-5 sm:p-6">
         <Eyebrow>Recommended for Your Focus</Eyebrow>
         {pillarRecommendations.length > 0 ? (
-          <div className="mt-3 grid gap-4">
+          <div className="mt-2.5 grid gap-3 sm:mt-3 sm:gap-4">
             {pillarRecommendations.map(({ pillar, resources }) => (
               <div key={pillar}>
                 <div className="mb-2">
                   <PillarChip pillar={pillar} />
                 </div>
-                <div className="grid gap-2">
+                <div className="grid gap-1.5 sm:gap-2">
                   {resources.map((r) => (
                     <Link key={r.id} href={r.locked ? `/upgrade?need=${r.requiredTier}` : `/library/${r.id}`}>
-                      <Card hover className="flex items-center justify-between gap-3 p-3.5">
-                        <p className="min-w-0 truncate text-[14px] font-semibold text-white">{r.title}</p>
+                      <Card hover className="flex items-center justify-between gap-2.5 p-3 sm:gap-3 sm:p-3.5">
+                        <p className="min-w-0 truncate text-[13px] font-semibold text-white sm:text-[14px]">{r.title}</p>
                         <span className="shrink-0 text-silver-dim">{r.locked ? '🔒' : '→'}</span>
                       </Card>
                     </Link>
@@ -401,9 +401,9 @@ export default async function DevelopmentPlanPage() {
       </Card>
 
       {/* PROGRESS — real numbers only */}
-      <Card className="mt-5 p-6">
+      <Card className="mt-4 p-4 sm:mt-5 sm:p-6">
         <Eyebrow>Progress</Eyebrow>
-        <div className="mt-3 grid gap-4">
+        <div className="mt-2.5 grid gap-2.5 sm:mt-3 sm:gap-4">
           {premiumMindset && mindsetLessons.length > 0 && (
             <ProgressBar
               value={Math.round((mindsetDone / mindsetLessons.length) * 100)}
@@ -460,16 +460,16 @@ export default async function DevelopmentPlanPage() {
 
       {/* COACH FEEDBACK + AI INSIGHT */}
       {(latestReviewed || (aiShotAnalysis && latestAnalysis)) && (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:mt-5 sm:gap-4">
           {latestReviewed && (
-            <Card className="p-5">
+            <Card className="p-3 sm:p-5">
               <Eyebrow>Coach Feedback</Eyebrow>
-              <p className="mt-3 text-[14.5px] font-semibold text-white">{latestReviewed.title}</p>
-              <p className="mt-1 text-[12.5px] text-silver-dim">
+              <p className="mt-2.5 text-[13px] font-semibold text-white sm:mt-3 sm:text-[14.5px]">{latestReviewed.title}</p>
+              <p className="mt-1 text-[11px] text-silver-dim sm:text-[12.5px]">
                 {SUBMISSION_STATUS_LABEL[latestReviewed.status] ?? latestReviewed.status} ·{' '}
                 {formatDate(latestReviewed.created_at)}
               </p>
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <Button href={`/reviews/${latestReviewed.id}`} size="sm" variant="ghost">
                   Read Feedback
                 </Button>
@@ -478,7 +478,7 @@ export default async function DevelopmentPlanPage() {
           )}
 
           {aiShotAnalysis && latestAnalysis && (
-            <Card className="p-5">
+            <Card className="p-3 sm:p-5">
               <Eyebrow>AI Shot Analysis</Eyebrow>
               {analysisState === 'failed' ? (
                 <p className="mt-3 text-[14.5px] text-silver-dim">Your last shot analysis didn&apos;t complete.</p>
@@ -496,7 +496,7 @@ export default async function DevelopmentPlanPage() {
               ) : (
                 <p className="mt-3 text-[14.5px] text-silver-dim">Your last shot graded strong across the board.</p>
               )}
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <Button href={`/analysis/${latestAnalysis.id}`} size="sm" variant="ghost">
                   View Analysis
                 </Button>
