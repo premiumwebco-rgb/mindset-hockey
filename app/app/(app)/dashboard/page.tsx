@@ -7,6 +7,7 @@ import {
   getMindsetLessons,
   getPlayerProfile,
   getLatestAnalysis,
+  getStartingDevelopmentPicks,
   pickOfTheDay,
   OCCASION_LABEL,
   OCCASION_NUTRITION_CATEGORY,
@@ -63,7 +64,8 @@ export default async function DashboardPage() {
   // cannot join the Promise.all batch that only depends on tier/role.
   const player = await getPlayerProfile(session);
 
-  const [submissions, latestAnalysis, routines, activity, mindsetLessons, pillarRecommendations, assignments] =
+  const needsStartingPicks = !player || player.focusPillars.length === 0;
+  const [submissions, latestAnalysis, routines, activity, mindsetLessons, pillarRecommendations, assignments, startingPicks] =
     await Promise.all([
       premium ? getSubmissions(session) : Promise.resolve([]),
       aiShotAnalysis ? getLatestAnalysis(session) : Promise.resolve(null),
@@ -74,6 +76,9 @@ export default async function DashboardPage() {
         ? getPillarRecommendations(session, player.focusPillars)
         : Promise.resolve<PillarRecommendation[]>([]),
       getActiveAssignmentsForPlayer(session),
+      needsStartingPicks
+        ? getStartingDevelopmentPicks()
+        : Promise.resolve({ video: null, workout: null, recipe: null }),
     ]);
   const activeAssignmentCount = assignments.filter((a) => !a.completed).length;
   const mindsetDone = mindsetLessons.filter((l) => l.completed).length;
@@ -87,19 +92,35 @@ export default async function DashboardPage() {
   // category -> drill switch). Wrapped defensively: a bug here must never
   // take out the rest of the dashboard.
   // --------------------------------------------------------------------
+  // The latest analysis row can be mid-pipeline (uploading/queued/analyzing)
+  // or failed — only 'analyzed'/'in_review'/'reviewed' actually carry real
+  // scores. Treating any non-null row as "graded" would misreport a failed
+  // or still-processing analysis as a completed, strong result.
   let weakestCategoryLabel: string | null = null;
   let drillRecommendation: DrillRecommendation | null = null;
+  let analysisState: 'complete' | 'processing' | 'failed' | null = null;
   if (aiShotAnalysis && latestAnalysis) {
-    try {
-      const categories = parseCategories(latestAnalysis.category_scores);
-      const gradeable = categories.filter((c) => c.score !== null);
-      if (gradeable.length > 0) {
-        const weakest = gradeable.reduce((a, b) => (b.score! < a.score! ? b : a));
-        weakestCategoryLabel = CATEGORY_SHORT_LABEL[weakest.key] ?? weakest.key;
-        drillRecommendation = await getDrillRecommendation(session, weakest.key);
+    analysisState =
+      latestAnalysis.status === 'failed'
+        ? 'failed'
+        : latestAnalysis.status === 'analyzed' ||
+            latestAnalysis.status === 'in_review' ||
+            latestAnalysis.status === 'reviewed'
+          ? 'complete'
+          : 'processing';
+
+    if (analysisState === 'complete') {
+      try {
+        const categories = parseCategories(latestAnalysis.category_scores);
+        const gradeable = categories.filter((c) => c.score !== null);
+        if (gradeable.length > 0) {
+          const weakest = gradeable.reduce((a, b) => (b.score! < a.score! ? b : a));
+          weakestCategoryLabel = CATEGORY_SHORT_LABEL[weakest.key] ?? weakest.key;
+          drillRecommendation = await getDrillRecommendation(session, weakest.key);
+        }
+      } catch (err) {
+        console.error('[dashboard] AI insight lookup failed:', (err as Error).message);
       }
-    } catch (err) {
-      console.error('[dashboard] AI insight lookup failed:', (err as Error).message);
     }
   }
 
@@ -255,6 +276,54 @@ export default async function DashboardPage() {
         </Card>
       )}
 
+      {/* START YOUR DEVELOPMENT — a brand-new member (no focus pillars set
+          yet, whatever their tier) has nothing else on this page tailored to
+          them: no completed onboarding, no shot history, no routine streak.
+          This gives them exactly three things to open immediately: one
+          training video, one workout, one recipe. Deterministic picks from
+          the same content tables and RLS everything else here uses — an
+          admin reassigns them by editing sort_order in the existing content
+          managers, no code change required. Once a member sets focus
+          pillars, "Your Development Focus" above takes over and this goes
+          away rather than sitting alongside it as clutter. */}
+      {needsStartingPicks && (startingPicks.video || startingPicks.workout || startingPicks.recipe) && (
+        <Card hover className="mt-5 p-5">
+          <Eyebrow>Start Your Development</Eyebrow>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
+            {startingPicks.video && (
+              <Link href={`/library/${startingPicks.video.id}`}>
+                <Card hover className="h-full p-3.5">
+                  <p className="text-[10px] font-bold uppercase tracking-[.12em] text-electric-glow">Training Video</p>
+                  <p className="mt-1.5 text-[13.5px] font-semibold leading-snug text-white">
+                    {startingPicks.video.title}
+                  </p>
+                </Card>
+              </Link>
+            )}
+            {startingPicks.workout && (
+              <Link href={`/workouts/${startingPicks.workout.slug}`}>
+                <Card hover className="h-full p-3.5">
+                  <p className="text-[10px] font-bold uppercase tracking-[.12em] text-electric-glow">Workout</p>
+                  <p className="mt-1.5 text-[13.5px] font-semibold leading-snug text-white">
+                    {startingPicks.workout.title}
+                  </p>
+                </Card>
+              </Link>
+            )}
+            {startingPicks.recipe && (
+              <Link href={`/nutrition/${startingPicks.recipe.slug}`} className="col-span-2">
+                <Card hover className="h-full p-3.5">
+                  <p className="text-[10px] font-bold uppercase tracking-[.12em] text-electric-glow">Meal / Nutrition</p>
+                  <p className="mt-1.5 text-[13.5px] font-semibold leading-snug text-white">
+                    {startingPicks.recipe.title}
+                  </p>
+                </Card>
+              </Link>
+            )}
+          </div>
+        </Card>
+      )}
+
       <div className="mt-5 grid grid-cols-2 gap-3">
       {/* AI INSIGHT — one weakness, one drill, one action. No score grid,
           no recommendation list. */}
@@ -262,7 +331,25 @@ export default async function DashboardPage() {
         <Eyebrow>AI Insight</Eyebrow>
         {aiShotAnalysis ? (
           latestAnalysis ? (
-            weakestCategoryLabel ? (
+            analysisState === 'failed' ? (
+              <>
+                <p className="mt-3 text-[13px] text-silver-dim">Your last shot analysis didn&apos;t complete.</p>
+                <div className="mt-3">
+                  <Button href="/analysis/new" size="sm" variant="ghost">Try Again</Button>
+                </div>
+              </>
+            ) : analysisState === 'processing' ? (
+              <>
+                <p className="mt-3 text-[13px] text-silver-dim">
+                  Your last shot is still being analyzed — check back soon.
+                </p>
+                <div className="mt-3">
+                  <Button href={`/analysis/${latestAnalysis.id}`} size="sm" variant="ghost">
+                    View Status
+                  </Button>
+                </div>
+              </>
+            ) : weakestCategoryLabel ? (
               <>
                 <p className="mt-2.5 text-[10.5px] font-bold uppercase tracking-[.1em] text-silver-dim">Lowest Score</p>
                 <p className="mt-1 text-[15px] font-semibold text-white">{weakestCategoryLabel}</p>

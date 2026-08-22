@@ -13,12 +13,19 @@
 export function uploadWithProgress(
   signedUrl: string,
   file: File,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number) => void,
+  contentType?: string
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', signedUrl, true);
-    xhr.setRequestHeader('content-type', file.type || 'application/octet-stream');
+    // Callers with a bucket-specific mime allowlist (e.g. video review's
+    // resolveVideoContentType()) pass an explicit, known-good contentType so
+    // the header sent here can never diverge from what Storage will accept.
+    // Falls back to the file's own reported type, same as before, for
+    // callers that don't need that (admin uploads to buckets without a
+    // strict allowlist).
+    xhr.setRequestHeader('content-type', contentType || file.type || 'application/octet-stream');
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));

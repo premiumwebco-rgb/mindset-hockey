@@ -705,3 +705,53 @@ footer{background:var(--ink);border-top:1px solid var(--line);padding-block:52px
   .hero h1 .show-desktop{display:none!important}
 }
 
+
+/* ============================================================================
+   PRICING CARDS — SIDE-BY-SIDE ON PHONES (Mobile Production Pass, item 1)
+
+   Purely additive, appended last so it wins the cascade at equal
+   specificity. Nothing above this point is edited or removed.
+
+   Below 700px, Standard and Premium (the two plans people are actually
+   comparing) sit side by side as compact price-first cards — name, price,
+   one CTA — with the full feature <ul> and "who" tagline hidden on THIS
+   pair only, since the CTA already opens /pricing for the full comparison.
+   That is a deliberate content trim for the space available, not
+   overflow:hidden hiding a layout that doesn't fit: nothing is clipped,
+   nothing scrolls sideways, and the hidden text is one tap away. Custom
+   (3rd card) is excluded from the trim and spans the full row below,
+   unchanged from the existing Task F compact styling.
+
+   Below ~380px (iPhone SE class) the two-column price type shrinks one
+   notch further so "$249"/"$389" and the monthly figure never wrap.
+   ========================================================================= */
+@media(max-width:699px){
+  .plans{grid-template-columns:1fr 1fr;gap:10px}
+  .plans .plan:nth-child(3){grid-column:1/-1}
+
+  .plans .plan:nth-child(1),.plans .plan:nth-child(2){
+    padding:14px 12px;border-radius:14px;min-height:0;
+  }
+  .plans .plan:nth-child(1) h3,.plans .plan:nth-child(2) h3{font-size:15.5px;margin-bottom:2px}
+  .plans .plan:nth-child(1) .who,.plans .plan:nth-child(2) .who{display:none}
+  .plans .plan:nth-child(1) .price-setup,.plans .plan:nth-child(2) .price-setup{gap:4px}
+  .plans .plan:nth-child(1) .price-setup b,.plans .plan:nth-child(2) .price-setup b{font-size:22px}
+  .plans .plan:nth-child(1) .price-setup span,.plans .plan:nth-child(2) .price-setup span{font-size:9.5px}
+  .plans .plan:nth-child(1) .price-monthly,.plans .plan:nth-child(2) .price-monthly{margin-top:6px;padding-top:6px}
+  .plans .plan:nth-child(1) .price-monthly b,.plans .plan:nth-child(2) .price-monthly b{font-size:17px}
+  .plans .plan:nth-child(1) .price-monthly span,.plans .plan:nth-child(2) .price-monthly span{font-size:9.5px}
+  .plans .plan:nth-child(1) .price-note,.plans .plan:nth-child(2) .price-note{display:none}
+  .plans .plan:nth-child(1) ul,.plans .plan:nth-child(2) ul{display:none}
+  .plans .plan:nth-child(1) .foot,.plans .plan:nth-child(2) .foot{margin-top:12px}
+  .plans .plan:nth-child(1) .foot .btn,.plans .plan:nth-child(2) .foot .btn{
+    padding:9px 8px;font-size:11.5px;white-space:nowrap;
+  }
+  .plans .plan.featured .flag{
+    top:-9px;font-size:8px;padding:4px 8px;letter-spacing:.02em;white-space:nowrap;
+  }
+}
+@media(max-width:380px){
+  .plans .plan:nth-child(1) .price-setup b,.plans .plan:nth-child(2) .price-setup b{font-size:19px}
+  .plans .plan:nth-child(1) .price-monthly b,.plans .plan:nth-child(2) .price-monthly b{font-size:15px}
+  .plans .plan:nth-child(1),.plans .plan:nth-child(2){padding:12px 10px}
+}

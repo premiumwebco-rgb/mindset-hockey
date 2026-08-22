@@ -24,6 +24,22 @@ import { useRouter } from 'next/navigation';
 
    No new API route, no client-side Supabase call, no change to how or by whom
    the URL was authorized — this only reacts to the URL already handed to it.
+
+   ROOT-CAUSE NOTE (mobile video playback): per the HTML5 media spec, setting
+   `src` on a <video> element that has already started loading (or already
+   errored) does NOT by itself make the browser attempt the new source —
+   nothing restarts the resource-selection algorithm without an explicit
+   `.load()` call or a full element remount. Without that, the 1st-error ->
+   router.refresh() retry above minted a fresh signed URL but the still-
+   mounted, still-broken <video> DOM node just sat there, so a member never
+   actually saw the fresh URL attempted. `key={src}` below forces React to
+   tear down and recreate the <video> element whenever src changes (mount,
+   or after a refresh), guaranteeing a clean load attempt every time — this
+   is the fix, not a behavior change to the retry logic itself. Expired
+   signed URLs from a backgrounded mobile tab are the case this matters for
+   most: mobile is where a session actually sits past the TTL and hits this
+   retry path, so this bug reads as "video doesn't load on mobile" even
+   though the missing-reload defect itself isn't mobile-specific.
    ========================================================================== */
 
 interface SmartVideoProps extends React.VideoHTMLAttributes<HTMLVideoElement> {
@@ -51,6 +67,7 @@ export function SmartVideo({ src, fallbackLabel = 'video', className, ...rest }:
 
   return (
     <video
+      key={src}
       {...rest}
       src={src}
       onError={handleError}

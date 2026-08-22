@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { validateVideo } from '@/lib/video';
+import { validateVideo, resolveVideoContentType } from '@/lib/video';
 import { uploadWithProgress } from '@/lib/upload-with-progress';
 
 const KINDS = [
@@ -53,7 +53,10 @@ export default function SubmissionForm() {
       if (!initRes.ok) throw new Error(init.error || 'Could not start the submission.');
 
       // Step 2 — PUT the file straight to storage. Never touches this server.
-      await uploadWithProgress(init.signedUrl, file, setProgress);
+      // Content-Type is resolved explicitly (not just file.type) so it always
+      // matches the member-videos bucket's mime allowlist, even when a mobile
+      // picker reports an empty/nonstandard file.type for a valid video.
+      await uploadWithProgress(init.signedUrl, file, setProgress, resolveVideoContentType(file));
 
       // Step 3 — confirm the object landed, and move the submission to
       // 'queued' so it appears in the coach queue.

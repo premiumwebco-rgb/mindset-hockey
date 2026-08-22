@@ -776,3 +776,67 @@ export async function getLatestAnalysis(session: Session): Promise<RecentAnalysi
     .maybeSingle();
   return (data as RecentAnalysis | null) ?? null;
 }
+
+/* ---------------------------------------------------- starting picks --- */
+
+export interface StartingDevelopmentPicks {
+  video: { id: string; title: string; pillar: string | null } | null;
+  workout: { slug: string; title: string } | null;
+  recipe: { slug: string; title: string } | null;
+}
+
+/**
+ * The three items a brand-new member's dashboard leads with: one training
+ * video, one workout routine, one recipe. Deterministic (lowest sort_order,
+ * tie-broken by created_at), not random and not a fixed id — so an
+ * admin/coach reassigns "the starter items" simply by changing sort_order,
+ * exactly the lever the existing content managers already expose. RLS
+ * (training_resources_read / workout_plans routines / nutrition_recipes_read)
+ * is what actually decides which rows a given member's session can see, so a
+ * Standard member only ever gets rows their required_tier already clears —
+ * nothing here bypasses or duplicates that check.
+ */
+export async function getStartingDevelopmentPicks(): Promise<StartingDevelopmentPicks> {
+  if (DEMO_MODE) return { video: null, workout: null, recipe: null };
+  const supabase = await createServerClient();
+  const [videoRes, workoutRes, recipeRes] = await Promise.all([
+    supabase
+      .from('training_resources')
+      .select('id, title, pillar')
+      .eq('is_published', true)
+      .eq('kind', 'video')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('workout_plans')
+      .select('slug, title')
+      .eq('is_published', true)
+      .eq('phase', 'routine')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('nutrition_recipes')
+      .select('slug, title')
+      .eq('is_published', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  return {
+    video: videoRes.data
+      ? { id: videoRes.data.id as string, title: videoRes.data.title as string, pillar: (videoRes.data.pillar as string) ?? null }
+      : null,
+    workout: workoutRes.data
+      ? { slug: workoutRes.data.slug as string, title: workoutRes.data.title as string }
+      : null,
+    recipe: recipeRes.data
+      ? { slug: recipeRes.data.slug as string, title: recipeRes.data.title as string }
+      : null,
+  };
+}

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { requireFeature } from '@/lib/session';
+import { requireSession } from '@/lib/session';
 import {
   getRecipeBySlug,
   formatIngredient,
@@ -19,11 +19,16 @@ export const dynamic = 'force-dynamic';
 /* ==========================================================================
    RECIPE DETAIL
 
-   Premium-gated by requireFeature('nutrition_plans'), then read through the
-   session client so RLS decides visibility. A draft recipe returns null for a
-   member and renders 404 — indistinguishable from "does not exist", which is
-   the intended behaviour: a member should not be able to discover unpublished
-   content by probing slugs.
+   Gated per-row, not per-feature: nutrition_recipes.required_tier decides
+   visibility through RLS (nutrition_recipes_read), the same pattern
+   workouts/[slug] and library/[id] use. A specific recipe can be unlocked to
+   'basic' independent of the feature's overall premium default (e.g. the
+   handful of preview items new Standard members see on their dashboard), so
+   this page only requires a signed-in session and lets getRecipeBySlug()
+   return null — for a locked OR a draft recipe alike — which renders 404.
+   That 404 is indistinguishable from "does not exist", which is intended: a
+   member should not be able to discover a still-premium recipe by probing
+   slugs, and a direct URL cannot bypass the tier restriction either way.
    ========================================================================== */
 
 /** Timing windows this recipe suits, as human labels. */
@@ -38,7 +43,7 @@ export default async function RecipePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await requireFeature('nutrition_plans');
+  await requireSession();
   const { slug } = await params;
 
   const recipe = await getRecipeBySlug(slug);

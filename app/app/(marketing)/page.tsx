@@ -582,7 +582,7 @@ export default function Home() {
                 <li>Goal setting and accountability</li>
                 <li>Member dashboard access</li>
               </ul>
-              <div className="foot"><Link className="btn btn-ghost btn-block" href="/pricing#basic" data-plan="basic" data-cta="plan_basic" data-cta-location="home_pricing">See What&apos;s Included</Link></div>
+              <div className="foot"><Link className="btn btn-ghost btn-block" href="/pricing#basic" data-plan="basic" data-cta="plan_basic" data-cta-location="home_pricing"><span className="show-desktop">See What&apos;s Included</span><span className="show-mobile">View Plan</span></Link></div>
             </article>
 
             <article className="plan featured rv">
@@ -601,7 +601,7 @@ export default function Home() {
                 <li>Monthly coaching review sessions</li>
                 <li>Priority support</li>
               </ul>
-              <div className="foot"><Link className="btn btn-primary btn-block" href="/pricing#premium" data-plan="premium" data-cta="plan_premium" data-cta-location="home_pricing">See What&apos;s Included</Link></div>
+              <div className="foot"><Link className="btn btn-primary btn-block" href="/pricing#premium" data-plan="premium" data-cta="plan_premium" data-cta-location="home_pricing"><span className="show-desktop">See What&apos;s Included</span><span className="show-mobile">View Plan</span></Link></div>
             </article>
 
             <article className="plan rv">
