@@ -2,7 +2,6 @@ import Link from 'next/link';
 import Script from 'next/script';
 import Nav from '@/components/marketing/Nav';
 import Footer from '@/components/marketing/Footer';
-import StickyCta from '@/components/marketing/StickyCta';
 
 /**
  * Root 404 — catches any URL that doesn't match a route anywhere in the app
@@ -48,7 +47,6 @@ export default function NotFound() {
         </section>
       </main>
       <Footer />
-      <StickyCta />
 
       <Script src="/assets/site.js" strategy="afterInteractive" />
     </>

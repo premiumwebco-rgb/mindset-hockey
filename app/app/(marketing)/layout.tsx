@@ -1,7 +1,6 @@
 import Script from 'next/script';
 import Nav from '@/components/marketing/Nav';
 import Footer from '@/components/marketing/Footer';
-import StickyCta from '@/components/marketing/StickyCta';
 import MarketingScripts from '@/components/marketing/MarketingScripts';
 
 /**
@@ -35,14 +34,13 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           original static pages did — force everything visible. Content must
           never depend on JavaScript to exist. */}
       <noscript>
-        <style>{`.rv{opacity:1!important;transform:none!important}.stickycta{display:none}`}</style>
+        <style>{`.rv{opacity:1!important;transform:none!important}`}</style>
       </noscript>
 
       <a className="skip" href="#main">Skip to content</a>
       <Nav />
       <main id="main">{children}</main>
       <Footer />
-      <StickyCta />
 
       <Script src="/assets/site.js" strategy="afterInteractive" />
       {/* Re-binds page-scoped behavior after every client-side navigation. */}

@@ -571,16 +571,19 @@ footer{background:var(--ink);border-top:1px solid var(--line);padding-block:52px
       hero (headline, one line of copy, "Start Your Development" / "Explore
       the Program") and one long desktop hero from the same markup, instead
       of shrinking the desktop version down.
-   2. Hides the hero ladder, second coach photo and duo-note on mobile only,
-      so the first screen is headline + one line + two buttons + one photo,
-      not five stacked elements.
+   2. Hides the hero ladder and duo-note on mobile only, so the first
+      screen is headline + one line + two buttons + both coach photos,
+      not extra stacked elements. Both coach photos (Coach Brayden + Coach
+      Jack) stay visible side by side on mobile — see the Coach Icons fix
+      below, which re-enables the second photo that this block originally
+      hid entirely on mobile.
    3. Tightens section rhythm (--sec floors at 64px per section, x13
       sections = a lot of dead space) and turns the four-stat trust bar into
       a horizontal-scroll strip instead of a stacked column.
    ========================================================================= */
 @media(max-width:759px){
   .show-desktop{display:none}
-  .ladder,.duo-note,.duo .hero-shot:not(.lead){display:none}
+  .ladder,.duo-note{display:none}
   .hero{padding-top:28px}
   section{padding-block:40px}
   .head{margin-bottom:26px}
