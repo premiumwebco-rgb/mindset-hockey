@@ -821,7 +821,7 @@ export async function getStartingDevelopmentPicks(): Promise<StartingDevelopment
     supabase
       .from('nutrition_recipes')
       .select('slug, title')
-      .eq('is_published', true)
+      .eq('status', 'published')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
       .limit(1)

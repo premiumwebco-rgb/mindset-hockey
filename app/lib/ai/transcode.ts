@@ -129,3 +129,85 @@ export async function ensurePlayableMp4(
     return { file, transcoded: false };
   }
 }
+
+/**
+ * ROOT CAUSE (mobile training-resource playback start time): unlike AI Shot
+ * Analysis clips, training-resource videos uploaded through the admin
+ * ResourceManager go straight to storage untouched — no transcode of any
+ * kind runs on them (see ResourceManager.tsx's upload(), which PUTs `file`
+ * directly). A phone camera almost never places the MP4 "moov atom" (the
+ * index a player needs before it can start decoding anything) at the FRONT
+ * of the file; it's written last, after the video data, because that's the
+ * simpler way to record incrementally. <video preload="metadata"> and
+ * Supabase Storage's range-request support are both already working
+ * correctly (confirmed: the storage backend serves byte ranges, and the
+ * player already requests them) — but neither helps if the one byte range
+ * that actually matters, the moov atom, sits at the END of a 25-50MB file.
+ * The browser has to keep pulling ranges toward the tail before playback can
+ * begin at all, which is slow on any connection and much worse on mobile,
+ * where throughput is lower and less consistent than a desktop's wifi.
+ * ensurePlayableMp4() above already fixes this for the .mov files it
+ * transcodes, via the same `-movflags +faststart` flag — but it deliberately
+ * SKIPS any file already in an mp4/webm container (`needsTranscode` returns
+ * false), so an already-mp4 phone recording — the common case — never got
+ * that fix.
+ *
+ * This function closes that gap for mp4 uploads specifically, using
+ * `-c copy` so ffmpeg only rewrites the container (repositioning the moov
+ * atom) without re-encoding a single frame: no quality loss, no bitrate
+ * change, and fast even on a full-length coach video (seconds, not the
+ * minutes a real encode would take), because there is no encoding work to
+ * do. webm is left untouched — it doesn't have an equivalent "index at the
+ * end" defect in the same way, and `-movflags` is mp4-specific.
+ *
+ * Same fail-soft contract as ensurePlayableMp4(): any problem loading
+ * ffmpeg.wasm or running the remux returns the original file unchanged
+ * rather than blocking the upload.
+ */
+export async function ensureFastStartMp4(
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<TranscodeResult> {
+  if (file.type !== 'video/mp4') return { file, transcoded: false };
+
+  try {
+    const [{ FFmpeg }, { fetchFile, toBlobURL }] = await Promise.all([
+      import(/* webpackIgnore: true */ FFMPEG_ESM),
+      import(/* webpackIgnore: true */ UTIL_ESM),
+    ]);
+
+    const ffmpeg = new FFmpeg();
+    if (onProgress) {
+      ffmpeg.on('progress', ({ progress }: { progress: number }) => {
+        onProgress(Math.max(0, Math.min(100, Math.round(progress * 100))));
+      });
+    }
+
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
+
+    const inputName = 'input.mp4';
+    await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+    // -c copy: remux only, no re-encode. +faststart: move the moov atom to
+    // the front so playback can start after the first range request instead
+    // of after (nearly) the whole file.
+    await ffmpeg.exec([
+      '-i', inputName,
+      '-c', 'copy',
+      '-movflags', '+faststart',
+      'output.mp4',
+    ]);
+
+    const data = (await ffmpeg.readFile('output.mp4')) as Uint8Array;
+    const bytes = new Uint8Array(data);
+    const out = new File([bytes], file.name, { type: 'video/mp4' });
+
+    return { file: out, transcoded: true };
+  } catch (err) {
+    console.warn('[transcode] faststart remux failed, using original file:', (err as Error).message);
+    return { file, transcoded: false };
+  }
+}

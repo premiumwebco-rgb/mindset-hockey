@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { uploadWithProgress } from '@/lib/upload-with-progress';
+import { needsTranscode, ensurePlayableMp4, ensureFastStartMp4 } from '@/lib/ai/transcode';
 
 /* ==========================================================================
    TRAINING RESOURCE MANAGER  —  ADMIN / COACH
@@ -59,7 +60,7 @@ interface Resource {
   created_at: string;
 }
 
-type Phase = 'idle' | 'creating' | 'uploading' | 'done' | 'error';
+type Phase = 'idle' | 'optimizing' | 'creating' | 'uploading' | 'done' | 'error';
 
 function prettySize(bytes: number | null): string {
   if (!bytes) return '—';
@@ -351,6 +352,24 @@ export default function ResourceManager() {
     setNotice(null);
 
     try {
+      // 0. Web-optimize video before it ever leaves this tab. Uploads used to
+      // go straight to storage byte-for-byte, which is the root cause of slow
+      // mobile playback start (see lib/ai/transcode.ts): a phone-recorded mp4
+      // almost always has its moov atom at the end of the file, so a player
+      // has to pull most of a 25-50MB file before it can start at all. A
+      // non-mp4/mov container gets a full transcode (also fixes faststart as
+      // a side effect); an already-mp4 file gets a fast, lossless remux that
+      // only repositions the moov atom. Both fail soft to the original file.
+      let uploadFile = file;
+      if (file.type.startsWith('video/') || file.type === '') {
+        setPhase('optimizing');
+        setProgress(0);
+        const result = needsTranscode(file)
+          ? await ensurePlayableMp4(file, setProgress)
+          : await ensureFastStartMp4(file, setProgress);
+        uploadFile = result.file;
+      }
+
       // 1. Reserve the catalogue row + get a signed upload URL.
       setPhase('creating');
       setProgress(5);
@@ -365,9 +384,9 @@ export default function ResourceManager() {
           requiredTier,
           durationSec,
           coverImagePath: coverPath,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
+          fileName: uploadFile.name,
+          fileType: uploadFile.type,
+          fileSize: uploadFile.size,
         }),
       });
       const init = await initRes.json();
@@ -375,7 +394,7 @@ export default function ResourceManager() {
 
       // 2. PUT the file straight to storage.
       setPhase('uploading');
-      await uploadWithProgress(init.signedUrl, file, setProgress);
+      await uploadWithProgress(init.signedUrl, uploadFile, setProgress);
 
       setPhase('done');
       setNotice(
@@ -438,7 +457,7 @@ export default function ResourceManager() {
     }
   }
 
-  const busy = phase === 'creating' || phase === 'uploading';
+  const busy = phase === 'optimizing' || phase === 'creating' || phase === 'uploading';
   const FIELD =
     'w-full rounded-[10px] border border-white/[.14] bg-ink px-4 py-3 text-[15px] text-white placeholder:text-silver-dim/60';
   const LABEL =
@@ -621,10 +640,12 @@ export default function ResourceManager() {
             </p>
           )}
 
-          {phase === 'uploading' ? (
+          {phase === 'optimizing' || phase === 'uploading' ? (
             <div>
               <div className="flex items-center justify-between text-[13.5px]">
-                <span className="font-semibold text-white">Uploading…</span>
+                <span className="font-semibold text-white">
+                  {phase === 'optimizing' ? 'Optimizing video for fast playback…' : 'Uploading…'}
+                </span>
                 <span className="tabular-nums text-silver-dim">{progress}%</span>
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-navy-700">
@@ -634,7 +655,9 @@ export default function ResourceManager() {
                 />
               </div>
               <p className="mt-2 text-[12.5px] text-silver-dim">
-                Keep this tab open until it finishes.
+                {phase === 'optimizing'
+                  ? 'Repositioning the video so it starts playing instantly on mobile — this stays on your device, nothing has uploaded yet.'
+                  : 'Keep this tab open until it finishes.'}
               </p>
             </div>
           ) : editing ? (
