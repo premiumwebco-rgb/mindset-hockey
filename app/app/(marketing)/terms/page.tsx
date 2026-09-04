@@ -54,13 +54,15 @@ export default function Terms() {
 
             <h2 className="mt3" style={{ fontSize: '22px' }}>What you are buying</h2>
             <p className="mt1 muted">
-              A coaching membership. The Standard program includes AI Shot Analysis, a personalized
-              development roadmap, a hockey-specific workout plan, monthly progress review, goal setting
-              and accountability, basic performance tracking, coaching support and member dashboard
-              access. The Premium program includes everything in Standard plus a customized training
-              program, performance nutrition guidance, video analysis and breakdowns, advanced
-              performance tracking, mindset development training, priority support, personalized
-              coaching guidance and monthly coaching review sessions.
+              A Membership. It includes AI Shot Analysis, a personalized development roadmap, a
+              hockey-specific workout plan, nutrition and meal plans, mindset development training,
+              a training video library, progress tracking and member dashboard access.
+            </p>
+            <p className="mt1 muted">
+              Direct coaching time — video reviews, weekly check-ins, direct messaging with a coach,
+              1-on-1 coaching and custom programming — is not part of Membership. It is available as
+              Custom Coaching, a separate package built for your player and priced after a short call;
+              see <Link href="/coaching/request">Request Custom Coaching</Link>.
             </p>
             <p className="mt1 muted">
               You are not buying tryout results, roster spots, scouting exposure, or placement at any
@@ -69,14 +71,12 @@ export default function Terms() {
 
             <h2 className="mt3" style={{ fontSize: '22px' }}>Pricing and billing</h2>
             <p className="mt1 muted">
-              Standard is a <b>$249 one-time setup fee</b> plus <b>$100 per month</b>. Premium is a{' '}
-              <b>$389 one-time setup fee</b> plus <b>$149 per month</b>. Private on-ice sessions are{' '}
-              <b>$149 per session</b> and are booked and paid for separately from any membership. All
-              prices are in US dollars.
+              Membership is <b>$49 per month</b>, with <b>no setup fee</b>. All prices are in US
+              dollars. Custom Coaching has no fixed price — it is quoted individually based on what you
+              request.
             </p>
             <p className="mt1 muted">
-              The setup fee is charged once, at the start, together with your first month. Your first
-              payment is therefore $349 for Standard or $538 for Premium. The monthly fee then renews
+              Your first Membership charge is $49, the same as every renewal. The monthly fee renews
               automatically each month until you cancel. Payments are processed by Stripe; we never see
               or store your card details.
             </p>
@@ -94,10 +94,8 @@ export default function Terms() {
               paid for, and you are not charged again after that.
             </p>
             <p className="mt1 muted">
-              The setup fee is non-refundable once onboarding has begun, because it pays for work that
-              is delivered immediately — the intake assessment, your baseline breakdown and your first
-              custom plan. Monthly fees already paid are not refunded on a partial-month basis. Full
-              detail is in our <Link href="/refunds">Cancellation &amp; Refund Policy</Link>.
+              Monthly fees already paid are not refunded on a partial-month basis. Full detail is in our{' '}
+              <Link href="/refunds">Cancellation &amp; Refund Policy</Link>.
             </p>
 
             <h2 className="mt3" style={{ fontSize: '22px' }}>No performance guarantees</h2>

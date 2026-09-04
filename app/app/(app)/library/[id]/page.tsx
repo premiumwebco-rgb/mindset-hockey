@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { revalidatePath } from 'next/cache';
 import { notFound, redirect } from 'next/navigation';
-import { requireSession } from '@/lib/session';
+import { requireSession, hasTier } from '@/lib/session';
 import { getResourceForViewing } from '@/lib/library';
+import { createServerClient } from '@/lib/supabase/server';
 import { Button, Card, PillarChip, formatDuration } from '@/components/ui';
 import { SmartVideo, SmartImage } from '@/components/media/SmartMedia';
 
@@ -41,6 +43,42 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
   const { resource, signedUrl } = access;
   const isVideo = resource.kind === 'video';
   const isImage = resource.kind === 'image';
+
+  // training_resource_completions_own (migration 0019) requires at least
+  // 'basic' to write — the same minimum any published resource already
+  // requires to view, so in practice every member who can reach this page
+  // can also mark it complete. Checked explicitly anyway rather than assumed.
+  const canComplete = hasTier(session, 'basic');
+  let isComplete = false;
+  if (canComplete) {
+    const supabase = await createServerClient();
+    const { data: completion } = await supabase
+      .from('training_resource_completions')
+      .select('resource_id')
+      .eq('profile_id', session.userId)
+      .eq('resource_id', resource.id)
+      .maybeSingle();
+    isComplete = Boolean(completion);
+  }
+
+  async function toggleComplete() {
+    'use server';
+    const s = await requireSession();
+    if (!hasTier(s, 'basic')) return;
+    const supabase = await createServerClient();
+    if (isComplete) {
+      await supabase
+        .from('training_resource_completions')
+        .delete()
+        .eq('profile_id', s.userId)
+        .eq('resource_id', resource.id);
+    } else {
+      await supabase
+        .from('training_resource_completions')
+        .upsert({ profile_id: s.userId, resource_id: resource.id }, { onConflict: 'profile_id,resource_id' });
+    }
+    revalidatePath(`/library/${resource.id}`);
+  }
 
   return (
     <>
@@ -136,12 +174,31 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
           Watch it once through, then run the reps. When you want feedback on your own shot, upload a
           clip and the AI will analyze it against the same framework.
         </p>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button href="/analysis/new">Analyze my shot</Button>
           <Button href={`/library?pillar=${resource.pillar}`} variant="ghost">
             More in this pillar
           </Button>
+          {canComplete ? (
+            <form action={toggleComplete}>
+              <Button type="submit" variant={isComplete ? 'ghost' : 'primary'}>
+                {isComplete ? 'Mark Not Done' : 'Mark Complete'}
+              </Button>
+            </form>
+          ) : (
+            <p className="text-[12.5px] text-silver-dim">
+              Completion tracking requires an active membership.{' '}
+              <Link href="/upgrade?need=basic" className="font-semibold text-electric-glow underline underline-offset-4">
+                Upgrade
+              </Link>
+            </p>
+          )}
         </div>
+        {isComplete && (
+          <span className="mt-3 inline-block rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.12em] text-emerald-300">
+            Completed
+          </span>
+        )}
       </Card>
     </>
   );

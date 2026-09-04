@@ -12,6 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         role={session.role}
         demo={session.demo}
         subscriptionActive={session.subscriptionActive}
+        permissions={session.permissions}
         playerName={session.fullName || session.email}
       />
       {/* pb-20 keeps content clear of the fixed MobileNav bar on phones; lg:pb-10

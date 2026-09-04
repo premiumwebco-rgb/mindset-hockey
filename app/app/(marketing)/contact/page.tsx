@@ -76,19 +76,15 @@ export default function Contact() {
                   <div className="field"><label htmlFor="plan">Program of interest</label>
                     <select id="plan" name="plan" defaultValue="not_sure">
                       <option value="not_sure">Not sure yet</option>
-                      <option value="on_ice">Private on-ice session — $149</option>
-                      <option value="standard">Standard — $249 setup + $100/mo</option>
-                      <option value="premium">Premium — $389 setup + $149/mo</option>
-                      <option value="custom">Custom quote</option>
+                      <option value="membership">Membership — $49/mo</option>
+                      <option value="custom">Custom Coaching</option>
                     </select>
                   </div>
                 </div>
                 <div className="form-row" style={{ gridTemplateColumns: '1fr' }}>
                   <div className="field"><label htmlFor="training">Training preference</label>
-                    <select id="training" name="training" defaultValue="waldorf">
-                      <option value="waldorf">In person — The Capital Clubhouse, Waldorf MD</option>
+                    <select id="training" name="training" defaultValue="remote">
                       <option value="remote">Remote / video coaching</option>
-                      <option value="both">A mix of both</option>
                     </select>
                   </div>
                 </div>

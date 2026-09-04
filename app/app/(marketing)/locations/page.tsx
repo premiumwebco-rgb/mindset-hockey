@@ -62,7 +62,7 @@ export default function Locations() {
           <div className="head center">
             <p className="eyebrow center">Where we train</p>
             <h1>Hockey training in<br />Waldorf, Maryland</h1>
-            <p className="lede mt2">All in-person ice and off-ice sessions run out of one home rink — The Capital Clubhouse in Waldorf. One location means a consistent schedule, familiar ice and no chasing coaches across the state.</p>
+            <p className="lede mt2">Mindset Hockey is based at The Capital Clubhouse in Waldorf. Training runs remotely today — video analysis, the weekly plan and mindset work — wherever your player is.</p>
             <p className="mt2"><span className="respond">⏱ We respond to all inquiries within 24 hours</span></p>
           </div>
         </div>
@@ -84,16 +84,15 @@ export default function Locations() {
                 </div>
                 <p className="mt2">
                   <a className="btn btn-primary" href="https://www.google.com/maps/dir/?api=1&destination=The+Capital+Clubhouse,+3033+Waldorf+Market+Place,+Waldorf,+MD+20603" target="_blank" rel="noopener" data-cta="get_directions" data-cta-location="locations">Get Directions</a>{' '}
-                  <Link className="btn btn-ghost" href="/contact?location=waldorf" data-cta="book_waldorf" data-cta-location="locations">Book a Session Here</Link>
+                  <Link className="btn btn-ghost" href="/contact" data-cta="contact_waldorf" data-cta-location="locations">Contact Us</Link>
                 </p>
               </div>
             </div>
             <div className="rv">
               <div className="card">
-                <h3>Private on-ice sessions — $149</h3>
-                <p className="mt1 muted">Shooting development, stickhandling, skating work, hockey IQ and position-specific coaching, with immediate feedback on the ice. Both coaches are on when we&apos;re both available, and session sizes stay small so every player gets real reps.</p>
-                <p className="mt1 muted">Filmed on two angles, so the same session becomes your next video breakdown. You&apos;ll get ice times, entrance and locker room notes by email once you&apos;re booked.</p>
-                <p className="mt2"><Link className="btn btn-primary btn-sm" href="/contact?plan=on-ice" data-plan="on_ice" data-cta="book_on_ice" data-cta-location="locations">Book a Private Session</Link></p>
+                <h3>Train remotely, wherever you are</h3>
+                <p className="mt1 muted">Mindset Hockey Membership ($49/mo) runs entirely remotely — AI Shot Analysis, workout plans, nutrition, mindset training and progress tracking, no trip to Waldorf required.</p>
+                <p className="mt2"><Link className="btn btn-primary btn-sm" href="/pricing" data-cta="membership_from_locations" data-cta-location="locations">See Membership Pricing</Link></p>
               </div>
               <div className="card mt2">
                 <h3>Both coaches are on site</h3>

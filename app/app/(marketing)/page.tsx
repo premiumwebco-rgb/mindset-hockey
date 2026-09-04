@@ -1,6 +1,13 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
+// In-person / on-ice sessions are temporarily hidden platform-wide per a
+// business decision to focus on the remote Membership + Custom Coaching
+// model. The code below is intentionally kept, not deleted, so this can be
+// restored by flipping this flag back to true. Kept in sync with the same
+// flag in app/(marketing)/pricing/page.tsx and app/(marketing)/locations/page.tsx.
+const SHOW_IN_PERSON_SESSIONS = false;
+
 export const metadata: Metadata = {
   title: 'Hockey Training in Waldorf, MD | Shot Analysis & Mindset Coaching | Mindset Hockey',
   description:
@@ -95,32 +102,28 @@ const BUSINESS_JSONLD = {
     itemListElement: [
       {
         '@type': 'Offer',
-        name: 'Standard Development Program',
-        price: '249',
+        name: 'Mindset Hockey Membership',
+        price: '49',
         priceCurrency: 'USD',
         description:
-          '$249 one-time setup, then $100/month. Includes AI Shot Analysis, a personalized hockey development roadmap, hockey-specific workout plan, monthly progress review, goal setting and accountability, basic performance tracking, coaching support and member dashboard access.',
+          '$49/month, no setup fee. Full platform access: AI Shot Analysis, Workout Plans, Nutrition & Meal Plans, Mindset Training, Training Video Library and Progress Tracking.',
       },
+      ...(SHOW_IN_PERSON_SESSIONS
+        ? [
+            {
+              '@type': 'Offer',
+              name: 'On-Ice Session',
+              price: '149',
+              priceCurrency: 'USD',
+              description:
+                '$149 per on-ice training session at The Capital Clubhouse in Waldorf, MD. Shooting development, stickhandling, skating work, hockey IQ, position-specific coaching and immediate feedback. Small session sizes for individual attention.',
+            },
+          ]
+        : []),
       {
         '@type': 'Offer',
-        name: 'Premium Development Program',
-        price: '389',
-        priceCurrency: 'USD',
-        description:
-          '$389 one-time setup, then $149/month. Everything in Standard — including AI Shot Analysis — plus a customized training program, performance nutrition guidance, video analysis and breakdowns, advanced performance tracking, mindset development training, priority support, personalized coaching guidance, monthly coaching review sessions and the premium resource library.',
-      },
-      {
-        '@type': 'Offer',
-        name: 'On-Ice Session',
-        price: '149',
-        priceCurrency: 'USD',
-        description:
-          '$149 per on-ice training session at The Capital Clubhouse in Waldorf, MD. Shooting development, stickhandling, skating work, hockey IQ, position-specific coaching and immediate feedback. Small session sizes for individual attention.',
-      },
-      {
-        '@type': 'Offer',
-        name: 'Custom Plan',
-        description: 'A custom package built from Premium services and more, priced after a short call.',
+        name: 'Custom Coaching',
+        description: 'A custom coaching package built from services you select, priced after a short call.',
       },
     ],
   },
@@ -131,9 +134,13 @@ const FAQ_JSONLD = {
   '@type': 'FAQPage',
   mainEntity: [
     { '@type': 'Question', name: 'Who is Mindset Hockey for?', acceptedAnswer: { '@type': 'Answer', text: 'Hockey players ages 10 to 18 who want structure between practices — shot mechanics, a real weekly plan and mindset coaching. Below about 12, a parent should work through the plan alongside the player; from 13 up, most players run it themselves.' } },
-    { '@type': 'Question', name: 'What does the program include?', acceptedAnswer: { '@type': 'Answer', text: 'Standard includes AI Shot Analysis, a personalized development roadmap, a hockey-specific workout plan, monthly progress review, goal setting and dashboard access. Premium adds performance nutrition guidance, video breakdowns, mindset development training and priority support.' } },
-    { '@type': 'Question', name: 'Do you offer in-person and remote training?', acceptedAnswer: { '@type': 'Answer', text: 'Both. In-person ice time runs at The Capital Clubhouse in Waldorf, MD. The core of the program — video analysis, the weekly plan and mindset work — is built to run remotely.' } },
-    { '@type': 'Question', name: 'Where are in-person sessions held?', acceptedAnswer: { '@type': 'Answer', text: 'All in-person sessions run at The Capital Clubhouse, 3033 Waldorf Market Place, Waldorf, MD 20603 — our only training location.' } },
+    { '@type': 'Question', name: 'What does the program include?', acceptedAnswer: { '@type': 'Answer', text: 'Membership ($49/month) includes AI Shot Analysis, a personalized development roadmap, a hockey-specific workout plan, nutrition and meal plans, mindset development training, progress tracking and dashboard access — the full non-coaching platform. Custom Coaching adds direct coaching time on top of that: 1-on-1 sessions, weekly check-ins, video reviews and more.' } },
+    ...(SHOW_IN_PERSON_SESSIONS
+      ? [
+          { '@type': 'Question', name: 'Do you offer in-person and remote training?', acceptedAnswer: { '@type': 'Answer', text: 'Both. In-person ice time runs at The Capital Clubhouse in Waldorf, MD. The core of the program — video analysis, the weekly plan and mindset work — is built to run remotely.' } },
+          { '@type': 'Question', name: 'Where are in-person sessions held?', acceptedAnswer: { '@type': 'Answer', text: 'All in-person sessions run at The Capital Clubhouse, 3033 Waldorf Market Place, Waldorf, MD 20603 — our only training location.' } },
+        ]
+      : []),
     { '@type': 'Question', name: 'How does AI Shot Analysis work?', acceptedAnswer: { '@type': 'Answer', text: 'You film a few shots on your phone and upload the clip. It grades your mechanics across ten categories with notes on what it actually saw and a confidence level on every score. Anything the footage does not clearly show comes back marked insufficient footage instead of guessed at.' } },
     { '@type': 'Question', name: 'What makes Mindset Hockey different?', acceptedAnswer: { '@type': 'Answer', text: 'One of two named coaches works with your player directly, both current Jr hockey players. The program combines shot mechanics, a structured weekly plan and mindset coaching in one system.' } },
     { '@type': 'Question', name: 'How do I get started?', acceptedAnswer: { '@type': 'Answer', text: 'Book a free assessment and tell us your player’s age and level. We respond to every inquiry within 24 hours.' } },
@@ -347,7 +354,7 @@ export default function Home() {
               </ul>
               <p className="mt2"><Link className="btn btn-primary" href="/contact" data-cta="get_shot_analysis" data-cta-location="shot_section">Get Your Shot Analyzed</Link></p>
               <p className="mt2 small muted">
-                <b className="hl">AI Shot Analysis is included with both Standard and Premium.</b>{' '}
+                <b className="hl">AI Shot Analysis is included with Membership.</b>{' '}
                 Upload a clip from your phone and get it graded against ten mechanics categories,
                 with a confidence level on every one.
               </p>
@@ -515,10 +522,10 @@ export default function Home() {
         <div className="crease" style={{ width: '340px', height: '170px', right: '-90px', top: '70px' }} aria-hidden="true" />
         <div className="wrap">
           <div className="head center rv">
-            <p className="eyebrow center">Included with Premium</p>
+            <p className="eyebrow center">Included with Membership</p>
             <h2>Mindset development<br />training</h2>
             <p className="lede mt2">
-              Physical skills are only part of the equation. Our Premium athletes receive guidance on
+              Physical skills are only part of the equation. Our members receive guidance on
               confidence, discipline, accountability and mental performance so they can perform at their
               best both on and off the ice.
             </p>
@@ -550,7 +557,7 @@ export default function Home() {
           </div>
 
           <p className="center mt3">
-            <Link className="btn btn-primary btn-lg" href="/pricing#premium" data-plan="premium" data-cta="mindset_to_premium" data-cta-location="home_mindset">Mindset Training Comes With Premium</Link>
+            <Link className="btn btn-primary btn-lg" href="/pricing#membership" data-plan="membership" data-cta="mindset_to_membership" data-cta-location="home_mindset">Mindset Training Comes With Membership</Link>
           </p>
           </div>
           </details>
@@ -563,87 +570,70 @@ export default function Home() {
       <section className="band">
         <div className="wrap">
           <div className="head center rv">
-            <p className="eyebrow center">Programs</p>
-            <h2>Three ways to work together</h2>
-            <p className="lede mt2">Setup fee covers the intake assessment, baseline video breakdown and your first custom plan. Monthly keeps the coaching going. Premium is the complete system — skill development, strength and conditioning, nutrition, video analysis and mindset coaching in one program.</p>
+            <p className="eyebrow center">Membership</p>
+            <h2>One plan, full access</h2>
+            <p className="lede mt2">Membership is $49/month with no setup fee — skill development, strength and conditioning, nutrition, AI Shot Analysis and mindset coaching in one program. Want direct coaching time on top of it? Request a Custom Coaching plan.</p>
           </div>
-          <div className="plans">
-            <article className="plan rv">
-              <h3>Standard</h3>
-              <p className="who">Build the foundation for long-term hockey development.</p>
-              <div className="price-setup"><b>$249</b><span>one-time setup</span></div>
-              <div className="price-monthly"><b>$100</b><span>/ month</span></div>
-              <p className="price-note">Cancel the monthly any time.</p>
+          <div className="plans" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+            <article className="plan featured rv">
+              <span className="flag">Full platform access</span>
+              <h3>Membership</h3>
+              <p className="who">Everything non-coaching, for one monthly price.</p>
+              <div className="price-monthly"><b>$49</b><span>/ month</span></div>
+              <p className="price-note">No setup fee. Cancel any time.</p>
               <ul>
                 <li><b className="hl">AI Shot Analysis</b></li>
                 <li>Personalized development roadmap</li>
                 <li>Hockey-specific workout plan</li>
-                <li>Monthly progress review</li>
-                <li>Goal setting and accountability</li>
-                <li>Member dashboard access</li>
-              </ul>
-              <div className="foot"><Link className="btn btn-ghost btn-block" href="/pricing#basic" data-plan="basic" data-cta="plan_basic" data-cta-location="home_pricing"><span className="show-desktop">See What&apos;s Included</span><span className="show-mobile">View Plan</span></Link></div>
-            </article>
-
-            <article className="plan featured rv">
-              <span className="flag">⭐ Most Popular</span>
-              <h3>Premium</h3>
-              <p className="who">Everything serious athletes need to reach the next level.</p>
-              <div className="price-setup"><b>$389</b><span>one-time setup</span></div>
-              <div className="price-monthly"><b>$149</b><span>/ month</span></div>
-              <p className="price-note">Everything in Standard, including AI Shot Analysis, plus:</p>
-              <ul>
-                <li>Customized training program that evolves as the athlete progresses</li>
-                <li>Performance nutrition guidance tailored to the athlete&apos;s goals</li>
-                <li>Video analysis and breakdowns</li>
-                <li>Advanced performance tracking</li>
+                <li>Nutrition &amp; meal plans</li>
                 <li><b className="hl">Mindset development training</b></li>
-                <li>Monthly coaching review sessions</li>
-                <li>Priority support</li>
+                <li>Progress tracking &amp; dashboard access</li>
               </ul>
-              <div className="foot"><Link className="btn btn-primary btn-block" href="/pricing#premium" data-plan="premium" data-cta="plan_premium" data-cta-location="home_pricing"><span className="show-desktop">See What&apos;s Included</span><span className="show-mobile">View Plan</span></Link></div>
+              <div className="foot"><Link className="btn btn-primary btn-block" href="/pricing#membership" data-plan="membership" data-cta="plan_membership" data-cta-location="home_pricing"><span className="show-desktop">See What&apos;s Included</span><span className="show-mobile">View Plan</span></Link></div>
             </article>
 
             <article className="plan rv">
-              <h3>Custom</h3>
+              <h3>Custom Coaching</h3>
               <p className="who">Built around a specific goal, timeline or tryout.</p>
               <div className="price-setup"><b>Quote</b><span>tailored to you</span></div>
               <div className="price-monthly" style={{ borderTopColor: 'transparent' }}><span>Priced after a short call</span></div>
               <p className="price-note">Need something tailored specifically to your goals?</p>
               <ul>
-                <li>Pick the services you want from Premium — and more</li>
+                <li>1-on-1 coaching, check-ins, video reviews and more</li>
                 <li>Built around your player&apos;s schedule and season</li>
                 <li>Team and association packages available</li>
               </ul>
-              <div className="foot"><Link className="btn btn-red btn-block" href="/contact?plan=custom" data-plan="custom" data-cta="request_custom_quote" data-cta-location="home_pricing">Request Custom Quote</Link></div>
+              <div className="foot"><Link className="btn btn-red btn-block" href="/coaching/request" data-plan="custom" data-cta="request_custom_plan" data-cta-location="home_pricing">Request Custom Plan</Link></div>
             </article>
           </div>
-          <div className="onice rv mt3" id="on-ice">
-            <div className="onice-price">
-              <p className="eyebrow">On-ice sessions</p>
-              <b>$149</b>
-              <span>per session</span>
+          {SHOW_IN_PERSON_SESSIONS && (
+            <div className="onice rv mt3" id="on-ice">
+              <div className="onice-price">
+                <p className="eyebrow">On-ice sessions</p>
+                <b>$149</b>
+                <span>per session</span>
+              </div>
+              <div className="onice-body">
+                <h3>Private On-Ice Session</h3>
+                <p className="mt1">
+                  <span className="hl">No set time limit.</span> A session runs as long as it needs to — we&apos;re
+                  not watching a clock and cutting your player off mid-rep.
+                </p>
+                <ul className="ticks mt1">
+                  <li>Shooting development, stickhandling and skating work</li>
+                  <li>Hockey IQ and position-specific coaching</li>
+                  <li>Immediate feedback, on the ice, in the moment</li>
+                  <li><b>Both coaches on the ice</b> when we&apos;re both available</li>
+                  <li><b>Small groups on purpose</b> — every player gets real attention and real reps</li>
+                  <li>Book on its own, or add it to any program</li>
+                </ul>
+                <p className="mt2">
+                  <Link className="btn btn-primary" href="/contact?plan=on-ice" data-plan="on_ice" data-cta="book_on_ice" data-cta-location="home_pricing">Book a Private Session</Link>{' '}
+                  <a className="btn btn-ghost" href="tel:+12404356511" data-cta="call_on_ice" data-cta-location="home_pricing">Call to Check Availability</a>
+                </p>
+              </div>
             </div>
-            <div className="onice-body">
-              <h3>Private On-Ice Session</h3>
-              <p className="mt1">
-                <span className="hl">No set time limit.</span> A session runs as long as it needs to — we&apos;re
-                not watching a clock and cutting your player off mid-rep.
-              </p>
-              <ul className="ticks mt1">
-                <li>Shooting development, stickhandling and skating work</li>
-                <li>Hockey IQ and position-specific coaching</li>
-                <li>Immediate feedback, on the ice, in the moment</li>
-                <li><b>Both coaches on the ice</b> when we&apos;re both available</li>
-                <li><b>Small groups on purpose</b> — every player gets real attention and real reps</li>
-                <li>Book on its own, or add it to any program</li>
-              </ul>
-              <p className="mt2">
-                <Link className="btn btn-primary" href="/contact?plan=on-ice" data-plan="on_ice" data-cta="book_on_ice" data-cta-location="home_pricing">Book a Private Session</Link>{' '}
-                <a className="btn btn-ghost" href="tel:+12404356511" data-cta="call_on_ice" data-cta-location="home_pricing">Call to Check Availability</a>
-              </p>
-            </div>
-          </div>
+          )}
 
           <div className="founding rv mt3">
             <div className="founding-badge">Founding Member</div>
@@ -657,7 +647,7 @@ export default function Home() {
             </div>
           </div>
 
-          <p className="center mt3"><Link className="btn btn-ghost" href="/pricing" data-cta="full_pricing" data-cta-location="home_pricing">Compare all three in detail</Link></p>
+          <p className="center mt3"><Link className="btn btn-ghost" href="/pricing" data-cta="full_pricing" data-cta-location="home_pricing">See full pricing details</Link></p>
         </div>
       </section>
 
@@ -675,16 +665,20 @@ export default function Home() {
             </details>
             <details>
               <summary>What does the program include?</summary>
-              <div className="ans">Standard includes AI Shot Analysis, a personalized development roadmap, a hockey-specific workout plan, monthly progress review, goal setting and dashboard access. Premium adds performance nutrition guidance, video breakdowns, mindset development training and priority support. On-ice sessions at The Capital Clubhouse are available separately. <Link href="/pricing">Full pricing here</Link>.</div>
+              <div className="ans">Membership ($49/month, no setup fee) includes AI Shot Analysis, a personalized development roadmap, a hockey-specific workout plan, nutrition and meal plans, mindset development training and progress tracking — the full non-coaching platform. Want direct coaching time on top of it? <Link href="/coaching/request">Request a Custom Coaching plan</Link>. <Link href="/pricing">Full pricing here</Link>.</div>
             </details>
-            <details>
-              <summary>Do you offer in-person and remote training?</summary>
-              <div className="ans">Both. In-person ice time runs at The Capital Clubhouse in Waldorf, MD. The core of the program — video analysis, the weekly plan and mindset work — is built to run remotely, so families outside Southern Maryland get the same system without the drive.</div>
-            </details>
-            <details>
-              <summary>Where are in-person sessions held?</summary>
-              <div className="ans">All in-person sessions run at <b>The Capital Clubhouse, 3033 Waldorf Market Place, Waldorf, MD 20603</b> — our only training location. <Link href="/locations">Directions and details here</Link>.</div>
-            </details>
+            {SHOW_IN_PERSON_SESSIONS && (
+              <details>
+                <summary>Do you offer in-person and remote training?</summary>
+                <div className="ans">Both. In-person ice time runs at The Capital Clubhouse in Waldorf, MD. The core of the program — video analysis, the weekly plan and mindset work — is built to run remotely, so families outside Southern Maryland get the same system without the drive.</div>
+              </details>
+            )}
+            {SHOW_IN_PERSON_SESSIONS && (
+              <details>
+                <summary>Where are in-person sessions held?</summary>
+                <div className="ans">All in-person sessions run at <b>The Capital Clubhouse, 3033 Waldorf Market Place, Waldorf, MD 20603</b> — our only training location. <Link href="/locations">Directions and details here</Link>.</div>
+              </details>
+            )}
             <details>
               <summary>How does AI Shot Analysis work?</summary>
               <div className="ans">You film a few shots on your phone and upload the clip. It grades your mechanics across ten categories with notes on what it actually saw, and every score carries a confidence level. Being straight with you about the limits: it reads still frames from your video, the same way a coach does stepping through film — it is not a biomechanics lab, and anything your footage does not clearly show comes back marked &quot;insufficient footage&quot; instead of guessed at.</div>
@@ -709,8 +703,9 @@ export default function Home() {
               <p className="eyebrow">Our home rink</p>
               <h2 style={{ fontSize: 'clamp(26px,4vw,42px)' }}>Hockey training in<br />Waldorf, Maryland</h2>
               <p className="lede mt2">
-                Every in-person session runs out of one rink — The Capital Clubhouse in Waldorf. One home
-                base means a consistent schedule, familiar ice, and no chasing coaches around the state.
+                {SHOW_IN_PERSON_SESSIONS
+                  ? 'Every in-person session runs out of one rink — The Capital Clubhouse in Waldorf. One home base means a consistent schedule, familiar ice, and no chasing coaches around the state.'
+                  : 'Mindset Hockey is based in Waldorf, Maryland. The program runs remotely today — video analysis, the weekly plan and mindset work — wherever your player is.'}
               </p>
               <div className="venue mt2">
                 <p className="vname">The Capital Clubhouse</p>

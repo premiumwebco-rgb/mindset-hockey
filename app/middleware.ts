@@ -27,6 +27,7 @@ const PROTECTED = [
   '/onboarding',
   '/admin',
   '/coach',
+  '/coaching',
   // The purchase flow. Checkout sessions may only ever be created for a
   // signed-in account, so the page that offers them is gated like any other.
   '/upgrade',

@@ -23,7 +23,8 @@ export default async function ProgressPage() {
     byKind.get(m.kind)!.push({ recorded_at: m.recorded_at, value: m.value, unit: m.unit });
   }
 
-  // Basic tier sees the headline number only; Premium sees full trends.
+  // Without the progress_tracking permission you see the headline number only;
+  // Membership (which grants it automatically) unlocks full trend charts.
   const kinds = [...byKind.entries()];
 
   return (
@@ -80,16 +81,16 @@ export default async function ProgressPage() {
             </div>
           ) : (
             <Card className="mt-8 border-electric/30 bg-electric/[.05] p-6">
-              <h3 className="display text-[19px]">Trend charts are a Premium feature</h3>
+              <h3 className="display text-[19px]">Trend charts come with Membership</h3>
               <p className="mt-2 text-[15px] text-silver-dim">
-                Premium adds full trend lines, comparison against previous uploads and milestone
+                Membership adds full trend lines, comparison against previous uploads and milestone
                 tracking, alongside AI shot analysis and the workout, nutrition and mindset systems.
               </p>
               <a
-                href="/upgrade?need=premium"
+                href="/upgrade?f=advanced_tracking"
                 className="mt-4 inline-flex rounded-[10px] bg-electric px-6 py-3 text-[14px] font-bold text-white"
               >
-                See Premium
+                See Membership
               </a>
             </Card>
           )}

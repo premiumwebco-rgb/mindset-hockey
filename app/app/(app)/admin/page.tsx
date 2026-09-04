@@ -1,50 +1,71 @@
 import Link from 'next/link';
 import { requireAdmin, DEMO_MODE } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/server';
+import { PLAN_BY_SLUG } from '@/lib/plans';
 import { Card, Eyebrow, Stat } from '@/components/ui';
 
 export const metadata = { title: 'Admin — Mindset Hockey' };
 
 interface Counts {
   members: number;
-  premium: number;
-  basic: number;
+  membership: number;
+  customCoaching: number;
   activeSubs: number;
   analyses: number;
   pendingReviews: number;
   openLeads: number;
+  planRequests: number;
   mrr: number;
 }
 
 async function loadCounts(): Promise<Counts> {
   if (DEMO_MODE) {
-    return { members: 24, premium: 11, basic: 13, activeSubs: 21, analyses: 68, pendingReviews: 3, openLeads: 5, mrr: 5350 };
+    return {
+      members: 24,
+      membership: 21,
+      customCoaching: 4,
+      activeSubs: 21,
+      analyses: 68,
+      pendingReviews: 3,
+      openLeads: 5,
+      planRequests: 2,
+      mrr: 1029,
+    };
   }
   const admin = await createAdminClient();
   const q = (t: string) => admin.from(t).select('*', { count: 'exact', head: true });
 
-  const [members, premium, basic, activeSubs, analyses, pending, leads] = await Promise.all([
-    q('profiles'),
-    admin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'premium'),
-    admin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'basic'),
-    admin.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_active', true),
-    q('shot_analyses'),
-    admin.from('video_submissions').select('*', { count: 'exact', head: true }).in('status', ['queued', 'in_review']),
-    admin.from('leads').select('*', { count: 'exact', head: true }).eq('handled', false),
-  ]);
+  const [members, membership, activeSubs, coaching, analyses, pending, leads, planRequests] =
+    await Promise.all([
+      q('profiles'),
+      admin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'membership'),
+      admin.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_active', true),
+      // Custom Coaching = anyone with at least one coaching-only permission on,
+      // whether or not they're also a paying Membership subscriber.
+      admin
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .or(
+          'one_on_one_coaching.eq.true,weekly_checkins.eq.true,video_reviews.eq.true,direct_messaging.eq.true,custom_programming.eq.true'
+        ),
+      q('shot_analyses'),
+      admin.from('video_submissions').select('*', { count: 'exact', head: true }).in('status', ['queued', 'in_review']),
+      admin.from('leads').select('*', { count: 'exact', head: true }).eq('handled', false),
+      admin.from('custom_plan_requests').select('*', { count: 'exact', head: true }).eq('status', 'new'),
+    ]);
 
-  const premiumCount = premium.count ?? 0;
-  const basicCount = basic.count ?? 0;
+  const membershipCount = membership.count ?? 0;
 
   return {
     members: members.count ?? 0,
-    premium: premiumCount,
-    basic: basicCount,
+    membership: membershipCount,
+    customCoaching: coaching.count ?? 0,
     activeSubs: activeSubs.count ?? 0,
     analyses: analyses.count ?? 0,
     pendingReviews: pending.count ?? 0,
     openLeads: leads.count ?? 0,
-    mrr: premiumCount * 250 + basicCount * 200,
+    planRequests: planRequests.count ?? 0,
+    mrr: membershipCount * PLAN_BY_SLUG.membership.monthly,
   };
 }
 
@@ -54,6 +75,7 @@ export default async function AdminPage() {
 
   const links = [
     { href: '/admin/users', title: 'Users', body: 'Roles, tiers, access and suspensions.' },
+    { href: '/admin/plans', title: 'Plan Management', body: `${c.planRequests} new Custom Coaching request${c.planRequests === 1 ? '' : 's'}.` },
     { href: '/admin/subscriptions', title: 'Subscriptions', body: 'Billing status and lifecycle history.' },
     { href: '/coach/queue', title: 'Review queue', body: `${c.pendingReviews} submission${c.pendingReviews === 1 ? '' : 's'} waiting.` },
     { href: '/admin/content', title: 'Content', body: 'Workouts, meal plans and mindset lessons.' },
@@ -69,9 +91,9 @@ export default async function AdminPage() {
       <h1 className="display text-[clamp(28px,5vw,44px)]">Business overview</h1>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Estimated MRR" value={`$${c.mrr.toLocaleString()}`} sub="Active plans × price" />
+        <Stat label="Estimated MRR" value={`$${c.mrr.toLocaleString()}`} sub={`${c.membership} × $${PLAN_BY_SLUG.membership.monthly} Membership`} />
         <Stat label="Active members" value={String(c.activeSubs)} sub={`${c.members} accounts total`} />
-        <Stat label="Premium / Basic" value={`${c.premium} / ${c.basic}`} sub="By tier" />
+        <Stat label="Custom Coaching" value={String(c.customCoaching)} sub="Any coaching permission on" />
         <Stat label="Analyses run" value={String(c.analyses)} sub="All time" />
       </div>
 
@@ -87,8 +109,8 @@ export default async function AdminPage() {
       </div>
 
       <p className="mt-8 text-[13px] text-silver-dim">
-        MRR is calculated from current tier assignments, not from Stripe invoices. Stripe remains
-        the source of truth for revenue — reconcile there before reporting numbers.
+        MRR is calculated from current Membership tier assignments, not from Stripe invoices.
+        Stripe remains the source of truth for revenue — reconcile there before reporting numbers.
       </p>
     </div>
   );

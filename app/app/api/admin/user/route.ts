@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
-const ALLOWED_TIERS = new Set(['none', 'basic', 'premium']);
+const ALLOWED_TIERS = new Set(['none', 'basic', 'premium', 'membership']);
 const ALLOWED_ROLES = new Set(['member', 'coach', 'admin']);
 
 /** Admin-only. Every change is written to audit_log. */

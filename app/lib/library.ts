@@ -6,9 +6,8 @@ if (typeof window !== 'undefined') {
   throw new Error('lib/library.ts is server-only.');
 }
 
-import { hasTier, DEMO_MODE, type Session } from './session';
+import { hasPermission, DEMO_MODE, type Session } from './session';
 import { PILLARS, type Pillar, type Tier } from './types';
-import { signPreviewPaths } from './admin-signed-urls';
 
 /* ==========================================================================
    TRAINING LIBRARY — DATA LAYER
@@ -78,8 +77,6 @@ export interface LibraryCard {
   isPublished: boolean;
   /** True when this user may not open the file. Sourced from RLS, not from code. */
   locked: boolean;
-  /** Short-lived signed URL for the uploaded cover photo, or null if none/unsigned. Never a raw storage path — see signPreviewPaths(). */
-  coverImageSignedUrl: string | null;
 }
 
 export type PillarCounts = Record<Pillar | 'all', number>;
@@ -112,7 +109,7 @@ export interface SupabaseLike {
 
 /** Columns safe to load for a card. `storage_path` is absent on purpose. */
 const CARD_COLUMNS =
-  'id, title, description, pillar, category, kind, required_tier, duration_sec, is_published, sort_order, created_at, cover_image_url';
+  'id, title, description, pillar, category, kind, required_tier, duration_sec, is_published, sort_order, created_at';
 
 interface RawRow {
   id: string;
@@ -124,11 +121,9 @@ interface RawRow {
   required_tier: string | null;
   duration_sec: number | null;
   is_published: boolean | null;
-  /** Private storage path (0016) — signed to a URL before ever reaching a card. Never shipped raw. */
-  cover_image_url?: string | null;
 }
 
-function toCard(row: RawRow, locked: boolean, coverImageSignedUrl: string | null = null): LibraryCard | null {
+function toCard(row: RawRow, locked: boolean): LibraryCard | null {
   // A row with no pillar cannot be placed. 0009 already makes this impossible
   // for published rows at the database level; this is the belt to that braces.
   // Dropping it is correct — there is no "Other" bucket to fall back to.
@@ -144,7 +139,6 @@ function toCard(row: RawRow, locked: boolean, coverImageSignedUrl: string | null
     durationSec: row.duration_sec,
     isPublished: Boolean(row.is_published),
     locked,
-    coverImageSignedUrl,
   };
 }
 
@@ -173,26 +167,13 @@ export async function getLibrary(
   }
 
   const { createServerClient, createAdminClient } = await import('./supabase/server');
-  const supabase = await createServerClient();
-
   // Cast to the narrow structural type this module needs. The generated
   // Supabase client types are far deeper than the four methods used here and
   // resolving them structurally blows TypeScript's instantiation limit.
-  return buildLibraryView(
-    session,
-    pillar,
-    {
-      supabase: supabase as unknown as SupabaseLike,
-      admin: (await createAdminClient()) as unknown as SupabaseLike,
-    },
-    // Cover photos are signed through the caller's OWN session client — same
-    // authorization boundary signPreviewPaths() already uses for the admin
-    // console (training_resources_member_read from 0008), reused as-is here
-    // rather than building a second signing path. A card the viewer isn't
-    // even 'basic'-tier for simply won't sign (resolves to null -> fallback
-    // design), which is fine: a cover photo is cosmetic, never the file itself.
-    (paths) => signPreviewPaths(supabase, paths)
-  );
+  return buildLibraryView(session, pillar, {
+    supabase: (await createServerClient()) as unknown as SupabaseLike,
+    admin: (await createAdminClient()) as unknown as SupabaseLike,
+  });
 }
 
 /**
@@ -201,17 +182,11 @@ export async function getLibrary(
  * Split out so the access rules can be exercised against stub clients in a
  * test — the alternative is asserting on a code reading, which proves nothing
  * about what the function actually returns. Not part of the page-facing API.
- *
- * `signCoverImages` is injected the same way for the same reason: the two
- * clients above are a narrow structural type with no `.storage`, so signing
- * stays out of the pure/testable core and defaults to "no covers" when the
- * caller doesn't supply one.
  */
 export async function buildLibraryView(
   session: Session,
   pillar: Pillar | null,
-  clients: { supabase: SupabaseLike; admin: SupabaseLike },
-  signCoverImages: (paths: (string | null | undefined)[]) => Promise<Map<string, string>> = async () => new Map()
+  clients: { supabase: SupabaseLike; admin: SupabaseLike }
 ): Promise<LibraryView> {
   const { supabase, admin } = clients;
 
@@ -267,17 +242,8 @@ export async function buildLibraryView(
     return { resources: [], counts, unavailable: false };
   }
 
-  // Cover photos are signed for EVERY returned card, locked or not — a locked
-  // card is shown deliberately, as an upsell teaser (see file header), and a
-  // cover photo is part of that teaser same as the title and description.
-  const castRows = (rows ?? []) as unknown as RawRow[];
-  const signedCovers = await signCoverImages(castRows.map((row) => row.cover_image_url));
-
-  const resources = castRows
-    .map((row) => {
-      const cover = row.cover_image_url ? (signedCovers.get(row.cover_image_url) ?? null) : null;
-      return toCard(row, !staff && !unlockedIds.has(row.id), cover);
-    })
+  const resources = (rows ?? [])
+    .map((row) => toCard(row as unknown as RawRow, !staff && !unlockedIds.has(row.id as string)))
     .filter((card): card is LibraryCard => card !== null);
 
   return { resources, counts, unavailable: false };
@@ -439,7 +405,7 @@ export async function getDrillRecommendation(
       resourceId: resource.id as string,
       title: resource.title as string,
       requiredTier,
-      locked: !staff && !hasTier(session, requiredTier),
+      locked: !staff && !hasPermission(session, 'video_library'),
     };
   }
 
@@ -540,8 +506,8 @@ export async function resolveResourceAccess(
   const card = toCard(row as unknown as RawRow, false);
   if (!card) return { ok: false, reason: 'not_found' };
 
-  // GATE 2 — tier. hasTier() already returns true for admins.
-  if (!hasTier(session, card.requiredTier)) {
+  // GATE 2 — permission. hasPermission() already returns true for admins.
+  if (!hasPermission(session, 'video_library')) {
     return { ok: false, reason: 'locked', requiredTier: card.requiredTier };
   }
 
@@ -557,122 +523,5 @@ export async function resolveResourceAccess(
     return { ok: false, reason: 'unavailable' };
   }
 
-  // Cover photo for the hero — best-effort. A failed sign here should never
-  // take down the whole page; it just falls back to no cover image.
-  const coverPath = row.cover_image_url;
-  let coverImageSignedUrl: string | null = null;
-  if (coverPath) {
-    const { signedUrl: coverUrl } = await deps.sign(coverPath);
-    coverImageSignedUrl = coverUrl ?? null;
-  }
-
-  return { ok: true, resource: { ...card, locked: false, coverImageSignedUrl }, signedUrl };
-}
-
-/* ==========================================================================
-   DEVELOPMENT FOCUS — PILLAR-BASED RECOMMENDATIONS (Player Profile phase)
-
-   Deterministic, not AI: a player's `focus_pillars` (players table, set at
-   onboarding / Edit Profile) are matched directly against
-   `training_resources.pillar` (migration 0009) — the exact same column
-   getLibrary()'s pillar filter already uses.
-
-   Deliberately NOT built on top of getLibrary(): calling getLibrary() once
-   per focus pillar was the first cut here, but getLibrary() is shaped for
-   the full /library page — its entitlement and counts queries are
-   unfiltered (every published row, regardless of pillar) and its cards query
-   has no limit, so it signs a cover photo for every published resource in
-   the pillar even though only a handful are ever shown. Called once per
-   focus pillar that is N unbounded row fetches and N unbounded rounds of
-   signed-URL generation for a section that displays at most a few cards.
-
-   This instead follows the SAME shape getRecommendableResources() below
-   already uses for the AI skill-tag recommendation feature: one entitlement
-   query and one bounded, LIMIT-ed teaser query covering every focus pillar at
-   once (`.in('pillar', ...)`), with covers signed only for the rows actually
-   fetched. Same RLS, same lock/upsell rule, same private cover-signing path
-   — only the query shape changes.
-   ========================================================================== */
-
-export interface PillarRecommendation {
-  pillar: Pillar;
-  resources: LibraryCard[];
-}
-
-/** Candidate rows fetched per pillar before grouping and slicing to `perPillar`. */
-const PILLAR_RECOMMENDATION_CANDIDATES_PER_PILLAR = 12;
-
-/**
- * Up to `perPillar` published resources for each of the player's focus
- * pillars, unlocked-first, in the library's normal (sort_order, newest)
- * order within each pillar. A pillar with no published resources yet is
- * simply omitted — never backfilled with unrelated content.
- *
- * Exactly two Supabase queries total, however many focus pillars the player
- * has (onboarding asks for "two, not six", so in practice this is 1-2
- * pillars) — not two queries per pillar.
- */
-export async function getPillarRecommendations(
-  session: Session,
-  focusPillars: Pillar[],
-  perPillar = 3
-): Promise<PillarRecommendation[]> {
-  if (DEMO_MODE || focusPillars.length === 0) return [];
-
-  const { createServerClient, createAdminClient } = await import('./supabase/server');
-  const supabase = await createServerClient();
-  const admin = await createAdminClient();
-
-  const staff = session.role === 'admin' || session.role === 'coach';
-
-  /* -- 1. ENTITLEMENT: which of these pillars' rows may this user read? ---- */
-  const { data: allowedRows, error: allowedError } = await supabase
-    .from('training_resources')
-    .select('id')
-    .eq('is_published', true)
-    .in('pillar', focusPillars);
-
-  if (allowedError) {
-    console.error('[pillar-recommendations] entitlement query failed:', allowedError.message);
-  }
-  const unlockedIds = new Set((allowedRows ?? []).map((r) => r.id as string));
-
-  /* -- 2. TEASER: a bounded candidate set across all requested pillars ----- */
-  const candidateLimit = focusPillars.length * PILLAR_RECOMMENDATION_CANDIDATES_PER_PILLAR;
-  const { data: rows, error: rowsError } = await admin
-    .from('training_resources')
-    .select(CARD_COLUMNS)
-    .eq('is_published', true)
-    .in('pillar', focusPillars)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: false })
-    .limit(candidateLimit);
-
-  if (rowsError) {
-    console.error('[pillar-recommendations] candidate query failed:', rowsError.message);
-    return [];
-  }
-
-  const castRows = (rows ?? []) as unknown as RawRow[];
-  const signedCovers = await signPreviewPaths(supabase, castRows.map((row) => row.cover_image_url));
-
-  const byPillar = new Map<Pillar, LibraryCard[]>();
-  for (const row of castRows) {
-    const cover = row.cover_image_url ? (signedCovers.get(row.cover_image_url) ?? null) : null;
-    const card = toCard(row, !staff && !unlockedIds.has(row.id), cover);
-    if (!card) continue;
-    const list = byPillar.get(card.pillar) ?? [];
-    list.push(card);
-    byPillar.set(card.pillar, list);
-  }
-
-  const results: PillarRecommendation[] = [];
-  for (const pillar of focusPillars) {
-    const cards = byPillar.get(pillar);
-    if (!cards || cards.length === 0) continue;
-    const sorted = [...cards].sort((a, b) => Number(a.locked) - Number(b.locked));
-    results.push({ pillar, resources: sorted.slice(0, perPillar) });
-  }
-
-  return results;
+  return { ok: true, resource: { ...card, locked: false }, signedUrl };
 }

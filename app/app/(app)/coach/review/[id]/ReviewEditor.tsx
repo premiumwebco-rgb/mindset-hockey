@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RUBRIC } from '@/lib/types';
-import { DRILLS } from '@/lib/demo-data';
 import { SmartVideo } from '@/components/media/SmartMedia';
 
 interface ScoreState {
@@ -18,6 +17,12 @@ interface ExistingFeedback {
   created_at: string;
 }
 
+export interface ResourcePick {
+  id: string;
+  title: string;
+  pillar: string | null;
+}
+
 /* ==========================================================================
    COACH REVIEW EDITOR
 
@@ -29,15 +34,20 @@ interface ExistingFeedback {
    POST /api/coach/reviews/[id]/feedback, and updates video_submissions'
    status/reviewed_at/reviewer_id.
 
-   submission_feedback only has a plain `body` column — there is no schema for
-   per-rubric-point scores or timestamped annotations against a video
-   submission (that richer structure — rubric_points / review_scores /
-   review_annotations — belongs to the AI Shot Analysis review flow at
-   /coach/ai-queue, keyed to shot_analyses, not video_submissions). Rather
-   than inventing a second scoring schema, the rubric sliders and timestamped
-   notes below stay as structuring input for the coach and are composed into
-   one formatted `body` on save — real, persisted, and honest about what it
-   is: a coach's written review, not stored per-point scores.
+   The 7-point rubric sliders and timestamped notes below are also now saved
+   as a STRUCTURED review — analysis_reviews / review_scores /
+   review_prescriptions (migration 0001, wired up via lib/video-review-rubric.ts)
+   — in addition to the folded written summary in submission_feedback.body.
+   A prior version of this file claimed those tables "belong to the AI Shot
+   Analysis review flow at /coach/ai-queue, keyed to shot_analyses" — that
+   was incorrect; they were unused anywhere in the app. They now persist
+   this flow's own per-point scores, so the member-facing /reviews/[id] page
+   can render a real radar chart instead of only plain text.
+
+   "Suggested drills" previously filtered `lib/demo-data.ts`'s fake DRILLS
+   fixture by a fake rubricPoints tagging — that has been replaced with a
+   real multi-select against published `training_resources` (the `resources`
+   prop, fetched from the database by the server page, never a fixture).
    ========================================================================== */
 
 function formatMs(ms: number): string {
@@ -48,16 +58,20 @@ export default function ReviewEditor({
   submissionId,
   videoUrl,
   existingFeedback,
+  resources,
 }: {
   submissionId: string;
   videoUrl: string | null;
   existingFeedback: ExistingFeedback | null;
+  resources: ResourcePick[];
 }) {
   const router = useRouter();
   const [scores, setScores] = useState<Record<number, ScoreState>>(
     Object.fromEntries(RUBRIC.map((r) => [r.id, { score: 5, note: '' }]))
   );
   const [summary, setSummary] = useState('');
+  const [strengths, setStrengths] = useState('');
+  const [areasToImprove, setAreasToImprove] = useState('');
   const [annotations, setAnnotations] = useState<{ ms: number; point: number; body: string }[]>([]);
   const [annMs, setAnnMs] = useState('');
   const [annPoint, setAnnPoint] = useState(1);
@@ -65,6 +79,7 @@ export default function ReviewEditor({
   const [saving, setSaving] = useState<'draft' | 'publish' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [published, setPublished] = useState(existingFeedback?.complete ?? false);
+  const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
 
   const total = useMemo(
     () => Object.values(scores).reduce((sum, s) => sum + s.score, 0),
@@ -81,11 +96,9 @@ export default function ReviewEditor({
     [scores]
   );
 
-  /** Suggested, not auto-scheduled — nothing writes these to a training plan. */
-  const prescribed = useMemo(
-    () => DRILLS.filter((d) => d.rubricPoints.some((p) => focusPoints.includes(p))).slice(0, 3),
-    [focusPoints]
-  );
+  function toggleResource(id: string) {
+    setSelectedResourceIds((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
+  }
 
   function setScore(id: number, patch: Partial<ScoreState>) {
     setScores((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
@@ -136,7 +149,19 @@ export default function ReviewEditor({
       const res = await fetch(`/api/coach/reviews/${submissionId}/feedback`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ body: composeBody(), complete }),
+        body: JSON.stringify({
+          body: composeBody(),
+          complete,
+          scores: RUBRIC.map((r) => ({
+            rubricPointId: r.id,
+            score: scores[r.id].score,
+            note: scores[r.id].note || undefined,
+          })),
+          overallScore: total,
+          strengths,
+          areasToImprove,
+          resourceIds: selectedResourceIds,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Could not save the review.');
@@ -317,29 +342,64 @@ export default function ReviewEditor({
             />
           </div>
 
+          <div className="mt-4 border-t border-white/[.08] pt-4">
+            <label htmlFor="strengths" className="mb-2 block text-[11px] font-bold uppercase tracking-[.16em] text-silver-dim">
+              Strengths
+            </label>
+            <textarea
+              id="strengths"
+              rows={3}
+              placeholder="What's already working well."
+              value={strengths}
+              onChange={(e) => setStrengths(e.target.value)}
+            />
+          </div>
+
+          <div className="mt-4">
+            <label htmlFor="areasToImprove" className="mb-2 block text-[11px] font-bold uppercase tracking-[.16em] text-silver-dim">
+              Areas to improve
+            </label>
+            <textarea
+              id="areasToImprove"
+              rows={3}
+              placeholder="What to fix next, and why it matters."
+              value={areasToImprove}
+              onChange={(e) => setAreasToImprove(e.target.value)}
+            />
+          </div>
+
           <div className="mt-4">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-[.16em] text-silver-dim">
-              Suggested drills
+              Assign resources
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {prescribed.length ? (
-                prescribed.map((d) => (
-                  <span
-                    key={d.id}
-                    className="rounded-md bg-electric/10 px-2.5 py-1.5 text-[11.5px] font-semibold text-electric-glow"
-                  >
-                    {d.title}
-                  </span>
-                ))
-              ) : (
-                <span className="text-[12.5px] text-silver-dim">
-                  No drill mapped to these points yet — add one to the database.
-                </span>
-              )}
-            </div>
+            {resources.length ? (
+              <div className="flex flex-wrap gap-1.5">
+                {resources.map((r) => {
+                  const active = selectedResourceIds.includes(r.id);
+                  return (
+                    <button
+                      type="button"
+                      key={r.id}
+                      onClick={() => toggleResource(r.id)}
+                      className={`rounded-md px-2.5 py-1.5 text-[11.5px] font-semibold transition ${
+                        active
+                          ? 'bg-electric text-white'
+                          : 'bg-electric/10 text-electric-glow hover:bg-electric/20'
+                      }`}
+                    >
+                      {r.title}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <span className="text-[12.5px] text-silver-dim">
+                No published training resources yet — add one in the resource library.
+              </span>
+            )}
             <p className="mt-2 text-[11.5px] text-silver-dim">
-              Mention these in your summary if you want the player to see them — they are not added
-              to a training plan automatically.
+              Selected resources are attached to this review — the player sees them alongside your
+              feedback on their video review page.
             </p>
           </div>
 

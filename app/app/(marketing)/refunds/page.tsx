@@ -68,16 +68,9 @@ export default function Refunds() {
               <Link href="/privacy">Privacy Policy</Link>.
             </p>
 
-            <h2 className="mt3" style={{ fontSize: '22px' }}>The setup fee</h2>
+            <h2 className="mt3" style={{ fontSize: '22px' }}>No setup fee</h2>
             <p className="mt1 muted">
-              The one-time setup fee — $249 on Standard, $389 on Premium — is <b>non-refundable once
-              onboarding has begun</b>. It pays for work that is delivered up front and cannot be
-              un-delivered: the intake assessment, the baseline breakdown of your player&apos;s shot, and
-              building the first custom plan.
-            </p>
-            <p className="mt1 muted">
-              If you pay and then change your mind <b>before</b> that onboarding work has started, email
-              us and we will refund the setup fee in full. Just tell us promptly.
+              Membership has no one-time setup fee. The only charge is the $49 monthly fee.
             </p>
 
             <h2 className="mt3" style={{ fontSize: '22px' }}>Monthly fees</h2>
@@ -86,12 +79,10 @@ export default function Refunds() {
               reviews for that month are provided as the month runs. Cancelling stops all future charges.
             </p>
 
-            <h2 className="mt3" style={{ fontSize: '22px' }}>Private on-ice sessions</h2>
+            <h2 className="mt3" style={{ fontSize: '22px' }}>Custom Coaching</h2>
             <p className="mt1 muted">
-              Private on-ice sessions are $149 each and are paid for separately. Reschedule or cancel with
-              at least 24 hours&apos; notice and the session is moved or refunded in full. Under 24 hours,
-              or a no-show, and the session is used — the ice time and the coach&apos;s time are already
-              committed. Illness and genuine emergencies are handled reasonably; just tell us.
+              Custom Coaching is quoted and billed individually after a call, so its refund terms are
+              agreed with you directly at that time rather than set out here.
             </p>
 
             <h2 className="mt3" style={{ fontSize: '22px' }}>If something goes wrong</h2>

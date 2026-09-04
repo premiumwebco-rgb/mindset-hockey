@@ -4,7 +4,11 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AdminUser } from '@/app/(app)/admin/users/page';
 
-const TIERS = ['none', 'basic', 'premium'];
+// 'basic'/'premium' are retired and intentionally NOT offered here — the
+// admin PATCH route (app/api/admin/user/route.ts) still accepts them so
+// nothing breaks for any leftover legacy row, but no admin should be able to
+// put a user back on a plan that no longer exists from this UI.
+const TIERS = ['none', 'membership'];
 const ROLES = ['member', 'coach', 'admin'];
 
 /** Shared mutation logic for both the desktop table row and the mobile

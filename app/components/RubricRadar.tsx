@@ -62,8 +62,17 @@ export default function RubricRadar({
       <path d={dataPath} fill="rgba(10,132,255,.24)" stroke="#0A84FF" strokeWidth="2" strokeLinejoin="round" />
 
       {RUBRIC.map((p, i) => {
+        const hasScore = byId.has(p.id);
         const [x, y] = point(i, byId.get(p.id) ?? 0);
-        return <circle key={p.id} cx={x} cy={y} r="3.5" fill="#3FA9FF" />;
+        // Unscored points render as a hollow, dim marker at the center — never
+        // a filled dot implying a real score of 0. The caption above this
+        // chart (unscoredPointLabels) is the honest source of truth for
+        // which points these are; this is just a visual echo of that.
+        return hasScore ? (
+          <circle key={p.id} cx={x} cy={y} r="3.5" fill="#3FA9FF" />
+        ) : (
+          <circle key={p.id} cx={cx} cy={cy} r="3" fill="none" stroke="rgba(255,255,255,.25)" strokeWidth="1" strokeDasharray="2,2" />
+        );
       })}
 
       {RUBRIC.map((p, i) => {

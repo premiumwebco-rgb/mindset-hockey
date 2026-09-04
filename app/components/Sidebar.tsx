@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Tier, Role } from '@/lib/types';
 import { TIER_LABEL } from '@/lib/types';
-import { FEATURE_MIN_TIER, type Feature } from '@/lib/plans';
+import { FEATURE_PERMISSION, OPEN_FEATURES, type Feature } from '@/lib/plans';
+import type { PermissionKey } from '@/lib/permissions';
 import SignOutButton from '@/components/auth/SignOutButton';
 
 interface NavItem {
@@ -28,6 +29,11 @@ const MEMBER_NAV: NavItem[] = [
   { href: '/library', label: 'Training Resources', feature: 'basic_resources' },
 ];
 
+/** Always visible to any signed-in member — no permission required to reach the form. */
+const COACHING_NAV: NavItem[] = [
+  { href: '/coaching/request', label: 'Request Custom Plan' },
+];
+
 const STAFF_NAV: NavItem[] = [
   { href: '/coach/queue', label: 'Review Queue' },
   { href: '/coach/ai-queue', label: 'AI Review Queue' },
@@ -37,6 +43,7 @@ const STAFF_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/users', label: 'Users' },
+  { href: '/admin/plans', label: 'Plan Management' },
   { href: '/admin/subscriptions', label: 'Subscriptions' },
   { href: '/admin/content', label: 'Content' },
   { href: '/admin/workouts', label: 'Workout Content' },
@@ -67,12 +74,14 @@ export default function Sidebar({
   role,
   demo,
   subscriptionActive,
+  permissions,
   playerName,
 }: {
   tier: Tier;
   role: Role;
   demo: boolean;
   subscriptionActive: boolean;
+  permissions: Record<PermissionKey, boolean>;
   playerName: string;
 }) {
   const pathname = usePathname();
@@ -104,11 +113,10 @@ export default function Sidebar({
   function locked(item: NavItem): boolean {
     if (isAdmin) return false;
     if (!item.feature) return false;
-    const need = FEATURE_MIN_TIER[item.feature];
-    if (need === 'none') return false;
-    if (!subscriptionActive) return true;
-    if (need === 'premium') return tier !== 'premium';
-    return tier === 'none';
+    if (OPEN_FEATURES.has(item.feature)) return false;
+    const perm = FEATURE_PERMISSION[item.feature];
+    if (perm) return !permissions[perm];
+    return !subscriptionActive;
   }
 
   function section(title: string, items: NavItem[]) {
@@ -125,11 +133,7 @@ export default function Sidebar({
             return (
               <Link
                 key={item.href}
-                href={
-                  isLocked
-                    ? `/upgrade?need=${item.feature ? FEATURE_MIN_TIER[item.feature] : 'premium'}&f=${item.feature}`
-                    : item.href
-                }
+                href={isLocked ? `/upgrade?f=${item.feature}` : item.href}
                 onClick={() => setOpen(false)}
                 aria-current={active ? 'page' : undefined}
                 className={[
@@ -161,6 +165,7 @@ export default function Sidebar({
   const body = (
     <>
       {section('Training', MEMBER_NAV)}
+      {section('Custom Coaching', COACHING_NAV)}
       {isStaff && section('Coaching', STAFF_NAV)}
       {isAdmin && section('Admin', ADMIN_NAV)}
       {section('Account', [

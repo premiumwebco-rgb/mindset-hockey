@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireFeature } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
 import {
   getCookbook,
   parseCategory,
@@ -55,7 +55,7 @@ export default async function NutritionPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await requireFeature('nutrition_plans');
+  await requirePermission('nutrition');
   const sp = await searchParams;
 
   const category = parseCategory(sp.category);

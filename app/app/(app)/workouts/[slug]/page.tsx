@@ -119,8 +119,8 @@ export default async function WorkoutRoutinePage({ params }: { params: Promise<{
               </form>
             ) : (
               <p className="text-[12.5px] text-silver-dim">
-                Completion tracking is included with Premium.{' '}
-                <Link href="/upgrade?need=premium" className="font-semibold text-electric-glow underline underline-offset-4">
+                Completion tracking is included with Membership.{' '}
+                <Link href="/upgrade" className="font-semibold text-electric-glow underline underline-offset-4">
                   Upgrade
                 </Link>
               </p>

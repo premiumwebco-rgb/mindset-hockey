@@ -323,8 +323,8 @@ export default async function DevelopmentPlanPage() {
           ) : (
             <Card className="p-4">
               <p className="text-[13.5px] text-silver-dim">
-                Mindset training is included with Premium.{' '}
-                <Link href="/upgrade?need=premium&f=mindset_training" className="text-electric-glow underline underline-offset-4">
+                Mindset training is included with Membership.{' '}
+                <Link href="/upgrade?f=mindset_training" className="text-electric-glow underline underline-offset-4">
                   Upgrade
                 </Link>{' '}
                 to see this week&apos;s lesson.
@@ -347,8 +347,8 @@ export default async function DevelopmentPlanPage() {
           ) : !workoutPlans ? (
             <Card className="p-4">
               <p className="text-[13.5px] text-silver-dim">
-                Workout routines are included with Standard and Premium.{' '}
-                <Link href="/upgrade?need=basic&f=workout_plans" className="text-electric-glow underline underline-offset-4">
+                Workout routines are included with Membership.{' '}
+                <Link href="/upgrade?f=workout_plans" className="text-electric-glow underline underline-offset-4">
                   Upgrade
                 </Link>
                 .

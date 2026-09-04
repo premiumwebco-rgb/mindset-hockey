@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireStaff, DEMO_MODE } from '@/lib/session';
 import { createServerClient } from '@/lib/supabase/server';
 import { createSubmissionPlaybackUrl } from '@/lib/reviews-storage';
+import { listPublishedResourcesForPicker } from '@/lib/video-review-rubric';
 import { Card } from '@/components/ui';
 import ReviewEditor from './ReviewEditor';
 
@@ -63,13 +64,16 @@ export default async function CoachReview({ params }: { params: Promise<{ id: st
 
   // Most recent feedback, if this submission has already been reviewed once
   // (a coach revisiting to correct or add to their notes).
-  const { data: feedback } = await supabase
-    .from('submission_feedback')
-    .select('id, body, complete, created_at')
-    .eq('submission_id', id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: feedback }, resources] = await Promise.all([
+    supabase
+      .from('submission_feedback')
+      .select('id, body, complete, created_at')
+      .eq('submission_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    listPublishedResourcesForPicker(),
+  ]);
 
   const player = submission.profiles?.full_name || submission.profiles?.email || 'Member';
   const note = submission.notes ?? submission.player_notes;
@@ -98,6 +102,7 @@ export default async function CoachReview({ params }: { params: Promise<{ id: st
         submissionId={submission.id}
         videoUrl={videoUrl}
         existingFeedback={(feedback as FeedbackRow | null) ?? null}
+        resources={resources}
       />
     </>
   );

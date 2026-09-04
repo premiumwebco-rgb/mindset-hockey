@@ -163,12 +163,14 @@ export function TierPill({ tier }: { tier: Tier }) {
   const map: Record<Tier, string> = {
     none: 'border-white/15 text-silver-dim',
     basic: 'border-white/25 text-silver',
-    premium: 'border-electric/50 text-electric-glow bg-electric/10',
+    premium: 'border-white/25 text-silver',
+    membership: 'border-electric/50 text-electric-glow bg-electric/10',
   };
   const label: Record<Tier, string> = {
     none: 'no plan',
-    basic: 'standard',
-    premium: 'premium',
+    basic: 'membership',
+    premium: 'membership',
+    membership: 'membership',
   };
   return (
     <span

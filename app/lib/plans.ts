@@ -1,37 +1,41 @@
 import type { Tier } from './types';
+import type { PermissionKey } from './permissions';
 
 /* ==========================================================================
    Plans — must stay in lockstep with the public pricing page.
 
-   Standard  $249 setup + $100/month
-   Premium   $389 setup + $149/month   ⭐ Most Popular
-   Custom    quote only (lead form, no self-serve checkout)
+   Mindset Hockey Membership   $49/month, no setup fee — the ONLY self-serve
+     plan. Includes every non-coaching category: AI Shot Analysis, Workout
+     Plans, Nutrition & Meal Plans, Mindset Training, Training Video Library,
+     Progress Tracking, and any future non-coaching educational content.
+   Custom Coaching   quote-only, built from a-la-carte services selected on
+     the "Request Custom Plan" form (see lib/permissions.ts). Never has a
+     Stripe self-serve checkout — an admin sets it up after review.
 
-   NOTE ON AI SHOT ANALYSIS
-   AI Shot Analysis is included with BOTH tiers — Standard and Premium. It is a
-   real feature in this app (see lib/ai/ and app/(app)/analysis/), gated at
-   `basic` in FEATURE_MIN_TIER below, which `auth_has_tier('basic')` reads as
-   "basic OR premium, with an active subscription". Do not move it to premium.
+   The old Standard ($249 + $100/mo) and Premium ($389 + $149/mo) plans are
+   RETIRED. See lib/types.ts for why `Tier` still carries `basic`/`premium` as
+   legacy values, and app/api/stripe/webhook/route.ts for how existing
+   subscribers on those old Stripe prices are folded into `membership` without
+   touching their actual billing.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
    PLAN VOCABULARY — one canonical form, converted explicitly at the edges.
 
-   CANONICAL (internal):  Tier — 'none' | 'basic' | 'premium'
-     This is what the database enum `tier_t`, `profiles.tier`, the RLS function
-     `auth_has_tier()` and `session.tier` all speak. Application code should
-     only ever compare tiers.
+   CANONICAL (internal):  Tier — 'none' | 'basic' | 'premium' | 'membership'
+     This is what the database enum `tier_t`, `profiles.tier` and
+     `session.tier` speak. It records the billing relationship, nothing more —
+     WHAT a member can see is decided by permissions (lib/permissions.ts), not
+     by comparing tiers.
 
-   PUBLIC (URLs + API bodies):  PlanSlug — 'standard' | 'premium'
-     This is what a member sees. 'basic' is the historical internal name for
-     the Standard plan and must never appear in a URL.
+   PUBLIC (URLs + API bodies):  PlanSlug — 'membership'
+     This is what a member sees.
 
    The two vocabularies meet in exactly ONE place: `planFromParam()`. Every
    route boundary that receives a plan from outside (a query string, a JSON
-   body) must go through it. Nothing else may translate between them — that is
-   what stops `basic` and `standard` being mixed up silently.
+   body) must go through it.
 -------------------------------------------------------------------------- */
-export type PlanSlug = 'standard' | 'premium';
+export type PlanSlug = 'membership';
 
 export interface PlanFeature {
   label: string;
@@ -44,7 +48,7 @@ export interface Plan {
   name: string;
   tagline: string;
   who: string;
-  /** One-time onboarding fee, in dollars. */
+  /** One-time onboarding fee, in dollars. Membership has none. */
   setupFee: number;
   /** Recurring monthly fee, in dollars. */
   monthly: number;
@@ -52,63 +56,32 @@ export interface Plan {
   cta: string;
   /** Stripe Price ID for the recurring subscription line. */
   priceIdMonthly?: string;
-  /** Stripe Price ID for the one-time setup line. MUST be a one-time price. */
+  /** Stripe Price ID for a one-time setup line, if this plan has one. */
   priceIdSetup?: string;
   features: PlanFeature[];
 }
 
 export const PLANS: Plan[] = [
   {
-    tier: 'basic',
-    slug: 'standard',
-    name: 'Standard Development Program',
-    tagline: 'Build the foundation for long-term hockey development.',
-    who: 'For players who need structure, a real plan and someone holding them to it.',
-    setupFee: 249,
-    monthly: 100,
-    cta: 'Get Started',
-    priceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_STANDARD_MONTHLY,
-    priceIdSetup: process.env.NEXT_PUBLIC_STRIPE_PRICE_STANDARD_SETUP,
-    features: [
-      { label: '10 AI Shot Analyses per week', included: true },
-      { label: 'Personalized hockey development roadmap', included: true },
-      { label: 'Hockey-specific workout plan', included: true },
-      { label: 'Monthly progress review', included: true },
-      { label: 'Goal setting and accountability', included: true },
-      { label: 'Basic performance tracking', included: true },
-      { label: 'Coaching support', included: true },
-      { label: 'Member dashboard access', included: true },
-      { label: 'Nutrition and meal planning', included: false },
-      { label: 'Video analysis and breakdowns', included: false },
-      { label: 'Mindset development training', included: false },
-      { label: 'Advanced performance tracking', included: false },
-      { label: 'Priority support', included: false },
-    ],
-  },
-  {
-    tier: 'premium',
-    slug: 'premium',
-    name: 'Premium Development Program',
-    tagline: 'Everything serious athletes need to reach the next level.',
-    who: 'The complete system — skills, strength, nutrition, film and the mental side.',
-    setupFee: 389,
-    monthly: 149,
+    tier: 'membership',
+    slug: 'membership',
+    name: 'Mindset Hockey Membership',
+    tagline: 'Full platform access for one monthly price.',
+    who: 'Every athlete who wants the complete non-coaching system — no tiers, no add-ons to think about.',
+    setupFee: 0,
+    monthly: 49,
     featured: true,
-    cta: 'Get Started',
-    priceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_MONTHLY,
-    priceIdSetup: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_SETUP,
+    cta: 'Join for $49/month',
+    priceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MEMBERSHIP_MONTHLY,
     features: [
-      { label: '20 AI Shot Analyses per week', included: true },
-      { label: 'Everything in Standard', included: true },
-      { label: 'Customized training program that evolves as the athlete progresses', included: true },
-      { label: "Performance nutrition guidance tailored to the athlete's goals", included: true },
-      { label: 'Video analysis and breakdowns', included: true },
-      { label: 'Advanced performance tracking', included: true },
-      { label: 'Mindset development training', included: true },
-      { label: 'Priority support', included: true },
-      { label: 'Personalized coaching guidance', included: true },
-      { label: 'Monthly coaching review sessions', included: true },
-      { label: 'Premium resource library', included: true },
+      { label: 'AI Shot Analysis', included: true },
+      { label: 'Workout Plans', included: true },
+      { label: 'Nutrition & Meal Plans', included: true },
+      { label: 'Mindset Training', included: true },
+      { label: 'Training Video Library', included: true },
+      { label: 'Progress Tracking', included: true },
+      { label: 'Performance Resources', included: true },
+      { label: 'Any future non-coaching educational content', included: true },
     ],
   },
 ];
@@ -118,6 +91,9 @@ export const PLAN_BY_SLUG: Record<string, Plan> = Object.fromEntries(
 );
 
 export function planForTier(tier: Tier): Plan | undefined {
+  // Legacy tiers resolve to the Membership plan for display purposes — there
+  // is nothing else to show them as anymore.
+  if (tier === 'basic' || tier === 'premium') return PLAN_BY_SLUG.membership;
   return PLANS.find((p) => p.tier === tier);
 }
 
@@ -127,16 +103,19 @@ export function planForTier(tier: Tier): Plan | undefined {
  * Accepts whatever arrived from outside — a `?plan=` query string, a JSON body
  * — and resolves it to a Plan, or `undefined` if it is not a real plan.
  *
- * It deliberately accepts the internal tier name as a legacy alias so that old
- * links and bookmarks (`/signup?plan=basic`) keep working, but it normalises
- * immediately: callers get a Plan and should thereafter use `plan.slug` for
- * anything outward-facing and `plan.tier` for anything internal. `'none'` is
- * not a purchasable plan and is rejected.
+ * Legacy aliases ('standard', 'basic', 'premium') resolve to the single
+ * Membership plan so old links and bookmarks do not dead-end. `'none'` is not
+ * a purchasable plan and is rejected, and `'custom'` is deliberately NOT
+ * resolved here — Custom Coaching has no Stripe checkout, see
+ * /coaching/request instead.
  */
 export function planFromParam(param: string | null | undefined): Plan | undefined {
   if (!param) return undefined;
   const key = param.trim().toLowerCase();
-  return PLANS.find((p) => p.slug === key || p.tier === key);
+  if (key === 'standard' || key === 'basic' || key === 'premium' || key === 'membership') {
+    return PLAN_BY_SLUG.membership;
+  }
+  return PLANS.find((p) => p.slug === key);
 }
 
 /** Private on-ice coaching, billed per session rather than by subscription. */
@@ -165,11 +144,16 @@ export const FOUNDING_MEMBER = {
 };
 
 /* --------------------------------------------------------------------------
-   Feature gate map. One place that decides what each tier can reach, so the
-   UI, the route guards and the tests cannot drift apart.
+   Feature gate map — LEGACY COMPATIBILITY SHIM.
 
-   This map must stay in lockstep with the RLS policies in the migrations —
-   these guards are convenience and UX, the database is the real boundary.
+   `Feature`/`FEATURE_MIN_TIER` are what every page guard (`requireFeature`,
+   `canUse`, `hasTier`) in this app was written against. Rather than touch the
+   ~20 call sites across the app, `canUse()` in lib/session.ts now resolves a
+   Feature to a PermissionKey via `FEATURE_PERMISSION` below and checks the
+   member's actual permission columns — `FEATURE_MIN_TIER` is kept only for
+   any code that still reads it directly (e.g. legacy upgrade-prompt copy) and
+   is no longer the source of truth for access. The database's real boundary
+   is `auth_has_permission()` in Postgres; see the RLS policies.
 -------------------------------------------------------------------------- */
 export type Feature =
   | 'dashboard'
@@ -184,25 +168,46 @@ export type Feature =
   | 'advanced_tracking'
   | 'priority_support';
 
+/** Retained for display/legacy purposes only — see the note above. */
 export const FEATURE_MIN_TIER: Record<Feature, Tier> = {
-  dashboard: 'basic',
-  basic_resources: 'basic',
-  basic_tracking: 'basic',
-  monthly_content: 'basic',
-  workout_plans: 'basic',
-  // Reachable by EVERY signed-in account, including free ones — a new member
-  // gets 3 free analyses and must be able to use them. This is a UX gate only:
-  // the real boundary is the entitlement reservation in lib/ai/quota.ts plus
-  // the RLS policies in 0007, which require either an active tier OR an
-  // unspent credit. A free member with 0 credits still reaches the page and is
-  // shown the upgrade options rather than being bounced to /upgrade.
+  dashboard: 'membership',
+  basic_resources: 'membership',
+  basic_tracking: 'membership',
+  monthly_content: 'membership',
+  workout_plans: 'membership',
   ai_shot_analysis: 'none',
-  nutrition_plans: 'premium',
-  mindset_training: 'premium',
-  video_review: 'premium',
-  advanced_tracking: 'premium',
-  priority_support: 'premium',
+  nutrition_plans: 'membership',
+  mindset_training: 'membership',
+  video_review: 'membership',
+  advanced_tracking: 'membership',
+  priority_support: 'membership',
 };
+
+/**
+ * The real, permission-backed mapping `canUse()` uses. A Feature absent here
+ * (`dashboard`, `monthly_content`, `priority_support`) has no single-category
+ * permission of its own — it is available to anyone with an active
+ * membership, mirroring what "basic" used to mean.
+ */
+export const FEATURE_PERMISSION: Partial<Record<Feature, PermissionKey>> = {
+  basic_resources: 'video_library',
+  workout_plans: 'workouts',
+  nutrition_plans: 'nutrition',
+  mindset_training: 'mindset',
+  video_review: 'video_reviews',
+  basic_tracking: 'progress_tracking',
+  advanced_tracking: 'progress_tracking',
+};
+
+/**
+ * Features reachable by EVERY signed-in account, including free ones — a new
+ * member gets 3 free analyses and must be able to use them. This is a UX gate
+ * only: the real boundary is the entitlement reservation in lib/ai/quota.ts
+ * plus the RLS policies, which require either the `ai_shot_analysis`
+ * permission OR an unspent credit. A free member with 0 credits still reaches
+ * the page and is shown the upgrade options rather than being bounced away.
+ */
+export const OPEN_FEATURES = new Set<Feature>(['ai_shot_analysis']);
 
 /* --------------------------------------------------------------------------
    AI SHOT ANALYSIS — WEEKLY ALLOWANCE
@@ -227,8 +232,9 @@ export const FEATURE_MIN_TIER: Record<Feature, Tier> = {
 /** Included AI Shot Analyses per rolling 7-day period, by tier. */
 export const AI_ANALYSIS_LIMITS: Record<Tier, number> = {
   none: 0,
-  basic: 10, // Standard
-  premium: 20, // Premium
+  basic: 10, // Standard (legacy)
+  premium: 20, // Premium (legacy)
+  membership: 20, // Mindset Hockey Membership — full allowance for everyone
 };
 
 /* --------------------------------------------------------------------------

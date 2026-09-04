@@ -3,18 +3,24 @@ import type { Metadata } from 'next';
 import Breadcrumbs from '@/components/marketing/Breadcrumbs';
 
 export const metadata: Metadata = {
-  title: 'Hockey Training Pricing in Waldorf, MD | Standard, Premium & Custom | Mindset Hockey',
+  title: 'Hockey Training Pricing in Waldorf, MD | Membership & Custom Coaching | Mindset Hockey',
   description:
-    'Hockey training in Waldorf, MD: on-ice sessions $149, Standard $249 + $100/month, Premium $389 + $149/month with video analysis, nutrition and mindset development training.',
+    'Mindset Hockey Membership is $49/month with full platform access — AI Shot Analysis, workout plans, nutrition, mindset training, video library and progress tracking. Custom Coaching available on request.',
   alternates: { canonical: 'https://mindsethockey.com/pricing' },
   openGraph: {
     title: 'Hockey Training Pricing & Programs | Mindset Hockey',
-    description: 'Standard, Premium and Custom hockey development plans in Waldorf, MD. Transparent pricing, no contracts, 24-hour response.',
+    description: 'One $49/month membership with full platform access, plus Custom Coaching built around your athlete.',
     url: 'https://mindsethockey.com/pricing',
     images: ['https://mindsethockey.com/assets/og-image.jpg'],
   },
   twitter: { card: 'summary_large_image' },
 };
+
+// In-person / on-ice sessions are temporarily hidden platform-wide per a
+// business decision to focus on the remote Membership + Custom Coaching
+// model. The code below is intentionally kept, not deleted, so this can be
+// restored by flipping this flag back to true.
+const SHOW_IN_PERSON_SESSIONS = false;
 
 const BREADCRUMB_JSONLD = {
   '@context': 'https://schema.org',
@@ -39,29 +45,24 @@ const SERVICE_JSONLD = {
     '@type': 'OfferCatalog',
     name: 'Hockey Training Plans',
     itemListElement: [
-      { '@type': 'Offer', name: 'Standard Development Program', priceCurrency: 'USD', price: '249', description: '$249 one-time setup fee, then $100 per month. Includes AI Shot Analysis, a personalized hockey development roadmap, hockey-specific workout plan, monthly progress review, goal setting and accountability, basic performance tracking, coaching support and member dashboard access.' },
-      { '@type': 'Offer', name: 'Premium Development Program', priceCurrency: 'USD', price: '389', description: '$389 one-time setup fee, then $149 per month. Everything in Standard — including AI Shot Analysis — plus a customized training program, performance nutrition guidance, video analysis and breakdowns, advanced performance tracking, mindset development training, priority support, personalized coaching guidance, monthly coaching review sessions and the premium resource library.' },
-      { '@type': 'Offer', name: 'On-Ice Session', priceCurrency: 'USD', price: '149', description: '$149 per on-ice training session at The Capital Clubhouse in Waldorf, MD. Shooting development, stickhandling, skating work, hockey IQ, position-specific coaching and immediate feedback. Small session sizes so every player gets individual attention.' },
-      { '@type': 'Offer', name: 'Custom Plan', priceCurrency: 'USD', description: 'Custom package built from Premium services and more. Priced on request.' },
+      {
+        '@type': 'Offer',
+        name: 'Mindset Hockey Membership',
+        priceCurrency: 'USD',
+        price: '49',
+        description:
+          '$49 per month, no setup fee. Full platform access: AI Shot Analysis, Workout Plans, Nutrition & Meal Plans, Mindset Training, Training Video Library and Progress Tracking.',
+      },
+      {
+        '@type': 'Offer',
+        name: 'Custom Coaching',
+        priceCurrency: 'USD',
+        description:
+          'Personalized coaching package built from services including 1-on-1 online coaching, weekly check-ins, video reviews, direct messaging support and custom programming. Priced on request.',
+      },
     ],
   },
 };
-
-const COMPARE_ROWS = [
-  { feature: 'Development roadmap', standard: '✓', premium: '✓' },
-  { feature: 'Monthly check-ins', standard: '✓', premium: '✓' },
-  { feature: 'Performance tracking', standard: 'Basic', premium: 'Advanced' },
-  { feature: 'Access to training resources', standard: '✓', premium: '✓' },
-  { feature: 'AI Shot Analysis', standard: '✓', premium: '✓' },
-  { feature: 'Hockey workout plan', standard: '✓', premium: '✓' },
-  { feature: 'Performance nutrition guidance', standard: '—', premium: '✓' },
-  { feature: 'Video analysis & breakdowns', standard: '—', premium: '✓' },
-  { feature: 'Priority support', standard: '—', premium: '✓' },
-  { feature: 'Monthly coaching review sessions', standard: '—', premium: '✓' },
-  { feature: 'Mindset development training', standard: '—', premium: '✓' },
-  { feature: 'Setup fee', standard: '$249', premium: '$389', neutral: true },
-  { feature: 'Monthly', standard: '$100', premium: '$149', neutral: true },
-];
 
 export default function Pricing() {
   return (
@@ -75,21 +76,15 @@ export default function Pricing() {
         <div className="faceoff" style={{ width: '460px', height: '460px', top: '-80px', right: '-140px' }} aria-hidden="true" />
         <div className="wrap">
           <div className="head center">
-            <p className="eyebrow center">Programs &amp; pricing</p>
-            <h1>Pick the level<br />he&apos;s actually at</h1>
+            <p className="eyebrow center">Membership &amp; pricing</p>
+            <h1>One plan.<br />Full access.</h1>
             <p className="lede mt2">
-              Every plan starts with a one-time setup fee that covers the intake assessment, your
-              player&apos;s baseline video breakdown and the first custom plan. The monthly fee keeps the
-              coaching, tracking and check-ins running.
-            </p>
-            <p className="mt2 muted">
-              In-person sessions run at <Link href="/locations">The Capital Clubhouse, 3033 Waldorf
-              Market Place, Waldorf, MD</Link>. Remote coaching is available anywhere.
+              Mindset Hockey Membership is $49/month — no setup fee, no tiers to compare. Want
+              1-on-1 coaching, check-ins or a custom program on top of it? Request Custom Coaching
+              and we&apos;ll build it around your athlete.
             </p>
             <p className="mt2"><span className="respond">⏱ We respond to all inquiries within 24 hours</span></p>
 
-            {/* Acquisition offer. Deliberately factual — no accuracy or
-                improvement claims, matching the honesty of the analysis itself. */}
             <div className="mt3" style={{
               border: '1px solid rgba(61,220,132,.38)', background: 'rgba(61,220,132,.07)',
               borderRadius: '16px', padding: '20px 24px', maxWidth: '620px',
@@ -115,102 +110,77 @@ export default function Pricing() {
 
       <section style={{ paddingTop: 0 }}>
         <div className="wrap">
-          <div className="plans">
-            <article className="plan rv" id="basic">
-              <h3>Standard</h3>
-              <p className="who">Build the foundation for long-term hockey development.</p>
-              <div className="price-setup"><b>$249</b><span>one-time setup</span></div>
-              <div className="price-monthly"><b>$100</b><span>/ month</span></div>
-              <p className="price-note">No contract. Cancel the monthly any time.</p>
+          <div className="plans" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+            <article className="plan featured rv" id="membership">
+              <span className="flag">Full platform access</span>
+              <h3>Membership</h3>
+              <p className="who">Everything non-coaching, for one monthly price.</p>
+              <div className="price-monthly"><b>$49</b><span>/ month</span></div>
+              <p className="price-note">No setup fee. No contract. Cancel any time.</p>
               <ul>
-                <li><b style={{ color: 'var(--white)' }}>10 AI Shot Analyses per week</b></li>
-                <li>Hockey-specific workout plan</li>
-                <li>Personalized development roadmap</li>
-                <li>Monthly progress review</li>
-                <li>Goal setting and accountability</li>
-                <li>Basic performance tracking</li>
-                <li>Coaching support</li>
-                <li>Member dashboard access</li>
+                <li>Full platform access</li>
+                <li>AI Shot Analysis</li>
+                <li>Workout Plans</li>
+                <li>Nutrition &amp; Meal Plans</li>
+                <li>Mindset Training</li>
+                <li>Training Video Library</li>
+                <li>Progress Tracking</li>
               </ul>
               <div className="foot">
-                <Link className="btn btn-ghost btn-block" href="/signup?plan=standard" data-plan="standard" data-cta="start_basic" data-cta-location="pricing_page">Get Started</Link>
+                <Link className="btn btn-primary btn-block" href="/signup?plan=membership" data-plan="membership" data-cta="join_membership" data-cta-location="pricing_page">Join for $49/month</Link>
               </div>
             </article>
 
-            <article className="plan featured rv" id="premium">
-              <span className="flag">⭐ Most Popular</span>
-              <h3>Premium</h3>
-              <p className="who">Everything serious athletes need to reach the next level.</p>
-              <div className="price-setup"><b>$389</b><span>one-time setup</span></div>
-              <div className="price-monthly"><b>$149</b><span>/ month</span></div>
-              <p className="price-note">No contract. Cancel the monthly any time.</p>
-              <ul>
-                <li><b style={{ color: 'var(--white)' }}>20 AI Shot Analyses per week</b></li>
-                <li className="head">Everything in Standard, plus</li>
-                <li>Customized training program that evolves as the athlete progresses</li>
-                <li>Performance nutrition guidance tailored to the athlete&apos;s goals</li>
-                <li>Video analysis and breakdowns</li>
-                <li>Advanced performance tracking</li>
-                <li><b style={{ color: 'var(--white)' }}>Mindset development training</b></li>
-                <li>Priority support</li>
-                <li>Personalized coaching guidance</li>
-                <li>Monthly coaching review sessions</li>
-                <li>Premium resource library</li>
-              </ul>
-              <div className="foot">
-                <Link className="btn btn-primary btn-block" href="/signup?plan=premium" data-plan="premium" data-cta="start_premium" data-cta-location="pricing_page">Get Started</Link>
-              </div>
-            </article>
-
-            <article className="plan rv" id="custom">
-              <h3>Custom</h3>
+            <article className="plan rv" id="custom-coaching">
+              <h3>Custom Coaching</h3>
               <p className="who">Built around a specific goal, timeline, tryout or team.</p>
               <div className="price-setup"><b>Quote</b><span>tailored to you</span></div>
               <div className="price-monthly" style={{ borderTopColor: 'transparent' }}><span>Priced after a short call</span></div>
               <p className="price-note">
-                Need something tailored specifically to your goals? Build a custom package by selecting
-                the services you want from our Premium offerings and more. Contact us for a personalized
-                quote.
+                Select the services you&apos;re interested in and a coach will follow up with pricing
+                and next steps.
               </p>
               <ul>
-                <li>Choose the services that matter to your player</li>
-                <li>Built around your season and schedule</li>
-                <li>Tryout, showcase and camp preparation</li>
-                <li>Team and association packages</li>
+                <li>Personalized coaching</li>
+                <li>Custom development plans</li>
+                <li>1-on-1 coaching options</li>
+                <li>Flexible pricing</li>
               </ul>
               <div className="foot">
-                <Link className="btn btn-red btn-block" href="/contact?plan=custom" data-plan="custom" data-cta="request_custom_quote" data-cta-location="pricing_page">Request Custom Quote</Link>
+                <Link className="btn btn-red btn-block" href="/coaching/request" data-plan="custom" data-cta="request_custom_plan" data-cta-location="pricing_page">Request Custom Plan</Link>
               </div>
             </article>
           </div>
 
           <p className="center mt3 muted" style={{ fontSize: '14.5px' }}>
-            Weekly allowances reset every 7 days. Additional single analyses at{' '}
+            Weekly AI Shot Analysis allowances reset every 7 days. Additional single analyses at{' '}
             <b style={{ color: 'var(--white)' }}>$0.50 each</b> are coming soon — they&apos;ll never
             expire once purchased.
           </p>
 
-          <div className="onice rv mt3" id="on-ice">
-            <div className="onice-price">
-              <p className="eyebrow">On-ice sessions</p>
-              <b>$149</b>
-              <span>per session</span>
+          {SHOW_IN_PERSON_SESSIONS && (
+            <div className="onice rv mt3" id="on-ice">
+              <div className="onice-price">
+                <p className="eyebrow">On-ice sessions</p>
+                <b>$149</b>
+                <span>per session</span>
+              </div>
+              <div className="onice-body">
+                <h3>On-ice training at The Capital Clubhouse</h3>
+                <p className="mt1"><span className="hl">No set time limit.</span> A session runs as long as it needs to — we don&apos;t watch a clock and cut a player off mid-rep.</p>
+                <ul className="ticks mt1">
+                  <li><b>Both coaches on the ice</b> when we&apos;re both available</li>
+                  <li><b>Small groups on purpose</b> — we cap session size so every player gets real attention and real reps</li>
+                  <li>Filmed on two angles, so the session doubles as your next video breakdown</li>
+                  <li>Book on its own, or add it to Membership or a Custom Coaching plan</li>
+                </ul>
+                <p className="mt2">
+                  <Link className="btn btn-primary" href="/contact?plan=on-ice" data-plan="on_ice" data-cta="book_on_ice" data-cta-location="pricing_page">Book an On-Ice Session</Link>{' '}
+                  <a className="btn btn-ghost" href="tel:+12404356511" data-cta="call_on_ice" data-cta-location="pricing_page">Call to Check Availability</a>
+                </p>
+              </div>
             </div>
-            <div className="onice-body">
-              <h3>On-ice training at The Capital Clubhouse</h3>
-              <p className="mt1"><span className="hl">No set time limit.</span> A session runs as long as it needs to — we don&apos;t watch a clock and cut a player off mid-rep.</p>
-              <ul className="ticks mt1">
-                <li><b>Both coaches on the ice</b> when we&apos;re both available</li>
-                <li><b>Small groups on purpose</b> — we cap session size so every player gets real attention and real reps</li>
-                <li>Filmed on two angles, so the session doubles as your next video breakdown</li>
-                <li>Book on its own, or add it to any Basic, Premium or Custom plan</li>
-              </ul>
-              <p className="mt2">
-                <Link className="btn btn-primary" href="/contact?plan=on-ice" data-plan="on_ice" data-cta="book_on_ice" data-cta-location="pricing_page">Book an On-Ice Session</Link>{' '}
-                <a className="btn btn-ghost" href="tel:+12404356511" data-cta="call_on_ice" data-cta-location="pricing_page">Call to Check Availability</a>
-              </p>
-            </div>
-          </div>
+          )}
 
           <div className="founding rv mt3">
             <div className="founding-badge">Founding Member</div>
@@ -226,8 +196,8 @@ export default function Pricing() {
 
           <div className="contactstrip mt3 rv">
             <div>
-              <h3>Not sure which one?</h3>
-              <p>Tell us your player&apos;s age, level and what&apos;s frustrating you. We&apos;ll recommend the right plan — including telling you if you don&apos;t need us yet.</p>
+              <h3>Not sure if Custom Coaching is right for you?</h3>
+              <p>Tell us your player&apos;s age, level and what&apos;s frustrating you. We&apos;ll recommend the right setup — including telling you if Membership alone is all you need.</p>
             </div>
             <div className="acts">
               <Link className="btn btn-primary" href="/contact" data-cta="help_choosing" data-cta-location="pricing_page">Talk to a Coach</Link>
@@ -242,42 +212,19 @@ export default function Pricing() {
       <section className="band">
         <div className="wrap">
           <div className="head center rv">
-            <p className="eyebrow center">Side by side</p>
-            <h2>What&apos;s in each plan</h2>
-          </div>
-          <div className="rubric rv" style={{ gridTemplateColumns: '1fr' }}>
-            <div className="rb" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px', alignItems: 'center', background: 'var(--navy-700)' }}>
-              <b style={{ margin: 0, color: 'var(--white)' }}>FEATURE</b>
-              <b style={{ margin: 0, textAlign: 'center', color: 'var(--white)' }}>STANDARD</b>
-              <b style={{ margin: 0, textAlign: 'center', color: 'var(--electric-glow)' }}>PREMIUM</b>
-            </div>
-            {COMPARE_ROWS.map((row) => (
-              <div key={row.feature} className="rb" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px', alignItems: 'center' }}>
-                <p style={{ color: 'var(--silver)' }}>{row.feature}</p>
-                <p style={{ textAlign: 'center', color: row.neutral ? 'var(--white)' : 'var(--electric-glow)' }}>{row.standard}</p>
-                <p style={{ textAlign: 'center', color: row.neutral ? 'var(--white)' : 'var(--electric-glow)' }}>{row.premium}</p>
-              </div>
-            ))}
-          </div>
-          <p className="center mt2 small muted">
-            Looking for something in between, or a team rate?{' '}
-            <Link href="/contact?plan=custom" data-plan="custom" data-cta="custom_from_table" data-cta-location="pricing_table">Request a custom quote</Link>.
-          </p>
-
-          <div className="head center rv mt3" style={{ paddingTop: '30px' }}>
-            <p className="eyebrow center">What Premium really buys</p>
-            <h2>Five systems, one program</h2>
+            <p className="eyebrow center">What&apos;s included</p>
+            <h2>Five systems, one membership</h2>
             <p className="lede mt2">
-              Most players get skills coaching and nothing else. Premium is a comprehensive development
-              system rather than just hockey training — every part reinforcing the others instead of
-              competing for his week.
+              Most players get skills coaching and nothing else. Membership is a comprehensive
+              development system rather than just hockey training — every part reinforcing the
+              others instead of competing for his week.
             </p>
           </div>
           <div className="cards c5 rv">
             <article className="card"><span className="num">01</span><h3>Skill development</h3><p>Shot mechanics, hands, edges and 1-on-1 play, coached against the 7-point rubric.</p></article>
             <article className="card"><span className="num">02</span><h3>Strength &amp; conditioning</h3><p>A specialized hockey workout plan built for his age, level and phase of the season.</p></article>
             <article className="card"><span className="num">03</span><h3>Nutrition</h3><p>A specialized hockey nutrition and meal plan — fueling practice, games and growth.</p></article>
-            <article className="card"><span className="num">04</span><h3>Video analysis</h3><p>Scored breakdowns with timestamped notes, coach voiceover and prescribed drills.</p></article>
+            <article className="card"><span className="num">04</span><h3>AI Shot Analysis</h3><p>Scored breakdowns across ten mechanics categories, straight from a phone video.</p></article>
             <article className="card"><span className="num">05</span><h3>Mindset coaching</h3><p>Confidence, discipline, accountability and performance under pressure, coached on purpose.</p></article>
           </div>
         </div>
@@ -289,12 +236,12 @@ export default function Pricing() {
         <div className="crease" style={{ width: '340px', height: '170px', left: '-90px', top: '70px' }} aria-hidden="true" />
         <div className="wrap">
           <div className="head center rv">
-            <p className="eyebrow center">Included with Premium</p>
+            <p className="eyebrow center">Included with Membership</p>
             <h2>Mindset development<br />training</h2>
             <p className="lede mt2">
-              Physical skills are only part of the equation. Our Premium athletes receive guidance on
-              confidence, discipline, accountability and mental performance so they can perform at their
-              best both on and off the ice.
+              Physical skills are only part of the equation. Every Membership athlete receives
+              guidance on confidence, discipline, accountability and mental performance so they can
+              perform at their best both on and off the ice.
             </p>
           </div>
           <div className="mindgrid rv">
@@ -310,7 +257,7 @@ export default function Pricing() {
             <div className="mind"><b>10</b><h3>Leadership</h3><p>Communicating with coaches and becoming the player used when it matters.</p></div>
           </div>
           <p className="center mt3">
-            <Link className="btn btn-primary btn-lg" href="/signup?plan=premium" data-plan="premium" data-cta="premium_from_mindset" data-cta-location="pricing_mindset">Start Premium — $389 + $149/mo</Link>
+            <Link className="btn btn-primary btn-lg" href="/signup?plan=membership" data-plan="membership" data-cta="membership_from_mindset" data-cta-location="pricing_mindset">Join for $49/month</Link>
           </p>
         </div>
       </section>
@@ -320,9 +267,9 @@ export default function Pricing() {
           <p className="eyebrow center rv">For context</p>
           <h2 className="rv" style={{ fontSize: 'clamp(24px,4vw,40px)' }}>Cheaper than the lessons you already pay for</h2>
           <p className="lede mt2 rv" style={{ marginInline: 'auto' }}>
-            A private skills coach runs $100–$150 an hour and sees your player twice a month. Premium is
-            $149 a month and works with him every day — with a coach reviewing his film, not just running
-            him through cones.
+            A private skills coach runs $100–$150 an hour and sees your player twice a month.
+            Membership is $49 a month and works with him every day — AI-graded film, a workout plan,
+            nutrition and mindset coaching, not just cones.
           </p>
           <p className="mt2 rv"><Link className="btn btn-primary btn-lg" href="/contact" data-cta="pricing_final" data-cta-location="pricing_anchor">Book a Free Assessment</Link></p>
         </div>
@@ -374,18 +321,20 @@ export default function Pricing() {
         <div className="wrap">
           <div className="head center rv"><p className="eyebrow center">Billing questions</p><h2>Pricing FAQ</h2></div>
           <div className="faq">
+            {SHOW_IN_PERSON_SESSIONS && (
+              <details open>
+                <summary>How much is an on-ice session, and how long is it?</summary>
+                <div className="ans">On-ice sessions are <b>$149 each</b> at The Capital Clubhouse in Waldorf. There&apos;s no set time limit — the session runs as long as it needs to rather than ending on a timer. When both coaches are available you get both of us on the ice, and we deliberately keep session sizes small so every player gets real attention and real reps instead of standing in a line.</div>
+              </details>
+            )}
             <details open>
-              <summary>How much is an on-ice session, and how long is it?</summary>
-              <div className="ans">On-ice sessions are <b>$149 each</b> at The Capital Clubhouse in Waldorf. There&apos;s no set time limit — the session runs as long as it needs to rather than ending on a timer. When both coaches are available you get both of us on the ice, and we deliberately keep session sizes small so every player gets real attention and real reps instead of standing in a line.</div>
+              <summary>Is AI Shot Analysis included with Membership?</summary>
+              <div className="ans">Yes. <b>AI Shot Analysis is included with Membership</b> — it&apos;s not a separate add-on. Upload a clip from your phone and it grades your shot against ten mechanics categories. To be straight with you about what it is: it reads still frames from your video the way a coach does stepping through film. It is not laboratory motion capture, it cannot measure joint angles or puck speed, and anything the footage does not clearly show comes back marked &quot;insufficient footage&quot; rather than guessed at. Every category carries a confidence level so you know how much weight to put on it.</div>
             </details>
-            <details open>
-              <summary>Is AI Shot Analysis included with both plans?</summary>
-              <div className="ans">Yes. <b>AI Shot Analysis is included with both the Standard and Premium programs</b> — it is not a Premium-only feature. Upload a clip from your phone and it grades your shot against ten mechanics categories. To be straight with you about what it is: it reads still frames from your video the way a coach does stepping through film. It is not laboratory motion capture, it cannot measure joint angles or puck speed, and anything the footage does not clearly show comes back marked &quot;insufficient footage&quot; rather than guessed at. Every category carries a confidence level so you know how much weight to put on it.</div>
-            </details>
-            <details><summary>What does the setup fee cover?</summary><div className="ans">The intake assessment, your player&apos;s baseline video breakdown scored against all seven mechanics points, and building the first custom training plan. It&apos;s the heaviest work of the whole engagement and it happens once.</div></details>
-            <details><summary>Am I locked into a contract?</summary><div className="ans">No. The monthly is month-to-month and you can cancel any time. The setup fee is one-time and non-recurring.</div></details>
-            <details><summary>Can I switch plans later?</summary><div className="ans">Yes. Moving from Basic to Premium only costs the difference in setup fees, not a second full setup.</div></details>
-            <details><summary>Do you offer sibling or team rates?</summary><div className="ans">Yes — both. <Link href="/contact?plan=custom">Request a custom quote</Link> with the number of players and we&apos;ll price it properly.</div></details>
+            <details open><summary>Is there a setup fee?</summary><div className="ans">No. Membership is $49/month with no setup fee — you get full platform access starting the day you join.</div></details>
+            <details><summary>Am I locked into a contract?</summary><div className="ans">No. Membership is month-to-month and you can cancel any time.</div></details>
+            <details><summary>What&apos;s the difference between Membership and Custom Coaching?</summary><div className="ans">Membership ($49/mo) covers every non-coaching area of the platform — AI Shot Analysis, workouts, nutrition, mindset training, the video library and progress tracking. Custom Coaching is built on top of that for families who want direct coaching time: 1-on-1 sessions, weekly check-ins, video reviews, direct messaging or custom programming. <Link href="/coaching/request">Request a Custom Plan</Link> and a coach will follow up with pricing.</div></details>
+            <details><summary>Do you offer sibling or team rates?</summary><div className="ans">Yes — both. <Link href="/coaching/request">Request a Custom Plan</Link> with the number of players and we&apos;ll price it properly.</div></details>
             <details><summary>What if it isn&apos;t a fit?</summary><div className="ans">Tell us within the first 14 days and we&apos;ll refund the monthly fee, no interrogation. We&apos;d rather have an honest conversation than an unhappy family.</div></details>
           </div>
         </div>

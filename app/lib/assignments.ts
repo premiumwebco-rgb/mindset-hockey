@@ -25,6 +25,7 @@ export const ASSIGNMENT_CONTENT_TYPES = [
   'workout_session',
   'video_review',
   'ai_shot_analysis',
+  'training_resource',
 ] as const;
 
 export type AssignmentContentType = (typeof ASSIGNMENT_CONTENT_TYPES)[number];
@@ -33,11 +34,13 @@ export function isAssignmentContentType(v: unknown): v is AssignmentContentType 
   return typeof v === 'string' && (ASSIGNMENT_CONTENT_TYPES as readonly string[]).includes(v);
 }
 
-/** mindset_lesson / workout_session point at one row; video_review /
- *  ai_shot_analysis assign the activity itself, not a specific row — the
- *  player hasn't created that row yet when the assignment is made. */
+/** mindset_lesson / workout_session / training_resource point at one row;
+ *  video_review / ai_shot_analysis assign the activity itself, not a
+ *  specific row — the player hasn't created that row yet when the
+ *  assignment is made. Matches the assignments_content_id_shape check
+ *  constraint (migration 0017, extended by 0020). */
 export function contentTypeRequiresContentId(t: AssignmentContentType): boolean {
-  return t === 'mindset_lesson' || t === 'workout_session';
+  return t === 'mindset_lesson' || t === 'workout_session' || t === 'training_resource';
 }
 
 const COMPLETE_SUBMISSION_STATUSES = new Set(['reviewed']);
@@ -93,22 +96,29 @@ export async function getActiveAssignmentsForPlayer(session: Session): Promise<P
 
   const mindsetIds = [...new Set(rows.filter((r) => r.content_type === 'mindset_lesson' && r.content_id).map((r) => r.content_id as string))];
   const workoutSessionIds = [...new Set(rows.filter((r) => r.content_type === 'workout_session' && r.content_id).map((r) => r.content_id as string))];
+  const resourceIds = [...new Set(rows.filter((r) => r.content_type === 'training_resource' && r.content_id).map((r) => r.content_id as string))];
   const hasVideoReview = rows.some((r) => r.content_type === 'video_review');
   const hasAiAnalysis = rows.some((r) => r.content_type === 'ai_shot_analysis');
 
-  const [mindsetLessons, workoutSessions, mindsetDone, workoutDone, submissions, analyses] = await Promise.all([
+  const [mindsetLessons, workoutSessions, resources, mindsetDone, workoutDone, resourceDone, submissions, analyses] = await Promise.all([
     mindsetIds.length > 0
       ? supabase.from('mindset_lessons').select('id, slug, title').in('id', mindsetIds)
       : Promise.resolve({ data: [] as { id: string; slug: string; title: string }[] }),
     workoutSessionIds.length > 0
       ? supabase.from('workout_sessions').select('id, title, workout_plans(slug)').in('id', workoutSessionIds)
       : Promise.resolve({ data: [] as { id: string; title: string; workout_plans: { slug: string } | { slug: string }[] | null }[] }),
+    resourceIds.length > 0
+      ? supabase.from('training_resources').select('id, title').in('id', resourceIds)
+      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
     mindsetIds.length > 0
       ? supabase.from('mindset_progress').select('lesson_id, completed_at').eq('profile_id', session.userId).in('lesson_id', mindsetIds)
       : Promise.resolve({ data: [] as { lesson_id: string; completed_at: string | null }[] }),
     workoutSessionIds.length > 0
       ? supabase.from('workout_completions').select('session_id').eq('profile_id', session.userId).in('session_id', workoutSessionIds)
       : Promise.resolve({ data: [] as { session_id: string }[] }),
+    resourceIds.length > 0
+      ? supabase.from('training_resource_completions').select('resource_id').eq('profile_id', session.userId).in('resource_id', resourceIds)
+      : Promise.resolve({ data: [] as { resource_id: string }[] }),
     hasVideoReview
       ? supabase.from('video_submissions').select('status, created_at').eq('profile_id', session.userId).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as { status: string; created_at: string }[] }),
@@ -127,6 +137,9 @@ export async function getActiveAssignmentsForPlayer(session: Session): Promise<P
     }),
   );
   const workoutDoneIds = new Set((workoutDone.data ?? []).map((c) => c.session_id));
+
+  const resourceTitleById = new Map((resources.data ?? []).map((r) => [r.id, r.title]));
+  const resourceDoneIds = new Set((resourceDone.data ?? []).map((c) => c.resource_id));
 
   const submissionRows = submissions.data ?? [];
   const analysisRows = analyses.data ?? [];
@@ -163,6 +176,12 @@ export async function getActiveAssignmentsForPlayer(session: Session): Promise<P
         (a) => COMPLETE_ANALYSIS_STATUSES.has(a.status) && new Date(a.created_at).getTime() >= new Date(row.created_at).getTime(),
       );
       href = completed ? '/analysis' : '/analysis/new';
+    } else if (row.content_type === 'training_resource' && row.content_id) {
+      const resourceTitle = resourceTitleById.get(row.content_id);
+      if (!resourceTitle) continue; // resource since unpublished/deleted — skip rather than show a broken card
+      title = resourceTitle;
+      href = `/library/${row.content_id}`;
+      completed = resourceDoneIds.has(row.content_id);
     }
 
     if (!title || !href) continue;
@@ -181,6 +200,49 @@ export async function getActiveAssignmentsForPlayer(session: Session): Promise<P
   }
 
   return result;
+}
+
+/**
+ * Called as a side effect of a coach saving a rubric review
+ * (lib/video-review-rubric.ts) when the coach selected training_resources.
+ * Creates one real `assignments` row per resource NOT already actively
+ * assigned to this player — same table/system /coach/assign and
+ * /development already use, never a second assignment mechanism. Dedupes so
+ * re-saving a review (e.g. editing scores) doesn't pile up duplicate
+ * assignments for a resource already active for this player.
+ */
+export async function assignTrainingResourcesFromReview(
+  session: Session,
+  playerProfileId: string,
+  resourceIds: string[],
+): Promise<void> {
+  if (DEMO_MODE) return;
+  const ids = [...new Set(resourceIds)].filter(Boolean);
+  if (ids.length === 0) return;
+
+  const supabase = await createServerClient();
+
+  const { data: existing } = await supabase
+    .from('assignments')
+    .select('content_id')
+    .eq('profile_id', playerProfileId)
+    .eq('content_type', 'training_resource')
+    .eq('status', 'active')
+    .in('content_id', ids);
+
+  const alreadyActive = new Set((existing ?? []).map((r) => r.content_id));
+  const toInsert = ids.filter((id) => !alreadyActive.has(id));
+  if (toInsert.length === 0) return;
+
+  await supabase.from('assignments').insert(
+    toInsert.map((resourceId) => ({
+      profile_id: playerProfileId,
+      assigned_by: session.userId,
+      content_type: 'training_resource' as const,
+      content_id: resourceId,
+      status: 'active' as const,
+    })),
+  );
 }
 
 /* ---------------------------------------------------------------- coach side */
@@ -286,6 +348,7 @@ export async function getCoachAssignments(): Promise<CoachAssignmentRow[]> {
 
   const mindsetIds = [...new Set(rows.filter((r) => r.content_type === 'mindset_lesson' && r.content_id).map((r) => r.content_id as string))];
   const workoutSessionIds = [...new Set(rows.filter((r) => r.content_type === 'workout_session' && r.content_id).map((r) => r.content_id as string))];
+  const resourceIds = [...new Set(rows.filter((r) => r.content_type === 'training_resource' && r.content_id).map((r) => r.content_id as string))];
   const videoReviewProfileIds = [...new Set(rows.filter((r) => r.content_type === 'video_review').map((r) => r.profile_id))];
   const analysisProfileIds = [...new Set(rows.filter((r) => r.content_type === 'ai_shot_analysis').map((r) => r.profile_id))];
   // assignments.profile_id and players.profile_id are sibling foreign keys to
@@ -294,12 +357,15 @@ export async function getCoachAssignments(): Promise<CoachAssignmentRow[]> {
   // resolved with their own batched query below instead of a nested select.
   const allProfileIds = [...new Set(rows.map((r) => r.profile_id))];
 
-  const [mindsetLessons, workoutSessions, mindsetProgress, workoutCompletions, submissions, analyses, players] = await Promise.all([
+  const [mindsetLessons, workoutSessions, resources, mindsetProgress, workoutCompletions, resourceCompletions, submissions, analyses, players] = await Promise.all([
     mindsetIds.length > 0
       ? supabase.from('mindset_lessons').select('id, title').in('id', mindsetIds)
       : Promise.resolve({ data: [] as { id: string; title: string }[] }),
     workoutSessionIds.length > 0
       ? supabase.from('workout_sessions').select('id, title').in('id', workoutSessionIds)
+      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+    resourceIds.length > 0
+      ? supabase.from('training_resources').select('id, title').in('id', resourceIds)
       : Promise.resolve({ data: [] as { id: string; title: string }[] }),
     mindsetIds.length > 0
       ? supabase.from('mindset_progress').select('profile_id, lesson_id, completed_at').in('lesson_id', mindsetIds)
@@ -307,6 +373,9 @@ export async function getCoachAssignments(): Promise<CoachAssignmentRow[]> {
     workoutSessionIds.length > 0
       ? supabase.from('workout_completions').select('profile_id, session_id').in('session_id', workoutSessionIds)
       : Promise.resolve({ data: [] as { profile_id: string; session_id: string }[] }),
+    resourceIds.length > 0
+      ? supabase.from('training_resource_completions').select('profile_id, resource_id').in('resource_id', resourceIds)
+      : Promise.resolve({ data: [] as { profile_id: string; resource_id: string }[] }),
     videoReviewProfileIds.length > 0
       ? supabase.from('video_submissions').select('profile_id, status, created_at').in('profile_id', videoReviewProfileIds)
       : Promise.resolve({ data: [] as { profile_id: string; status: string; created_at: string }[] }),
@@ -318,10 +387,12 @@ export async function getCoachAssignments(): Promise<CoachAssignmentRow[]> {
 
   const mindsetTitleById = new Map((mindsetLessons.data ?? []).map((l) => [l.id, l.title]));
   const workoutTitleById = new Map((workoutSessions.data ?? []).map((s) => [s.id, s.title]));
+  const resourceTitleById = new Map((resources.data ?? []).map((r) => [r.id, r.title]));
   const mindsetDonePairs = new Set(
     (mindsetProgress.data ?? []).filter((p) => p.completed_at).map((p) => `${p.profile_id}:${p.lesson_id}`),
   );
   const workoutDonePairs = new Set((workoutCompletions.data ?? []).map((c) => `${c.profile_id}:${c.session_id}`));
+  const resourceDonePairs = new Set((resourceCompletions.data ?? []).map((c) => `${c.profile_id}:${c.resource_id}`));
   const submissionsByProfile = new Map<string, { status: string; created_at: string }[]>();
   for (const s of submissions.data ?? []) {
     const list = submissionsByProfile.get(s.profile_id) ?? [];
@@ -365,6 +436,9 @@ export async function getCoachAssignments(): Promise<CoachAssignmentRow[]> {
       completed = (analysesByProfile.get(row.profile_id) ?? []).some(
         (a) => COMPLETE_ANALYSIS_STATUSES.has(a.status) && new Date(a.created_at).getTime() >= new Date(row.created_at).getTime(),
       );
+    } else if (row.content_type === 'training_resource' && row.content_id) {
+      contentTitle = resourceTitleById.get(row.content_id) ?? 'Training resource';
+      completed = resourceDonePairs.has(`${row.profile_id}:${row.content_id}`);
     }
 
     result.push({

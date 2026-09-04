@@ -102,23 +102,30 @@ export async function POST(req: Request) {
   if (!plan) {
     return NextResponse.json({ error: 'Unknown plan' }, { status: 400 });
   }
-  if (!plan.priceIdMonthly || !plan.priceIdSetup) {
+  if (!plan.priceIdMonthly) {
     return NextResponse.json(
       { error: `Stripe price IDs are not configured for the ${plan.name}.` },
       { status: 500 }
     );
   }
+  // The Membership plan has no setup fee. Standard/Premium (legacy) required
+  // both a monthly and a setup price — Membership is monthly-only.
+  const hasSetupFee = Boolean(plan.priceIdSetup);
 
   const s = stripe();
 
   // ---- Verify the configured prices are shaped the way we think ----------
   let monthlyPrice: Stripe.Price;
-  let setupPrice: Stripe.Price;
+  let setupPrice: Stripe.Price | null = null;
   try {
-    [monthlyPrice, setupPrice] = await Promise.all([
-      s.prices.retrieve(plan.priceIdMonthly),
-      s.prices.retrieve(plan.priceIdSetup),
-    ]);
+    if (hasSetupFee) {
+      [monthlyPrice, setupPrice] = await Promise.all([
+        s.prices.retrieve(plan.priceIdMonthly),
+        s.prices.retrieve(plan.priceIdSetup!),
+      ]);
+    } else {
+      monthlyPrice = await s.prices.retrieve(plan.priceIdMonthly);
+    }
   } catch (err) {
     return NextResponse.json(
       {
@@ -129,7 +136,7 @@ export async function POST(req: Request) {
   }
 
   const problem =
-    checkPrice(setupPrice, 'one_time', `${plan.name} setup fee`) ??
+    (setupPrice ? checkPrice(setupPrice, 'one_time', `${plan.name} setup fee`) : null) ??
     checkPrice(monthlyPrice, 'recurring', `${plan.name} monthly`);
 
   if (problem) {
@@ -199,32 +206,33 @@ export async function POST(req: Request) {
       .eq('id', session.userId);
   }
 
+  const lineItems = [{ price: plan.priceIdMonthly, quantity: 1 }];
+  if (hasSetupFee && plan.priceIdSetup) {
+    lineItems.push({ price: plan.priceIdSetup, quantity: 1 });
+  }
+
   const checkout = await s.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
     client_reference_id: session.userId,
-    line_items: [
-      { price: plan.priceIdMonthly, quantity: 1 },
-      { price: plan.priceIdSetup, quantity: 1 },
-    ],
+    line_items: lineItems,
     subscription_data: {
       metadata: { profile_id: session.userId, tier: plan.tier },
-      // Defers the FIRST recurring charge one month out. The setup-fee line
-      // item above is unaffected by this and is still charged immediately —
-      // see the function doc comment above for why.
-      trial_end: oneMonthFromNowUnix(),
+      // Defers the FIRST recurring charge one month out so only a setup fee
+      // (if any) is due today. Membership has no setup fee, so there is
+      // nothing to defer for it — the first $49 charges immediately, which is
+      // the expected "join today, billed today" behavior for a plan with no
+      // onboarding fee.
+      ...(hasSetupFee ? { trial_end: oneMonthFromNowUnix() } : {}),
     },
     // Mirrored onto the session so the webhook can act on either object.
-    // `setup_fee_amount` is the verified one-time price in cents. With the
-    // trial above, `session.amount_total` should now equal exactly this (the
-    // recurring line is deferred, so nothing else is charged today) — but the
-    // webhook still reads this explicit, independently-verified value rather
-    // than trusting amount_total, in case that ever changes.
+    // `setup_fee_amount` is the verified one-time price in cents, or absent
+    // for plans with no setup fee.
     metadata: {
       profile_id: session.userId,
       tier: plan.tier,
       plan: plan.slug,
-      setup_fee_amount: String(setupPrice.unit_amount ?? ''),
+      ...(setupPrice ? { setup_fee_amount: String(setupPrice.unit_amount ?? '') } : {}),
     },
     allow_promotion_codes: true,
     billing_address_collection: 'auto',

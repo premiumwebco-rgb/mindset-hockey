@@ -1,12 +1,12 @@
 import Link from 'next/link';
-import { requireFeature } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
 import { getMindsetLessons } from '@/lib/data';
 import { Card, Eyebrow, ProgressBar, EmptyState } from '@/components/ui';
 
 export const metadata = { title: 'Mindset Training — Mindset Hockey' };
 
 export default async function MindsetPage() {
-  const session = await requireFeature('mindset_training');
+  const session = await requirePermission('mindset');
   const lessons = await getMindsetLessons(session);
   const done = lessons.filter((l) => l.completed).length;
   const pct = lessons.length ? Math.round((done / lessons.length) * 100) : 0;

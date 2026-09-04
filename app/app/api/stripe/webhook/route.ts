@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { Tier, SubscriptionStatus } from '@/lib/types';
 import { ACTIVE_SUB_STATUSES } from '@/lib/types';
 import { ANALYSIS_ADDON } from '@/lib/plans';
+import { MEMBERSHIP_PERMISSIONS } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 /** Stripe needs the raw body for signature verification — never cache. */
@@ -19,9 +20,23 @@ const RELEVANT = new Set<string>([
   'invoice.payment_failed',
 ]);
 
+/**
+ * Reads the tier off Stripe metadata and normalizes it to 'membership'.
+ *
+ * Existing Stripe subscriptions created under the old Standard/Premium plans
+ * carry `metadata.tier = 'basic' | 'premium'` PERMANENTLY — that metadata was
+ * set once at subscription creation and this app has no reason to ever
+ * rewrite it on the Stripe side (their billing is deliberately left
+ * untouched, still at $100/mo or $149/mo). Rather than keep two live tiers
+ * around forever, every renewal event normalizes whatever it finds to
+ * 'membership' — so a legacy subscriber's `profiles.tier` converges on
+ * 'membership' the first time any subscription event fires for them, and
+ * applyEntitlement() below grants them the full Membership permission set.
+ * New checkouts always set metadata.tier = 'membership' directly.
+ */
 function tierFromMetadata(meta: Stripe.Metadata | null | undefined): Tier | null {
   const t = meta?.tier;
-  return t === 'basic' || t === 'premium' ? t : null;
+  return t === 'basic' || t === 'premium' || t === 'membership' ? 'membership' : null;
 }
 
 /**
@@ -389,8 +404,20 @@ async function upsertSubscription(
 /**
  * The one place entitlement is granted or revoked.
  * Anything other than trialing/active drops `subscription_active` to false,
- * which the RLS function `auth_has_tier()` reads — so premium rows become
- * unreadable the moment a payment fails.
+ * which the RLS policies read via `auth_has_permission()` — Membership rows
+ * become unreadable the moment a payment fails.
+ *
+ * ALSO the one place the 6 Membership permission columns are written. This
+ * covers legacy Standard/Premium subscribers exactly the same as a new $49
+ * Membership signup — any tier this function receives is already normalized
+ * to 'membership' by tierFromMetadata()/currentTier() below, so a renewal on
+ * an old $100 or $149/mo subscription re-grants the full permission set every
+ * time, with the old Stripe price itself never touched.
+ *
+ * Coaching permissions (video_reviews, weekly_checkins, direct_messaging,
+ * one_on_one_coaching, custom_programming) are NEVER touched here — those are
+ * admin-managed only, from Admin > Plan Management, and are independent of
+ * this Stripe subscription's status.
  */
 async function applyEntitlement(
   admin: Admin,
@@ -399,18 +426,24 @@ async function applyEntitlement(
   status: SubscriptionStatus
 ) {
   const active = ACTIVE_SUB_STATUSES.includes(status);
+  const normalizedTier: Tier = tier === 'basic' || tier === 'premium' ? 'membership' : tier;
 
   // `tier` is written unconditionally and `subscription_active` carries the
   // entitlement. On cancellation the tier LABEL is deliberately retained while
-  // subscription_active flips false, so /account can still say "Premium —
-  // Inactive" and offer a reactivate CTA. Access is unaffected: both
-  // hasTier() in lib/session.ts and auth_has_tier() in the RLS policies
-  // require subscription_active, not just the label.
+  // subscription_active flips false, so /account can still say "Membership —
+  // Inactive" and offer a reactivate CTA. Access is unaffected: hasPermission()
+  // in lib/session.ts and auth_has_permission() in the RLS policies both
+  // require the specific permission column, not just the label.
+  const permissionUpdate = Object.fromEntries(
+    MEMBERSHIP_PERMISSIONS.map((key) => [key, normalizedTier === 'membership' ? active : false])
+  );
+
   await admin
     .from('profiles')
     .update({
-      tier,
+      tier: normalizedTier,
       subscription_active: active,
+      ...permissionUpdate,
     })
     .eq('id', profileId);
 
@@ -419,6 +452,6 @@ async function applyEntitlement(
     action: active ? 'entitlement.granted' : 'entitlement.revoked',
     target_table: 'profiles',
     target_id: profileId,
-    meta: { tier, status },
+    meta: { tier: normalizedTier, status },
   });
 }

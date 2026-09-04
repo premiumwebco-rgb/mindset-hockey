@@ -30,8 +30,8 @@ export default function Footer() {
             <Link href="/pricing">Pricing</Link>
             <Link href="/programs#shot-analysis">Shot Analysis</Link>
             <Link href="/programs#mindset">Mindset Development</Link>
-            <Link href="/pricing#premium">Premium Program</Link>
-            <Link href="/contact?plan=custom">Custom Quote</Link>
+            <Link href="/pricing#membership">Membership</Link>
+            <Link href="/coaching/request">Custom Coaching</Link>
           </div>
           <div className="f-col">
             <h4>Company</h4>
@@ -46,7 +46,7 @@ export default function Footer() {
           <div className="f-col">
             <h4>Get started</h4>
             <Link href="/pricing">See Pricing</Link>
-            <Link href="/signup?plan=standard">Create Account</Link>
+            <Link href="/signup?plan=membership">Create Account</Link>
             <Link href="/contact">Free Assessment</Link>
             <a href="tel:+12404356511">Call Us</a>
             <a href="mailto:braydencastiglia@gmail.com">Email Us</a>

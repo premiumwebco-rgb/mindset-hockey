@@ -231,10 +231,10 @@ export default async function DashboardPage() {
           <>
             <h2 className="display mt-2 text-xl sm:mt-3 sm:text-3xl">Structured workout routines</h2>
             <p className="mt-1.5 text-[14.5px] text-silver-dim sm:mt-2 sm:text-lg">
-              Game-day, practice and recovery routines — included with Standard and Premium.
+              Game-day, practice and recovery routines — included with Membership.
             </p>
             <div className="mt-6">
-              <Button href="/upgrade?need=basic&f=workout_plans" variant="ghost">Unlock Workouts</Button>
+              <Button href="/upgrade?f=workout_plans" variant="ghost">Unlock Workouts</Button>
             </div>
           </>
         )}
@@ -398,10 +398,10 @@ export default async function DashboardPage() {
         ) : (
           <>
             <p className="mt-3 text-[13px] text-silver-dim">
-              Graded on ten mechanics categories — included with Standard and Premium.
+              Graded on ten mechanics categories — included with Membership.
             </p>
             <div className="mt-3">
-              <Button href="/upgrade?need=basic&f=ai_shot_analysis" size="sm" variant="ghost">
+              <Button href="/upgrade?f=ai_shot_analysis" size="sm" variant="ghost">
                 Unlock AI Shot Analysis
               </Button>
             </div>
@@ -438,10 +438,10 @@ export default async function DashboardPage() {
         ) : (
           <>
             <p className="mt-3 text-[13px] text-silver-dim">
-              Recipes and guides for pre-game, recovery and travel — included with Premium.
+              Recipes and guides for pre-game, recovery and travel — included with Membership.
             </p>
             <div className="mt-3">
-              <Button href="/upgrade?need=premium&f=nutrition_plans" size="sm" variant="ghost">
+              <Button href="/upgrade?f=nutrition_plans" size="sm" variant="ghost">
                 Unlock Nutrition
               </Button>
             </div>

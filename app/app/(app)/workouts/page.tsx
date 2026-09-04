@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireFeature } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
 import {
   getWorkoutPlans,
   getWorkoutRoutines,
@@ -35,7 +35,7 @@ export default async function WorkoutsPage({
 }: {
   searchParams: Promise<{ occasion?: string; duration?: string; difficulty?: string; q?: string }>;
 }) {
-  await requireFeature('workout_plans');
+  await requirePermission('workouts');
   const { occasion, duration, difficulty, q } = await searchParams;
 
   const activeOccasion = isRoutineOccasion(occasion) ? occasion : null;

@@ -68,7 +68,7 @@ export default async function AccountPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <BillingPortalButton />
             <Button href="/upgrade" variant="ghost" size="sm">
-              {session.tier === 'premium' ? 'See Plans' : 'Upgrade'}
+              {session.subscriptionActive ? 'See Plans' : 'Join Membership'}
             </Button>
           </div>
         </Card>

@@ -2,18 +2,29 @@
    MINDSET HOCKEY — shared domain types
    ========================================================================== */
 
-/** Membership tiers. `none` = signed up but not paid. */
-export type Tier = 'none' | 'basic' | 'premium';
+/**
+ * Membership tiers. `none` = signed up but not paid.
+ *
+ * `basic` and `premium` are LEGACY — the Standard/Premium plans they named
+ * were retired in favor of a single $49/mo `membership` plan plus
+ * permission-based Custom Coaching add-ons (see lib/permissions.ts). They are
+ * kept here, unremoved, only so historical rows and any in-flight Stripe
+ * subscription metadata created under the old plans keep resolving to a
+ * valid value — new code should not branch on them. `tier` no longer decides
+ * feature access anywhere in the app; see PermissionKey for that.
+ */
+export type Tier = 'none' | 'basic' | 'premium' | 'membership';
 
 /** Application roles. Distinct from tier: an admin has full access regardless. */
 export type Role = 'member' | 'coach' | 'admin';
 
-export const TIER_RANK: Record<Tier, number> = { none: 0, basic: 1, premium: 2 };
+export const TIER_RANK: Record<Tier, number> = { none: 0, basic: 1, premium: 2, membership: 2 };
 
 export const TIER_LABEL: Record<Tier, string> = {
   none: 'No active plan',
-  basic: 'Standard',
-  premium: 'Premium',
+  basic: 'Standard (legacy)',
+  premium: 'Premium (legacy)',
+  membership: 'Membership',
 };
 
 export type Pillar =
