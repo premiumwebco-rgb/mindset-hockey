@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { requireSession, hasTier } from '@/lib/session';
 import { getResourceForViewing } from '@/lib/library';
 import { createServerClient } from '@/lib/supabase/server';
-import { Button, Card, PillarChip, formatDuration } from '@/components/ui';
+import { Button, Card, EmptyState, PillarChip, formatDuration } from '@/components/ui';
 import { SmartVideo, SmartImage } from '@/components/media/SmartMedia';
 
 export const metadata = { title: 'Lesson' };
@@ -33,11 +33,36 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
   const access = await getResourceForViewing(session, id);
 
   if (!access.ok) {
-    // Under-tiered members are sent to upgrade; everything else is a 404.
+    // Under-tiered members are sent to upgrade; a missing/draft row is a 404.
     // A draft returns 'not_found' rather than 'locked' — a member should not be
     // able to discover that an unpublished lesson exists by probing ids.
     if (access.reason === 'locked') redirect(`/upgrade?need=${access.requiredTier}`);
-    notFound();
+    if (access.reason === 'not_found') notFound();
+
+    // 'unavailable': the row is published and this member is entitled to it,
+    // but the file itself couldn't be signed (e.g. the storage object is
+    // missing). This is a content/asset problem, not an access problem, so it
+    // gets its own honest message instead of a bare 404 — the card stays
+    // visible and clickable in the library grid exactly as before.
+    return (
+      <>
+        <Link
+          href="/library"
+          className="-m-2 mb-4 inline-block p-2 text-[13.5px] text-silver-dim hover:text-white"
+        >
+          ← Training library
+        </Link>
+        <EmptyState
+          title="Video isn't available yet"
+          body="This lesson is published, but the video file hasn't finished uploading. Check back soon — nothing is wrong with your account or access."
+          action={
+            <Button href="/library" variant="ghost">
+              Back to library
+            </Button>
+          }
+        />
+      </>
+    );
   }
 
   const { resource, signedUrl } = access;

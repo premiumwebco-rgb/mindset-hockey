@@ -385,6 +385,8 @@ export interface MindsetLessonRow {
   video_url: string | null;
   duration_sec: number | null;
   required_tier: Tier;
+  /** True when this lesson has the full multi-slide "skill guide" content (migration 0017). */
+  hasGuide?: boolean;
   completed?: boolean;
 }
 
@@ -400,7 +402,7 @@ const DEMO_MINDSET: MindsetLessonRow[] = [
 ];
 
 const MINDSET_LIST_COLUMNS =
-  'id, slug, week, topic, title, summary, category, thumbnail_path, video_url, duration_sec, required_tier';
+  'id, slug, week, topic, title, summary, category, thumbnail_path, video_url, duration_sec, required_tier, slides';
 
 export async function getMindsetLessons(session: Session): Promise<MindsetLessonRow[]> {
   if (DEMO_MODE) return DEMO_MINDSET;
@@ -410,7 +412,14 @@ export async function getMindsetLessons(session: Session): Promise<MindsetLesson
     .select(MINDSET_LIST_COLUMNS)
     .eq('is_published', true)
     .order('sort_order');
-  const lessons = (data as unknown as MindsetLessonRow[]) ?? [];
+  const rows = (data as unknown as (MindsetLessonRow & { slides: unknown })[]) ?? [];
+  // hasGuide flags the "skill guide" lessons (migration 0017) that have the
+  // full multi-slide what/why/technique/drill content — the dashboard badges
+  // these so members can find the flagship lesson for each skill.
+  const lessons: MindsetLessonRow[] = rows.map(({ slides, ...rest }) => ({
+    ...rest,
+    hasGuide: Array.isArray(slides) && slides.length > 0,
+  }));
 
   const { data: progress } = await supabase
     .from('mindset_progress')
@@ -431,6 +440,17 @@ export async function getMindsetLessons(session: Session): Promise<MindsetLesson
    read — a service-role client would bypass storage RLS and prove nothing).
    No new bucket, no new table, no new signing system. */
 
+/**
+ * One slide of a structured "skill guide" lesson (migration 0017): the
+ * educational what/why/technique/drill content that sits alongside the
+ * existing video-lesson shape (thumbnail_path/video_url/duration_sec, 0015).
+ */
+export interface MindsetSlide {
+  kind: string;
+  heading: string;
+  body: string;
+}
+
 export interface MindsetLessonDetail {
   id: string;
   slug: string;
@@ -448,6 +468,8 @@ export interface MindsetLessonDetail {
   videoSignedUrl: string | null;
   /** Whether THIS member has marked the lesson complete — from mindset_progress, never fabricated. */
   completed: boolean;
+  /** The skill guide's slides, or [] when this lesson doesn't have one yet. */
+  slides: MindsetSlide[];
 }
 
 export type MindsetLessonAccess =
@@ -496,6 +518,7 @@ export async function getMindsetLessonForViewing(
         thumbnailSignedUrl: null,
         videoSignedUrl: null,
         completed: Boolean(lesson.completed),
+        slides: [],
       },
     };
   }
@@ -512,7 +535,7 @@ export async function getMindsetLessonForViewing(
   if (error || !row) return { ok: false, reason: 'not_found' };
 
   const staff = session.role === 'admin' || session.role === 'coach';
-  const lessonRow = row as unknown as MindsetLessonRow & { is_published: boolean };
+  const lessonRow = row as unknown as MindsetLessonRow & { is_published: boolean; slides: MindsetSlide[] | null };
 
   // GATE 1 — drafts are invisible to members, whatever their tier. A member
   // should not be able to discover an unpublished lesson exists by probing slugs.
@@ -567,6 +590,7 @@ export async function getMindsetLessonForViewing(
       thumbnailSignedUrl,
       videoSignedUrl,
       completed: Boolean(progress.data?.completed_at),
+      slides: Array.isArray(lessonRow.slides) ? lessonRow.slides : [],
     },
   };
 }

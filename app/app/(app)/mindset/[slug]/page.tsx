@@ -4,6 +4,7 @@ import { requireFeature } from '@/lib/session';
 import { getMindsetLessonForViewing } from '@/lib/data';
 import { Button, Card, formatDuration } from '@/components/ui';
 import { SmartVideo, SmartImage } from '@/components/media/SmartMedia';
+import { MindsetSlideshow } from '@/components/mindset/MindsetSlideshow';
 import MarkCompleteButton from './MarkCompleteButton';
 
 export const metadata = { title: 'Lesson — Mindset Development' };
@@ -133,6 +134,16 @@ export default async function MindsetLessonPage({
           </Card>
         )}
       </div>
+
+      {/* The full "skill guide" — what it is, why it matters in hockey, common
+          mistakes, a technique and a drill. Only lessons with slides (0017)
+          have one yet; everything above and below renders exactly as it did
+          before this existed, so a lesson without a guide is unaffected. */}
+      {lesson.slides.length > 0 && (
+        <div className="mb-6">
+          <MindsetSlideshow slides={lesson.slides} />
+        </div>
+      )}
 
       <Card className="p-6">
         <h2 className="display mb-3 text-[19px]">Put it into practice</h2>
