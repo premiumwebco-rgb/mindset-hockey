@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { Tier, SubscriptionStatus } from '@/lib/types';
 import { ACTIVE_SUB_STATUSES } from '@/lib/types';
 import { ANALYSIS_ADDON } from '@/lib/plans';
-import { MEMBERSHIP_PERMISSIONS } from '@/lib/permissions';
+import { membershipPermissionPatch } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 /** Stripe needs the raw body for signature verification — never cache. */
@@ -434,9 +434,12 @@ async function applyEntitlement(
   // Inactive" and offer a reactivate CTA. Access is unaffected: hasPermission()
   // in lib/session.ts and auth_has_permission() in the RLS policies both
   // require the specific permission column, not just the label.
-  const permissionUpdate = Object.fromEntries(
-    MEMBERSHIP_PERMISSIONS.map((key) => [key, normalizedTier === 'membership' ? active : false])
-  );
+  //
+  // membershipPermissionPatch() is the single shared cascade — the Admin >
+  // Users manual activate/deactivate control (app/api/admin/user/route.ts)
+  // calls the exact same function so it can never drift from what a real
+  // Stripe event does here.
+  const permissionUpdate = membershipPermissionPatch(normalizedTier, active);
 
   await admin
     .from('profiles')

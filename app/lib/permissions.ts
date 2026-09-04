@@ -67,6 +67,42 @@ export function emptyPermissions(): Record<PermissionKey, boolean> {
 }
 
 /**
+ * Whether a given `tier` value should be treated as "on the Membership plan"
+ * for entitlement purposes. Legacy 'basic'/'premium' rows (the retired public
+ * tiers, still billed at their original legacy Stripe price — see the Stripe
+ * webhook's tierFromMetadata()) count as Membership here, exactly like they
+ * do everywhere else entitlement is decided.
+ */
+export function tierGrantsMembership(tier: string | null | undefined): boolean {
+  return tier === 'membership' || tier === 'basic' || tier === 'premium';
+}
+
+/**
+ * The exact permission cascade applied whenever a member's Membership
+ * entitlement is granted or revoked — shared by the Stripe webhook's
+ * applyEntitlement() (app/api/stripe/webhook/route.ts) and by the Admin >
+ * Users manual activate/deactivate control (app/api/admin/user/route.ts), so
+ * a staff member flipping the Active/Inactive toggle produces the identical
+ * permission state a real Stripe event would have produced — never a member
+ * who shows ACTIVE everywhere but is locked out of every gated page.
+ *
+ * COACHING_PERMISSIONS are never included here. Those are always admin-only,
+ * granted individually from Admin > Plan Management after reviewing a Custom
+ * Coaching request — independent of Membership status, whether that status
+ * changed via Stripe or via a manual admin action.
+ */
+export function membershipPermissionPatch(
+  tier: string | null | undefined,
+  active: boolean
+): Record<MembershipPermission, boolean> {
+  const grant = tierGrantsMembership(tier) && active;
+  return Object.fromEntries(MEMBERSHIP_PERMISSIONS.map((k) => [k, grant])) as Record<
+    MembershipPermission,
+    boolean
+  >;
+}
+
+/**
  * Custom-coaching service catalog shown on the "Request Custom Plan" form.
  * `key` is the value stored in `custom_plan_requests.requested_services` —
  * it is a request, not a grant, so several service keys intentionally map
