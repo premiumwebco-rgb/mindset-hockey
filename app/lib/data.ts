@@ -381,8 +381,16 @@ export interface MindsetLessonRow {
   category: string | null;
   /** Private storage path in the training-resources bucket, or null. Never a public URL. */
   thumbnail_path: string | null;
-  /** Private storage path in the training-resources bucket, or null. Never a public URL. */
+  /** A training-resources storage path when video_type is 'upload', or a youtube.com URL when 'youtube'. Never a signed URL. */
   video_url: string | null;
+  /** Which kind of value video_url holds (migration 0018). Null/'upload' = legacy storage-path behavior. */
+  video_type?: 'upload' | 'youtube' | null;
+  /** External (youtube) video's real title, for display — unused for uploads. */
+  video_title?: string | null;
+  /** External (youtube) video's creator/channel name, for display — unused for uploads. */
+  video_source?: string | null;
+  /** Short editorial note on why the external video is relevant to this lesson. */
+  video_note?: string | null;
   duration_sec: number | null;
   required_tier: Tier;
   /** True when this lesson has the full multi-slide "skill guide" content (migration 0017). */
@@ -402,7 +410,7 @@ const DEMO_MINDSET: MindsetLessonRow[] = [
 ];
 
 const MINDSET_LIST_COLUMNS =
-  'id, slug, week, topic, title, summary, category, thumbnail_path, video_url, duration_sec, required_tier, slides';
+  'id, slug, week, topic, title, summary, category, thumbnail_path, video_url, video_type, video_title, video_source, video_note, duration_sec, required_tier, slides';
 
 export async function getMindsetLessons(session: Session): Promise<MindsetLessonRow[]> {
   if (DEMO_MODE) return DEMO_MINDSET;
@@ -464,8 +472,14 @@ export interface MindsetLessonDetail {
   isPublished: boolean;
   /** Short-lived signed URL, or null if this lesson has no cover photo. Never a raw storage path. */
   thumbnailSignedUrl: string | null;
-  /** Short-lived signed URL, or null if this lesson has no video yet. Never a raw storage path. */
+  /** Short-lived signed URL for an admin-uploaded video, or null. Never set when videoExternal is set. */
   videoSignedUrl: string | null;
+  /**
+   * A verified external (YouTube) video for this lesson, or null when this
+   * lesson has no video of either kind yet. `url` is the plain youtube.com
+   * watch URL as stored (migration 0018) — never a fabricated/guessed link.
+   */
+  videoExternal: { url: string; title: string | null; source: string | null; note: string | null } | null;
   /** Whether THIS member has marked the lesson complete — from mindset_progress, never fabricated. */
   completed: boolean;
   /** The skill guide's slides, or [] when this lesson doesn't have one yet. */
@@ -517,6 +531,7 @@ export async function getMindsetLessonForViewing(
         isPublished: true,
         thumbnailSignedUrl: null,
         videoSignedUrl: null,
+        videoExternal: null,
         completed: Boolean(lesson.completed),
         slides: [],
       },
@@ -535,7 +550,14 @@ export async function getMindsetLessonForViewing(
   if (error || !row) return { ok: false, reason: 'not_found' };
 
   const staff = session.role === 'admin' || session.role === 'coach';
-  const lessonRow = row as unknown as MindsetLessonRow & { is_published: boolean; slides: MindsetSlide[] | null };
+  const lessonRow = row as unknown as MindsetLessonRow & {
+    is_published: boolean;
+    slides: MindsetSlide[] | null;
+    video_type: 'upload' | 'youtube' | null;
+    video_title: string | null;
+    video_source: string | null;
+    video_note: string | null;
+  };
 
   // GATE 1 — drafts are invisible to members, whatever their tier. A member
   // should not be able to discover an unpublished lesson exists by probing slugs.
@@ -563,9 +585,15 @@ export async function getMindsetLessonForViewing(
     return data?.signedUrl ?? null;
   };
 
+  // video_url is only a storage path to sign for 'upload' (or legacy null-type
+  // rows, all backfilled to 'upload' by migration 0018) — a 'youtube' row
+  // holds an already-playable youtube.com URL and must never be run through
+  // createSignedUrl (there is no storage object behind it to sign).
+  const isUploadVideo = lessonRow.video_type !== 'youtube';
+
   const [thumbnailSignedUrl, videoSignedUrl, progress] = await Promise.all([
     sign(lessonRow.thumbnail_path),
-    sign(lessonRow.video_url),
+    isUploadVideo ? sign(lessonRow.video_url) : Promise.resolve(null),
     supabase
       .from('mindset_progress')
       .select('completed_at')
@@ -573,6 +601,16 @@ export async function getMindsetLessonForViewing(
       .eq('lesson_id', lessonRow.id)
       .maybeSingle(),
   ]);
+
+  const videoExternal =
+    lessonRow.video_type === 'youtube' && lessonRow.video_url
+      ? {
+          url: lessonRow.video_url,
+          title: lessonRow.video_title,
+          source: lessonRow.video_source,
+          note: lessonRow.video_note,
+        }
+      : null;
 
   return {
     ok: true,
@@ -589,6 +627,7 @@ export async function getMindsetLessonForViewing(
       isPublished: Boolean(lessonRow.is_published),
       thumbnailSignedUrl,
       videoSignedUrl,
+      videoExternal,
       completed: Boolean(progress.data?.completed_at),
       slides: Array.isArray(lessonRow.slides) ? lessonRow.slides : [],
     },

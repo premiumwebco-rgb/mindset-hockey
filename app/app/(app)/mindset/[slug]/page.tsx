@@ -5,6 +5,7 @@ import { getMindsetLessonForViewing } from '@/lib/data';
 import { Button, Card, formatDuration } from '@/components/ui';
 import { SmartVideo, SmartImage } from '@/components/media/SmartMedia';
 import { MindsetSlideshow } from '@/components/mindset/MindsetSlideshow';
+import { WatchAndLearn } from '@/components/mindset/WatchAndLearn';
 import MarkCompleteButton from './MarkCompleteButton';
 
 export const metadata = { title: 'Lesson — Mindset Development' };
@@ -126,7 +127,7 @@ export default async function MindsetLessonPage({
               </p>
             </div>
           </div>
-        ) : (
+        ) : lesson.videoExternal ? null : (
           <Card className="grid aspect-video place-items-center p-8 text-center">
             <p className="text-[14.5px] text-silver-dim">
               This lesson doesn&apos;t have a video yet. Check back soon.
@@ -142,6 +143,21 @@ export default async function MindsetLessonPage({
       {lesson.slides.length > 0 && (
         <div className="mb-6">
           <MindsetSlideshow slides={lesson.slides} />
+        </div>
+      )}
+
+      {/* A verified, hockey-specific video from an outside creator that
+          REINFORCES this lesson's own content — never a replacement for it.
+          Only lessons with a verified external video (migration 0018) show
+          this; every other lesson is unaffected. */}
+      {lesson.videoExternal && (
+        <div className="mb-6">
+          <WatchAndLearn
+            url={lesson.videoExternal.url}
+            title={lesson.videoExternal.title}
+            source={lesson.videoExternal.source}
+            note={lesson.videoExternal.note}
+          />
         </div>
       )}
 
