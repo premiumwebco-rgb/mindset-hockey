@@ -272,7 +272,7 @@ export default function DrillRecommendationsManager() {
                             </p>
                             <p className="mt-0.5 text-[12.5px] text-silver-dim">
                               Priority {m.priority}
-                              {drill ? ` · ${drill.required_tier === 'premium' ? 'Premium only' : 'Standard and above'}` : ''}
+                              {drill ? ` · ${drill.required_tier === 'premium' ? 'Membership — Advanced' : 'Membership'}` : ''}
                               {drill && !drill.is_published ? ' · Draft (not visible to members)' : ''}
                             </p>
                           </div>

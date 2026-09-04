@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   }
   if (!canUse(session, 'ai_shot_analysis')) {
     return NextResponse.json(
-      { error: 'AI Shot Analysis requires an active Standard or Premium membership.' },
+      { error: 'AI Shot Analysis requires an active Membership.' },
       { status: 403 }
     );
   }

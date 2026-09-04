@@ -356,15 +356,15 @@ export default function WorkoutManager() {
               </select>
             </div>
             <div>
-              <label htmlFor="wk-tier" className={LABEL}>Required plan</label>
+              <label htmlFor="wk-tier" className={LABEL}>Content level</label>
               <select
                 id="wk-tier"
                 value={form.requiredTier}
                 onChange={(e) => setForm((f) => ({ ...f, requiredTier: e.target.value as 'basic' | 'premium' }))}
                 className={FIELD}
               >
-                <option value="basic">Standard and above</option>
-                <option value="premium">Premium only</option>
+                <option value="basic">Membership</option>
+                <option value="premium">Membership — Advanced</option>
               </select>
             </div>
           </div>
@@ -579,7 +579,7 @@ export default function WorkoutManager() {
                             <p className="truncate text-[14.5px] font-semibold text-white">{r.title}</p>
                             <p className="mt-0.5 text-[12.5px] text-silver-dim">
                               {s?.duration_min ? `${s.duration_min} min` : 'No duration set'} ·{' '}
-                              {r.required_tier === 'premium' ? 'Premium only' : 'Standard and above'}
+                              {r.required_tier === 'premium' ? 'Membership — Advanced' : 'Membership'}
                             </p>
                           </div>
                           <div className="flex shrink-0 flex-wrap items-center gap-1.5">

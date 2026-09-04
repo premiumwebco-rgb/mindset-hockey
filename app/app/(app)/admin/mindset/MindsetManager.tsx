@@ -465,15 +465,15 @@ export default function MindsetManager() {
               </select>
             </div>
             <div>
-              <label htmlFor="mind-tier" className={LABEL}>Minimum plan</label>
+              <label htmlFor="mind-tier" className={LABEL}>Content level</label>
               <select
                 id="mind-tier"
                 value={form.requiredTier}
                 onChange={(e) => setForm((f) => ({ ...f, requiredTier: e.target.value as 'basic' | 'premium' }))}
                 className={FIELD}
               >
-                <option value="basic">Standard and above</option>
-                <option value="premium">Premium only</option>
+                <option value="basic">Membership</option>
+                <option value="premium">Membership — Advanced</option>
               </select>
             </div>
           </div>
@@ -617,7 +617,7 @@ export default function MindsetManager() {
                           <p className="truncate text-[14.5px] font-semibold text-white">{l.title}</p>
                           {l.summary && <p className="mt-1 line-clamp-2 text-[12.5px] text-silver-dim">{l.summary}</p>}
                           <p className="mt-2 text-[11.5px] text-silver-dim">
-                            {prettyDuration(l.duration_sec)} · {l.required_tier === 'premium' ? 'Premium only' : 'Standard and above'}
+                            {prettyDuration(l.duration_sec)} · {l.required_tier === 'premium' ? 'Membership — Advanced' : 'Membership'}
                             {l.video_url ? ' · Video attached' : ' · No video'}
                           </p>
                           <div className="mt-3 flex flex-wrap items-center gap-1.5">

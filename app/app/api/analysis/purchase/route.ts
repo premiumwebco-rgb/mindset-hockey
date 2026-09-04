@@ -36,7 +36,7 @@ export async function POST() {
   const session = await requireSession();
   if (!canUse(session, 'ai_shot_analysis')) {
     return NextResponse.json(
-      { error: 'AI Shot Analysis is included with the Standard and Premium programs.' },
+      { error: 'AI Shot Analysis is included with Membership.' },
       { status: 403 }
     );
   }

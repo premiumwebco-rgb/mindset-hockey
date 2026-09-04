@@ -44,7 +44,7 @@ export const ONBOARDING_SEQUENCE: SequenceEmail[] = [
   { step: 2, dayOffset: 2, subject: 'How to film a shot the analysis can actually read', purpose: 'Useful content: camera angle, distance, lighting. Reminder that free analyses are waiting.' },
   { step: 3, dayOffset: 5, subject: 'What the analysis can and cannot see', purpose: 'Honest explanation of the ten categories and footage limits. CTA to analyze another shot.' },
   { step: 4, dayOffset: 10, subject: 'Three things that quietly cost you shot power', purpose: 'Coaching content. Soft reminder of remaining analyses.' },
-  { step: 5, dayOffset: 17, subject: 'Weekly analysis, and what a plan includes', purpose: 'Introduce Standard and Premium weekly allowances.' },
+  { step: 5, dayOffset: 17, subject: 'Weekly analysis, and what a plan includes', purpose: 'Introduce what Membership includes and how Custom Coaching works.' },
   { step: 6, dayOffset: 25, subject: 'Keep working on your shot', purpose: 'Final conversion reminder. Last message in the sequence.' },
 ];
 

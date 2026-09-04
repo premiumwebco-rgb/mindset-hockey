@@ -150,7 +150,7 @@ export default async function CoachQueue() {
       <Card className="mt-6 p-4 sm:mt-8 sm:p-6">
         <h3 className="display mb-2 text-[15px] sm:text-[18px]">Capacity note</h3>
         <p className="max-w-[70ch] text-[14.5px] leading-relaxed text-silver-dim">
-          At roughly 25 minutes of coach time per premium member per month, one reviewer caps out
+          At roughly 25 minutes of coach time per member per month, one reviewer caps out
           around 250 members. Hire or train a second reviewer <em>before</em> you hit that, not
           after — a blown SLA is the fastest way to lose a subscription in this market.
         </p>

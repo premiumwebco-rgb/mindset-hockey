@@ -98,7 +98,7 @@ export default function About() {
             <article className="card"><h3>Honest assessments</h3><p>If your player doesn&apos;t need us yet, we&apos;ll tell you. If the footage isn&apos;t usable, we&apos;ll tell you that too — at no charge.</p></article>
             <article className="card"><h3>Named coaching</h3><p>Every video review is done by a named coach who recently played the level your player is chasing. Nothing is outsourced to a queue.</p></article>
             <article className="card"><h3>No outcome promises</h3><p>We never promise placement at any level. We promise better mechanics, a real plan, and a player who handles a bad game better.</p></article>
-            <article className="card"><h3>24-hour responses</h3><p>Every inquiry gets a reply within 24 hours. Premium members get breakdowns back inside 72 — usually under 48.</p></article>
+            <article className="card"><h3>24-hour responses</h3><p>Every inquiry gets a reply within 24 hours. Members get breakdowns back inside 72 — usually under 48.</p></article>
           </div>
           <div className="contactstrip mt3 rv">
             <div><h3>Want to talk it through?</h3><p>No pitch. Tell us where your player is and we&apos;ll give you a straight answer.</p></div>

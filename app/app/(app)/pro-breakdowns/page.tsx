@@ -18,7 +18,7 @@ export default async function ProBreakdowns() {
 
   return (
     <>
-      <PageHeading eyebrow="Premium membership" title="Coming soon" />
+      <PageHeading eyebrow="Membership" title="Coming soon" />
       <EmptyState
         title="The Elite Release Library isn't built yet"
         body="Side-by-side breakdowns against Jr hockey and AAA releases are planned, but no clips are live yet. Your own shot mechanics are still scored and reviewed through video review and AI shot analysis."

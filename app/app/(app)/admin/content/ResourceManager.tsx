@@ -615,7 +615,7 @@ export default function ResourceManager() {
 
           <div>
             <label htmlFor="res-tier" className={LABEL}>
-              Minimum plan
+              Content level
             </label>
             <select
               id="res-tier"
@@ -624,8 +624,8 @@ export default function ResourceManager() {
               disabled={busy}
               className={FIELD}
             >
-              <option value="basic">Standard and above</option>
-              <option value="premium">Premium only</option>
+              <option value="basic">Membership</option>
+              <option value="premium">Membership — Advanced</option>
             </select>
           </div>
 
@@ -733,7 +733,7 @@ export default function ResourceManager() {
                               ? ` · ${Math.floor(r.duration_sec / 60)}:${String(r.duration_sec % 60).padStart(2, '0')}`
                               : ''}
                             {r.category ? ` · ${r.category}` : ''} ·{' '}
-                            {r.required_tier === 'premium' ? 'Premium only' : 'Standard and above'}
+                            {r.required_tier === 'premium' ? 'Membership — Advanced' : 'Membership'}
                           </p>
                           <p className="mt-1 text-[11.5px] text-silver-dim">Uploaded {prettyDate(r.created_at)}</p>
                           <div className="mt-3 flex flex-wrap items-center gap-1.5">
