@@ -250,6 +250,105 @@ export async function buildLibraryView(
 }
 
 /* ==========================================================================
+   PILLAR-MATCHED RECOMMENDATIONS (dashboard / development plan)
+
+   Deterministic, not AI: the player's own players.focus_pillars matched
+   directly against training_resources.pillar — the same column /library
+   filters on. A pillar with nothing published for it is dropped rather than
+   rendered as an empty section.
+
+   Same two-query shape as getLibrary()/getRecommendableResources() above —
+   ONE entitlement query (session client, RLS-bound) + ONE teaser query
+   (admin client), covering every requested pillar with `.in('pillar', …)`,
+   then grouped and capped per-pillar in TypeScript. Never one round-trip
+   per pillar, however many focus pillars a player has set.
+   ========================================================================== */
+
+export interface PillarRecommendation {
+  pillar: Pillar;
+  resources: {
+    id: string;
+    title: string;
+    requiredTier: Tier;
+    /** Sourced from the same RLS-backed entitlement query as getLibrary(), not a tier comparison in code. */
+    locked: boolean;
+  }[];
+}
+
+/**
+ * For each of `pillars` (in the order given, de-duplicated), up to `limit`
+ * published training resources in that pillar, each carrying the same
+ * locked/unlocked determination getLibrary() uses — a locked match is still
+ * returned so it can render as an upsell, never silently dropped or
+ * unlocked. Pillars with no published resources are omitted entirely.
+ */
+export async function getPillarRecommendations(
+  session: Session,
+  pillars: Pillar[],
+  limit = 4
+): Promise<PillarRecommendation[]> {
+  if (DEMO_MODE || pillars.length === 0) return [];
+
+  const { createServerClient, createAdminClient } = await import('./supabase/server');
+  const supabase = await createServerClient();
+  const admin = await createAdminClient();
+
+  const staff = session.role === 'admin' || session.role === 'coach';
+
+  /* -- 1. ENTITLEMENT: which of the pillar-matching rows may this user read? */
+  const { data: allowedRows, error: allowedError } = await supabase
+    .from('training_resources')
+    .select('id')
+    .eq('is_published', true)
+    .in('pillar', pillars);
+
+  if (allowedError) {
+    console.error('[pillar-recommendations] entitlement query failed:', allowedError.message);
+  }
+  const unlockedIds = new Set((allowedRows ?? []).map((r) => r.id as string));
+
+  /* -- 2. TEASER: published, pillar-matching rows for display -------------- */
+  const { data: rows, error: rowsError } = await admin
+    .from('training_resources')
+    .select('id, title, pillar, required_tier')
+    .eq('is_published', true)
+    .in('pillar', pillars)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  if (rowsError) {
+    console.error('[pillar-recommendations] candidate query failed:', rowsError.message);
+    return [];
+  }
+
+  const byPillar = new Map<Pillar, PillarRecommendation['resources']>();
+  for (const row of rows ?? []) {
+    const pillar = row.pillar as string | null;
+    if (!isPillar(pillar)) continue;
+    const list = byPillar.get(pillar) ?? [];
+    if (list.length < limit) {
+      list.push({
+        id: row.id as string,
+        title: row.title as string,
+        requiredTier: (row.required_tier as Tier) ?? 'basic',
+        locked: !staff && !unlockedIds.has(row.id as string),
+      });
+    }
+    byPillar.set(pillar, list);
+  }
+
+  const seen = new Set<Pillar>();
+  const ordered: PillarRecommendation[] = [];
+  for (const pillar of pillars) {
+    if (seen.has(pillar)) continue;
+    seen.add(pillar);
+    const resources = byPillar.get(pillar) ?? [];
+    if (resources.length > 0) ordered.push({ pillar, resources });
+  }
+  return ordered;
+}
+
+/* ==========================================================================
    AI-RECOMMENDED TRAINING (Phase 4)
 
    Sits on top of the exact same table, RLS policies and lock/upsell rule as
