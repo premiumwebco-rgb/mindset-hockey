@@ -8,6 +8,14 @@ if (typeof window !== 'undefined') {
 
 import { hasPermission, DEMO_MODE, type Session } from './session';
 import { PILLARS, type Pillar, type Tier } from './types';
+import type { createAdminClient } from './supabase/server';
+
+/** Type-only import — erased at compile time, so it does not defeat the
+ *  dynamic `await import('./supabase/server')` pattern used at runtime
+ *  everywhere else in this file (kept to avoid pulling `next/headers`
+ *  cookies() in at module-load time). Used only to type the admin client
+ *  passed into the cover-image signing helper below. */
+type AdminClient = Awaited<ReturnType<typeof createAdminClient>>;
 
 /* ==========================================================================
    TRAINING LIBRARY — DATA LAYER
@@ -77,6 +85,14 @@ export interface LibraryCard {
   isPublished: boolean;
   /** True when this user may not open the file. Sourced from RLS, not from code. */
   locked: boolean;
+  /** Signed URL for the teaser cover image, or null when this resource has
+   *  none. Cover art is teaser data (see the access-model note above) — the
+   *  same class of data as this card's title or description — so it is
+   *  signed through the ADMIN client, never the member's own session, and
+   *  therefore still renders on a locked card exactly like the title and
+   *  description already do. Only the gated resource file itself goes
+   *  through the session client and storage RLS. */
+  coverImageSignedUrl: string | null;
 }
 
 export type PillarCounts = Record<Pillar | 'all', number>;
@@ -107,9 +123,13 @@ export interface SupabaseLike {
   from(table: string): { select(columns: string): QueryBuilder };
 }
 
-/** Columns safe to load for a card. `storage_path` is absent on purpose. */
+/** Columns safe to load for a card. `storage_path` is absent on purpose —
+ *  `cover_image_url` is present despite the name: it is a storage PATH in
+ *  the private `training-resources` bucket (same as storage_path), not a
+ *  public URL, so it still has to be signed before use (see toCard()). It
+ *  is safe to select here because signing it never exposes storage_path. */
 const CARD_COLUMNS =
-  'id, title, description, pillar, category, kind, required_tier, duration_sec, is_published, sort_order, created_at';
+  'id, title, description, pillar, category, kind, required_tier, duration_sec, is_published, sort_order, created_at, cover_image_url';
 
 interface RawRow {
   id: string;
@@ -121,9 +141,10 @@ interface RawRow {
   required_tier: string | null;
   duration_sec: number | null;
   is_published: boolean | null;
+  cover_image_url: string | null;
 }
 
-function toCard(row: RawRow, locked: boolean): LibraryCard | null {
+function toCard(row: RawRow, locked: boolean, coverImageSignedUrl: string | null): LibraryCard | null {
   // A row with no pillar cannot be placed. 0009 already makes this impossible
   // for published rows at the database level; this is the belt to that braces.
   // Dropping it is correct — there is no "Other" bucket to fall back to.
@@ -139,7 +160,39 @@ function toCard(row: RawRow, locked: boolean): LibraryCard | null {
     durationSec: row.duration_sec,
     isPublished: Boolean(row.is_published),
     locked,
+    coverImageSignedUrl,
   };
+}
+
+/**
+ * Batch-signs cover-image storage paths through the ADMIN client. Cover art
+ * is teaser data (see the LibraryCard.coverImageSignedUrl note), so a locked
+ * resource's cover still has to render — unlike the gated resource file
+ * itself, this deliberately never goes through the member's session or
+ * storage RLS. A missing or failed path is left out of the returned map
+ * rather than treated as an error: a card with no cover image is normal.
+ */
+async function signCoverImagePaths(
+  admin: AdminClient,
+  paths: string[]
+): Promise<Map<string, string>> {
+  const signed = new Map<string, string>();
+  const unique = [...new Set(paths)];
+  if (unique.length === 0) return signed;
+
+  const { data, error } = await admin.storage
+    .from(BUCKET)
+    .createSignedUrls(unique, SIGNED_URL_TTL_SECONDS);
+
+  if (error) {
+    console.error('[library] cover image signing failed:', error.message);
+    return signed;
+  }
+
+  for (const item of data ?? []) {
+    if (item.path && item.signedUrl && !item.error) signed.set(item.path, item.signedUrl);
+  }
+  return signed;
 }
 
 function emptyCounts(): PillarCounts {
@@ -167,12 +220,16 @@ export async function getLibrary(
   }
 
   const { createServerClient, createAdminClient } = await import('./supabase/server');
+  const admin = await createAdminClient();
   // Cast to the narrow structural type this module needs. The generated
   // Supabase client types are far deeper than the four methods used here and
   // resolving them structurally blows TypeScript's instantiation limit.
   return buildLibraryView(session, pillar, {
     supabase: (await createServerClient()) as unknown as SupabaseLike,
-    admin: (await createAdminClient()) as unknown as SupabaseLike,
+    admin: admin as unknown as SupabaseLike,
+    // Kept as the real (untyped-down) client so it can call `.storage` —
+    // the narrow SupabaseLike interface above deliberately cannot.
+    signCoverImages: (paths) => signCoverImagePaths(admin, paths),
   });
 }
 
@@ -186,9 +243,16 @@ export async function getLibrary(
 export async function buildLibraryView(
   session: Session,
   pillar: Pillar | null,
-  clients: { supabase: SupabaseLike; admin: SupabaseLike }
+  clients: {
+    supabase: SupabaseLike;
+    admin: SupabaseLike;
+    /** Batch-signs cover-image paths. Injected (like AccessDeps.sign below)
+     *  so this stays exercisable against stub clients in a test without
+     *  either stub needing real Storage — see signCoverImagePaths(). */
+    signCoverImages: (paths: string[]) => Promise<Map<string, string>>;
+  }
 ): Promise<LibraryView> {
-  const { supabase, admin } = clients;
+  const { supabase, admin, signCoverImages } = clients;
 
   const staff = session.role === 'admin' || session.role === 'coach';
 
@@ -242,8 +306,17 @@ export async function buildLibraryView(
     return { resources: [], counts, unavailable: false };
   }
 
+  const coverPaths = (rows ?? [])
+    .map((row) => row.cover_image_url as string | null)
+    .filter((path): path is string => Boolean(path));
+  const coverMap = await signCoverImages(coverPaths);
+
   const resources = (rows ?? [])
-    .map((row) => toCard(row as unknown as RawRow, !staff && !unlockedIds.has(row.id as string)))
+    .map((row) => {
+      const raw = row as unknown as RawRow;
+      const coverImageSignedUrl = raw.cover_image_url ? (coverMap.get(raw.cover_image_url) ?? null) : null;
+      return toCard(raw, !staff && !unlockedIds.has(row.id as string), coverImageSignedUrl);
+    })
     .filter((card): card is LibraryCard => card !== null);
 
   return { resources, counts, unavailable: false };
@@ -568,7 +641,16 @@ export async function getResourceForViewing(
     return { signedUrl: data?.signedUrl ?? null, error: error ? { message: error.message } : null };
   };
 
-  return resolveResourceAccess(session, { fetchRow, sign });
+  // Cover art is teaser data (see LibraryCard.coverImageSignedUrl), signed
+  // through the ADMIN client — unlike `sign` above, which deliberately stays
+  // on the session client because it is the real security boundary for the
+  // gated resource file itself.
+  const signCover = async (path: string) => {
+    const map = await signCoverImagePaths(admin, [path]);
+    return map.get(path) ?? null;
+  };
+
+  return resolveResourceAccess(session, { fetchRow, sign, signCover });
 }
 
 /** Row shape plus the storage path, as loaded by the service-role client. */
@@ -579,6 +661,10 @@ export interface RawRowWithPath extends RawRow {
 export interface AccessDeps {
   fetchRow: () => Promise<{ data: RawRowWithPath | null; error: { message: string } | null }>;
   sign: (path: string) => Promise<{ signedUrl: string | null; error: { message: string } | null }>;
+  /** Signs the cover-image path, if any. Returns null (never throws/fails
+   *  the gate sequence) when there is no cover or signing fails — a missing
+   *  cover image is normal, not an authorization failure. */
+  signCover: (path: string) => Promise<string | null>;
 }
 
 /**
@@ -602,7 +688,7 @@ export async function resolveResourceAccess(
   // GATE 1 — drafts are invisible to members, whatever their tier.
   if (!row.is_published && !staff) return { ok: false, reason: 'not_found' };
 
-  const card = toCard(row as unknown as RawRow, false);
+  const card = toCard(row as unknown as RawRow, false, null);
   if (!card) return { ok: false, reason: 'not_found' };
 
   // GATE 2 — permission. hasPermission() already returns true for admins.
@@ -622,5 +708,9 @@ export async function resolveResourceAccess(
     return { ok: false, reason: 'unavailable' };
   }
 
-  return { ok: true, resource: { ...card, locked: false }, signedUrl };
+  // Cover art is not gated the way the resource file is — sign it now that
+  // access is confirmed, but a missing/failed cover never blocks playback.
+  const coverImageSignedUrl = row.cover_image_url ? await deps.signCover(row.cover_image_url) : null;
+
+  return { ok: true, resource: { ...card, locked: false, coverImageSignedUrl }, signedUrl };
 }
