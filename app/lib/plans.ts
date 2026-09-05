@@ -207,7 +207,18 @@ export const FEATURE_PERMISSION: Partial<Record<Feature, PermissionKey>> = {
  * permission OR an unspent credit. A free member with 0 credits still reaches
  * the page and is shown the upgrade options rather than being bounced away.
  */
-export const OPEN_FEATURES = new Set<Feature>(['ai_shot_analysis']);
+export const OPEN_FEATURES = new Set<Feature>([
+  'ai_shot_analysis',
+  // Free-preview surfaces (see supabase/migrations/0023): a brand-new member
+  // with no purchase gets exactly 3 free meals, 3 free workouts and 1 free
+  // mindset lesson, marked required_tier='none' on their content rows. The
+  // page itself must therefore be reachable by every signed-in account —
+  // the real boundary is Postgres RLS (auth_has_tier(required_tier)), same
+  // pattern as ai_shot_analysis above.
+  'workout_plans',
+  'nutrition_plans',
+  'mindset_training',
+]);
 
 /* --------------------------------------------------------------------------
    AI SHOT ANALYSIS — WEEKLY ALLOWANCE

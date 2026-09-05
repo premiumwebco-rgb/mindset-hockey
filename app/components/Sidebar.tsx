@@ -28,9 +28,16 @@ const MEMBER_NAV: NavItem[] = [
   { href: '/library', label: 'Training Resources', feature: 'basic_resources' },
 ];
 
-/** Always visible to any signed-in member — no permission required to reach the form. */
+/**
+ * Always visible to EVERY authenticated member, including brand-new members
+ * with no purchase — no permission/feature gate on the nav item itself.
+ * Seeing this link does not grant anything; the /custom page shows every
+ * category locked or unlocked purely by reading the member's existing
+ * permissions, and /coaching/request now redirects here (kept for old
+ * bookmarks/links).
+ */
 const COACHING_NAV: NavItem[] = [
-  { href: '/coaching/request', label: 'Request Custom Plan' },
+  { href: '/custom', label: 'Custom' },
 ];
 
 /**
@@ -192,7 +199,7 @@ export default function Sidebar({
   const body = (
     <>
       {section('Training', MEMBER_NAV)}
-      {section('Custom Coaching', COACHING_NAV)}
+      {section('Custom', COACHING_NAV)}
       {section('Personalized Plan', PERSONALIZED_NAV)}
       {section('In-Person Training', IN_PERSON_NAV)}
       {isStaff && section('Coaching', STAFF_NAV)}

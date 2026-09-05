@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requirePermission } from '@/lib/session';
+import { requireSession } from '@/lib/session';
 import {
   getWorkoutPlans,
   getWorkoutRoutines,
@@ -35,7 +35,11 @@ export default async function WorkoutsPage({
 }: {
   searchParams: Promise<{ occasion?: string; duration?: string; difficulty?: string; q?: string }>;
 }) {
-  await requirePermission('workouts');
+  // Reachable by every signed-in member (see lib/plans.ts OPEN_FEATURES) so
+  // a free/no-purchase member can reach their 3 free preview workouts. RLS
+  // (auth_has_tier(required_tier)) is what actually decides which routines
+  // and plans come back below — nothing here grants access to paid content.
+  await requireSession();
   const { occasion, duration, difficulty, q } = await searchParams;
 
   const activeOccasion = isRoutineOccasion(occasion) ? occasion : null;

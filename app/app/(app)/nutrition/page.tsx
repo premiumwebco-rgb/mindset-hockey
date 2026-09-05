@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requirePermission } from '@/lib/session';
+import { requireSession } from '@/lib/session';
 import {
   getCookbook,
   parseCategory,
@@ -55,7 +55,12 @@ export default async function NutritionPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await requirePermission('nutrition');
+  // Reachable by every signed-in member (see lib/plans.ts OPEN_FEATURES) so
+  // a free/no-purchase member can reach their 3 free preview meals. Which
+  // recipes actually come back is decided entirely by Postgres RLS
+  // (auth_has_tier(required_tier)) inside getCookbook() below — nothing
+  // here grants access to paid recipes.
+  await requireSession();
   const sp = await searchParams;
 
   const category = parseCategory(sp.category);

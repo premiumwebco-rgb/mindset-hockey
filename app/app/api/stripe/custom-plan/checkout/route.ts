@@ -168,8 +168,8 @@ export async function POST(req: Request) {
     metadata,
     allow_promotion_codes: true,
     billing_address_collection: 'auto',
-    success_url: `${siteUrl()}/coaching/request?checkout=success`,
-    cancel_url: `${siteUrl()}/coaching/request?checkout=cancelled`,
+    success_url: `${siteUrl()}/custom?checkout=success`,
+    cancel_url: `${siteUrl()}/custom?checkout=cancelled`,
   });
 
   return NextResponse.json({ url: checkout.url });

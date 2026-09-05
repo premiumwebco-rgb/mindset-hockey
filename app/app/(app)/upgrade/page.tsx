@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { PLAN_BY_SLUG } from '@/lib/plans';
+import { standardPriceCents, centsToDisplay } from '@/lib/customPlan';
 import { PERMISSION_LABEL, isPermissionKey } from '@/lib/permissions';
 import { Card, Eyebrow } from '@/components/ui';
 import CheckoutButton from '@/components/CheckoutButton';
@@ -15,6 +16,7 @@ export default async function UpgradePage({
   const session = await requireSession();
   const sp = await searchParams;
   const plan = PLAN_BY_SLUG.membership;
+  const customStartingPrice = centsToDisplay(standardPriceCents(1));
 
   const neededPermission = isPermissionKey(sp.p) ? sp.p : null;
 
@@ -81,9 +83,22 @@ export default async function UpgradePage({
         </Card>
 
         <Card className="flex flex-col p-7">
-          <h2 className="display text-[24px]">Custom Coaching</h2>
+          <span className="mb-3 self-start rounded-full border border-electric/40 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[.16em] text-electric-glow">
+            Build your own
+          </span>
+          <h2 className="display text-[24px]">Custom Plan — Starting at {customStartingPrice}/month</h2>
           <p className="mt-1.5 min-h-[44px] text-[14px] text-silver-dim">
-            Build a coaching package around exactly what this athlete needs.
+            Build your plan. Start at {customStartingPrice}/month for one Standard option — add
+            more Standard or Personalized options any time and your price updates automatically.
+          </p>
+
+          <div className="mt-5 flex items-baseline gap-2">
+            <b className="display text-[32px] leading-none text-white">{customStartingPrice}</b>
+            <span className="text-[13px] font-semibold text-silver-dim">/ month starting</span>
+          </div>
+          <p className="mt-3 text-[12.5px] text-silver-dim">
+            {customStartingPrice}/month is the entry price for a single Standard option, not full
+            access to everything — additional options increase your monthly price.
           </p>
 
           <ul className="mt-5 grid gap-2.5">
@@ -91,7 +106,7 @@ export default async function UpgradePage({
               'Personalized coaching',
               'Custom development plans',
               '1-on-1 coaching options',
-              'Flexible pricing',
+              'Pick exactly what you want, pay only for that',
             ].map((label) => (
               <li key={label} className="flex gap-2.5 text-[14.5px] text-silver">
                 <span className="text-electric-glow">✓</span>
@@ -101,15 +116,16 @@ export default async function UpgradePage({
           </ul>
 
           <p className="mt-5 text-[12.5px] text-silver-dim">
-            No self-serve checkout — an admin sets this up with you after reviewing your request.
+            Self-serve checkout — see every category, build your plan and check out right away, or
+            submit it as a request instead and a coach will follow up.
           </p>
 
           <div className="mt-7">
             <Link
-              href="/coaching/request"
+              href="/custom"
               className="inline-flex w-full items-center justify-center rounded-[10px] bg-rink-red px-6 py-3.5 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5"
             >
-              Request Custom Plan
+              Build Your Custom Plan
             </Link>
           </div>
         </Card>

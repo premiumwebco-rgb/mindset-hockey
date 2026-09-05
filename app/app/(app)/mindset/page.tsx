@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requirePermission } from '@/lib/session';
+import { requireSession } from '@/lib/session';
 import { getMindsetLessons, type MindsetLessonRow } from '@/lib/data';
 import { Card, Eyebrow, ProgressBar, EmptyState } from '@/components/ui';
 
@@ -58,7 +58,11 @@ function LessonRow({ l }: { l: MindsetLessonRow }) {
 }
 
 export default async function MindsetPage() {
-  const session = await requirePermission('mindset');
+  // Reachable by every signed-in member (see lib/plans.ts OPEN_FEATURES) so
+  // a free/no-purchase member can reach their 1 free preview lesson. RLS
+  // (auth_has_tier(required_tier)) decides which lessons getMindsetLessons()
+  // actually returns below — nothing here grants access to paid lessons.
+  const session = await requireSession();
   const lessons = await getMindsetLessons(session);
   const done = lessons.filter((l) => l.completed).length;
   const pct = lessons.length ? Math.round((done / lessons.length) * 100) : 0;
