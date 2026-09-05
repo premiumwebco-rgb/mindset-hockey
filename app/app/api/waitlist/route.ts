@@ -9,10 +9,14 @@ const PROGRAMS = new Set(['summer_training', 'summer_camp']);
 /**
  * Member-facing: joins the Summer Training / Summer Camp waitlist at Capital
  * Clubhouse. Same shape as app/api/coaching/request/route.ts — written
- * through the session client (not admin), so program_waitlist_signups'
- * own-insert RLS policy is the actual enforcement, matching
+ * through the session client (not admin), so program_waitlist_signups' own
+ * insert/update RLS policies are the actual enforcement, matching
  * `WITH CHECK (profile_id = auth.uid())` — see migration
  * 0021_program_waitlist_signups.sql.
+ *
+ * Upserts on (profile_id, program) rather than inserting — the table has a
+ * unique constraint on that pair, so resubmitting the same program updates
+ * the existing row's notes instead of failing or creating a duplicate.
  */
 export async function POST(req: Request) {
   const session = await requireSession();
@@ -36,11 +40,15 @@ export async function POST(req: Request) {
   const notes = typeof body.notes === 'string' ? body.notes.slice(0, 2000) : null;
 
   const supabase = await createServerClient();
-  const { error } = await supabase.from('program_waitlist_signups').insert({
-    profile_id: session.userId,
-    program,
-    notes,
-  });
+  const { error } = await supabase.from('program_waitlist_signups').upsert(
+    {
+      profile_id: session.userId,
+      program,
+      notes,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'profile_id,program' }
+  );
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
