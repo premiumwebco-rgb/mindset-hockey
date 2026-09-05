@@ -21,7 +21,6 @@ const MEMBER_NAV: NavItem[] = [
   { href: '/development', label: 'Development Plan', feature: 'dashboard' },
   // Included with Standard AND Premium — feature gate is 'basic'.
   { href: '/analysis', label: 'AI Shot Analysis', feature: 'ai_shot_analysis', badge: 'AI' },
-  { href: '/reviews', label: 'Video Review', feature: 'video_review' },
   { href: '/workouts', label: 'Workout Plans', feature: 'workout_plans' },
   { href: '/nutrition', label: 'Nutrition', feature: 'nutrition_plans' },
   { href: '/mindset', label: 'Mindset Training', feature: 'mindset_training' },
@@ -32,6 +31,30 @@ const MEMBER_NAV: NavItem[] = [
 /** Always visible to any signed-in member — no permission required to reach the form. */
 const COACHING_NAV: NavItem[] = [
   { href: '/coaching/request', label: 'Request Custom Plan' },
+];
+
+/**
+ * Personalized coaching feature(s) surfaced from the Request Custom Plan
+ * catalog (lib/permissions.ts CUSTOM_COACHING_SERVICES). Video Review is
+ * currently the only one of those with its own page — moving it here is a
+ * nav position change only; it keeps the exact same 'video_review' feature
+ * gate (-> the video_reviews permission, admin-granted only, see
+ * lib/permissions.ts) it always used, so a Standard member still sees it
+ * locked via the same upgrade pattern as every other gated item below, and a
+ * member an admin has granted video_reviews for keeps full access.
+ */
+const PERSONALIZED_NAV: NavItem[] = [
+  { href: '/reviews', label: 'Video Review', feature: 'video_review' },
+];
+
+/**
+ * In-person programs at Capital Clubhouse. No feature/permission gate — the
+ * initial version is a waitlist/interest form any signed-in member can use,
+ * not a paid or entitlement-backed feature.
+ */
+const IN_PERSON_NAV: NavItem[] = [
+  { href: '/in-person#summer-training', label: 'Summer Training Waitlist' },
+  { href: '/in-person#summer-camp', label: 'Summer Camp Waitlist' },
 ];
 
 const STAFF_NAV: NavItem[] = [
@@ -128,7 +151,11 @@ export default function Sidebar({
         </p>
         <nav className="grid gap-0.5">
           {items.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + '/');
+            // item.href may carry a query string or hash (e.g. the In-Person
+            // Training waitlist links) — usePathname() never includes either,
+            // so compare against the bare path rather than the full href.
+            const itemPath = item.href.split(/[?#]/)[0];
+            const active = pathname === itemPath || pathname.startsWith(itemPath + '/');
             const isLocked = locked(item);
             return (
               <Link
@@ -166,6 +193,8 @@ export default function Sidebar({
     <>
       {section('Training', MEMBER_NAV)}
       {section('Custom Coaching', COACHING_NAV)}
+      {section('Personalized Plan', PERSONALIZED_NAV)}
+      {section('In-Person Training', IN_PERSON_NAV)}
       {isStaff && section('Coaching', STAFF_NAV)}
       {isAdmin && section('Admin', ADMIN_NAV)}
       {section('Account', [

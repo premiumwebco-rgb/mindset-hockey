@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CUSTOM_COACHING_SERVICES } from '@/lib/permissions';
+import { CUSTOM_COACHING_SERVICES, STANDARD_MEMBERSHIP_FEATURES } from '@/lib/permissions';
 
 export default function RequestPlanForm() {
   const router = useRouter();
@@ -24,12 +24,17 @@ export default function RequestPlanForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (selected.size === 0) {
-      setError('Select at least one service you’re interested in.');
+      setError('Select at least one option you’re interested in.');
       return;
     }
     setBusy(true);
     setError(null);
     try {
+      // Standard and Personalized selections are submitted together, through
+      // the exact same request shape the API/table already expected — the
+      // two columns below are a display split only, key namespaces already
+      // don't collide (MEMBERSHIP_PERMISSIONS vs. CUSTOM_COACHING_SERVICES
+      // keys), so no backend change was needed for this.
       const res = await fetch('/api/coaching/request', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -59,26 +64,66 @@ export default function RequestPlanForm() {
 
   return (
     <form onSubmit={submit}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {CUSTOM_COACHING_SERVICES.map((s) => {
-          const active = selected.has(s.key);
-          return (
-            <button
-              type="button"
-              key={s.key}
-              onClick={() => toggle(s.key)}
-              aria-pressed={active}
-              className={`min-h-[44px] rounded-xl border p-4 text-left transition-colors ${
-                active
-                  ? 'border-electric bg-electric/10'
-                  : 'border-white/[.1] hover:border-white/25'
-              }`}
-            >
-              <p className="text-[14.5px] font-semibold text-white">{s.label}</p>
-              <p className="mt-1 text-[12.5px] text-silver-dim">{s.description}</p>
-            </button>
-          );
-        })}
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[.14em] text-silver-dim">
+            Standard Options
+          </p>
+          <p className="mb-3 text-[12px] text-silver-dim">
+            Already included with your Membership — tell us which ones this plan should build
+            around.
+          </p>
+          <div className="grid gap-3">
+            {STANDARD_MEMBERSHIP_FEATURES.map((s) => {
+              const active = selected.has(s.key);
+              return (
+                <button
+                  type="button"
+                  key={s.key}
+                  onClick={() => toggle(s.key)}
+                  aria-pressed={active}
+                  className={`min-h-[44px] rounded-xl border p-4 text-left transition-colors ${
+                    active
+                      ? 'border-electric bg-electric/10'
+                      : 'border-white/[.1] hover:border-white/25'
+                  }`}
+                >
+                  <p className="text-[14.5px] font-semibold text-white">{s.label}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[.14em] text-silver-dim">
+            Personalized Options
+          </p>
+          <p className="mb-3 text-[12px] text-silver-dim">
+            Coaching add-ons beyond the Membership — quote-only, set up by a coach after review.
+          </p>
+          <div className="grid gap-3">
+            {CUSTOM_COACHING_SERVICES.map((s) => {
+              const active = selected.has(s.key);
+              return (
+                <button
+                  type="button"
+                  key={s.key}
+                  onClick={() => toggle(s.key)}
+                  aria-pressed={active}
+                  className={`min-h-[44px] rounded-xl border p-4 text-left transition-colors ${
+                    active
+                      ? 'border-electric bg-electric/10'
+                      : 'border-white/[.1] hover:border-white/25'
+                  }`}
+                >
+                  <p className="text-[14.5px] font-semibold text-white">{s.label}</p>
+                  <p className="mt-1 text-[12.5px] text-silver-dim">{s.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <label className="mt-6 block">

@@ -103,6 +103,20 @@ export function membershipPermissionPatch(
 }
 
 /**
+ * Standard Options — the Training/development-related features already
+ * included with the $49/mo Membership (MEMBERSHIP_PERMISSIONS), shown on the
+ * "Request Custom Plan" form's "Standard Options" column alongside the
+ * Personalized Options below. Derived directly from MEMBERSHIP_PERMISSIONS +
+ * PERMISSION_LABEL rather than a separate list, so there is exactly one
+ * place that defines what these features are called — selecting one here
+ * doesn't grant anything new (an active member already has all of these);
+ * it's context for the coach reviewing the request, submitted through the
+ * same requested_services array as CUSTOM_COACHING_SERVICES.
+ */
+export const STANDARD_MEMBERSHIP_FEATURES: { key: MembershipPermission; label: string }[] =
+  MEMBERSHIP_PERMISSIONS.map((key) => ({ key, label: PERMISSION_LABEL[key] }));
+
+/**
  * Custom-coaching service catalog shown on the "Request Custom Plan" form.
  * `key` is the value stored in `custom_plan_requests.requested_services` —
  * it is a request, not a grant, so several service keys intentionally map

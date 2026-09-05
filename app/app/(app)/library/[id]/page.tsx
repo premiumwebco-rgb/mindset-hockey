@@ -116,8 +116,12 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
 
       {/* Cover photo as a hero banner. Skipped when the resource itself IS an
           image — the content area below already shows it, and repeating it
-          here would just be the same picture twice. */}
-      {resource.coverImageSignedUrl && !isImage && (
+          here would just be the same picture twice. Also skipped for video:
+          the cover is passed as the <video poster> below instead, so it's
+          still the first thing shown, but the browser removes it the moment
+          playback starts rather than leaving it stacked above/behind the
+          player for the whole viewing session. */}
+      {resource.coverImageSignedUrl && !isImage && !isVideo && (
         <div className="mb-6 overflow-hidden rounded-xl border border-white/[.08]">
           <SmartImage
             key={`${resource.id}-cover`}
@@ -164,6 +168,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
             playsInline
             preload="metadata"
             controlsList="nodownload"
+            poster={resource.coverImageSignedUrl ?? undefined}
             className="aspect-video w-full rounded-xl border border-white/[.08] bg-navy-900"
           />
         ) : isImage ? (
