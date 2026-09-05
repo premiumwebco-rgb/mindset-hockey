@@ -5,7 +5,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { Tier, SubscriptionStatus } from '@/lib/types';
 import { ACTIVE_SUB_STATUSES } from '@/lib/types';
 import { ANALYSIS_ADDON } from '@/lib/plans';
-import { membershipPermissionPatch } from '@/lib/permissions';
+import { membershipPermissionPatch, MEMBERSHIP_PERMISSIONS, CUSTOM_COACHING_SERVICES } from '@/lib/permissions';
+import { priceCustomPlan } from '@/lib/customPlan';
 
 export const runtime = 'nodejs';
 /** Stripe needs the raw body for signature verification — never cache. */
@@ -131,6 +132,16 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
         return;
       }
 
+      // A Custom Plan purchase is its OWN subscription, separate from the
+      // base Membership one — branch before any of the Membership logic
+      // below so it can never be misread as a Membership checkout (it has
+      // no `tier` metadata, which would otherwise make `tier` resolve to
+      // null and the event get silently ignored — or worse, misapplied).
+      if (cs.metadata?.kind === 'custom_plan') {
+        await grantCustomPlan(admin, event, cs);
+        return;
+      }
+
       const profileId = cs.client_reference_id ?? cs.metadata?.profile_id;
       const tier = tierFromMetadata(cs.metadata);
       if (!profileId || !tier) {
@@ -194,6 +205,20 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
           ? snapshot
           : await stripe().subscriptions.retrieve(snapshot.id);
 
+      // A Custom Plan subscription's own lifecycle (renewed, past_due,
+      // cancelled) is tracked in custom_plan_purchases, never in
+      // `subscriptions`/profiles.tier — those belong to the base Membership
+      // subscription only. See syncCustomPlanSubscriptionStatus() for why
+      // this never auto-revokes a permission.
+      if (sub.metadata?.kind === 'custom_plan') {
+        await syncCustomPlanSubscriptionStatus(
+          admin,
+          sub.id,
+          event.type === 'customer.subscription.deleted' ? 'canceled' : normalizeStatus(sub.status)
+        );
+        return;
+      }
+
       const profileId = await resolveProfileId(admin, sub);
       if (!profileId) return;
 
@@ -222,6 +247,12 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
         typeof inv.subscription === 'string' ? inv.subscription : inv.subscription?.id;
       if (!subId) return;
       const sub = await stripe().subscriptions.retrieve(subId);
+
+      if (sub.metadata?.kind === 'custom_plan') {
+        await syncCustomPlanSubscriptionStatus(admin, sub.id, normalizeStatus(sub.status));
+        return;
+      }
+
       const profileId = await resolveProfileId(admin, sub);
       if (!profileId) return;
       const tier = tierFromMetadata(sub.metadata) ?? (await currentTier(admin, profileId));
@@ -243,6 +274,12 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
         typeof inv.subscription === 'string' ? inv.subscription : inv.subscription?.id;
       if (!subId) return;
       const sub = await stripe().subscriptions.retrieve(subId);
+
+      if (sub.metadata?.kind === 'custom_plan') {
+        await syncCustomPlanSubscriptionStatus(admin, sub.id, normalizeStatus(sub.status));
+        return;
+      }
+
       const profileId = await resolveProfileId(admin, sub);
       if (!profileId) return;
 
@@ -340,6 +377,159 @@ async function grantAnalysisAddon(
   console.log(`[addon] granted ${quantity} analysis to ${profileId} (session ${cs.id})`);
 }
 
+/**
+ * Records a paid Custom Plan purchase and grants EXACTLY the options that
+ * were paid for — nothing else.
+ *
+ * THE ONLY PLACE A CUSTOM PLAN GRANTS ANYTHING. Reaching it requires a
+ * signature-verified Stripe event with `payment_status === 'paid'`, same
+ * discipline as grantAnalysisAddon() above.
+ *
+ * PRICE IS RE-VERIFIED HERE, not trusted from metadata: the selected keys are
+ * re-run through priceCustomPlan() (the same function the checkout route
+ * used to build the session) before anything is recorded, so even a
+ * hand-crafted Stripe metadata payload cannot make this function believe a
+ * different amount was charged than what the keys actually cost.
+ *
+ * IDEMPOTENCY IS THE DATABASE'S JOB. `stripe_checkout_session_id` is UNIQUE in
+ * `custom_plan_purchases`, so a duplicate delivery loses to a unique
+ * violation (23505) rather than granting twice.
+ *
+ * GRANT, NEVER AUTO-REVOKE. This function only ever sets permission columns
+ * to `true`. A cancelled/past_due Custom Plan subscription updates this
+ * purchase's own `status` (see syncCustomPlanSubscriptionStatus()) so staff
+ * can see it in Admin > Plan Management, but does not flip any permission
+ * column back to `false` automatically — mirroring the existing, deliberate
+ * rule that COACHING_PERMISSIONS are never auto-revoked by Stripe (see
+ * applyEntitlement()'s doc comment). The Standard Options keys purchased here
+ * are also never auto-revoked, for the same reason and so that a member who
+ * pays for a Standard Option ONLY through a Custom Plan (with no base
+ * Membership at all) never has it pulled by an unrelated event; a coach
+ * revokes access manually from Admin > Plan Management if a Custom Plan
+ * subscription lapses and isn't renewed.
+ */
+async function grantCustomPlan(
+  admin: Admin,
+  event: Stripe.Event,
+  cs: Stripe.Checkout.Session
+): Promise<void> {
+  if (cs.payment_status !== 'paid' && cs.payment_status !== 'no_payment_required') {
+    console.warn(`[custom-plan] session ${cs.id} is ${cs.payment_status}, not granting`);
+    return;
+  }
+
+  const profileId = cs.client_reference_id ?? cs.metadata?.profile_id;
+  if (!profileId) {
+    console.error(`[custom-plan] session ${cs.id} has no profile reference — cannot grant`);
+    return;
+  }
+
+  let rawStandard: unknown[] = [];
+  let rawPersonalized: unknown[] = [];
+  try {
+    rawStandard = JSON.parse(cs.metadata?.standard_keys ?? '[]');
+    rawPersonalized = JSON.parse(cs.metadata?.personalized_keys ?? '[]');
+  } catch (err) {
+    console.error(`[custom-plan] session ${cs.id} has unparseable option metadata:`, (err as Error).message);
+    return;
+  }
+
+  // Re-derive the authoritative selection AND price from the same pricing
+  // function the checkout route used — never trust the metadata's own
+  // amount fields, only the option keys, and only after re-validating them.
+  const {
+    standardKeys,
+    personalizedKeys,
+    standardCents,
+    personalizedCents,
+  } = priceCustomPlan(
+    rawStandard.filter((k): k is string => typeof k === 'string'),
+    rawPersonalized.filter((k): k is string => typeof k === 'string')
+  );
+
+  if (standardKeys.length === 0 && personalizedKeys.length === 0) {
+    console.error(`[custom-plan] session ${cs.id} resolved to no valid options — not granting`);
+    return;
+  }
+
+  const subId = typeof cs.subscription === 'string' ? cs.subscription : cs.subscription?.id;
+
+  const { error } = await admin.from('custom_plan_purchases').insert({
+    profile_id: profileId,
+    stripe_customer_id: String(cs.customer),
+    stripe_checkout_session_id: cs.id,
+    stripe_subscription_id: subId ?? null,
+    standard_keys: standardKeys,
+    personalized_keys: personalizedKeys,
+    standard_amount_cents: standardCents,
+    personalized_amount_cents: personalizedCents,
+    currency: cs.currency ?? 'usd',
+    status: 'active',
+  });
+
+  if (error) {
+    if (error.code === '23505') {
+      console.log(`[custom-plan] session ${cs.id} already granted — duplicate ignored`);
+      return;
+    }
+    throw new Error(`could not record custom plan purchase: ${error.message}`);
+  }
+
+  // Grant exactly what was purchased. Standard keys ARE MembershipPermission
+  // columns already; Personalized keys are resolved through
+  // CUSTOM_COACHING_SERVICES to the CoachingPermission column each maps to
+  // (several service keys can share one column — that's expected, see the
+  // catalog's own doc comment in lib/permissions.ts).
+  const grant: Record<string, boolean> = {};
+  for (const key of standardKeys) {
+    if ((MEMBERSHIP_PERMISSIONS as readonly string[]).includes(key)) grant[key] = true;
+  }
+  for (const key of personalizedKeys) {
+    const svc = CUSTOM_COACHING_SERVICES.find((s) => s.key === key);
+    if (svc) grant[svc.relatedPermission] = true;
+  }
+
+  if (Object.keys(grant).length > 0) {
+    await admin.from('profiles').update(grant).eq('id', profileId);
+  }
+
+  await admin.from('audit_log').insert({
+    actor_id: null,
+    action: 'custom_plan.purchased',
+    target_table: 'profiles',
+    target_id: profileId,
+    meta: {
+      standard_keys: standardKeys,
+      personalized_keys: personalizedKeys,
+      standard_amount_cents: standardCents,
+      personalized_amount_cents: personalizedCents,
+      stripe_session_id: cs.id,
+    },
+  });
+
+  console.log(
+    `[custom-plan] granted [${[...standardKeys, ...personalizedKeys].join(', ')}] to ${profileId} (session ${cs.id})`
+  );
+}
+
+/**
+ * Mirrors a Custom Plan subscription's Stripe status onto its
+ * custom_plan_purchases row(s) for admin visibility — deliberately does NOT
+ * touch any permission column. See grantCustomPlan()'s doc comment for why:
+ * revoking a coaching-style permission is left to a human, exactly like the
+ * pre-existing rule for COACHING_PERMISSIONS in general.
+ */
+async function syncCustomPlanSubscriptionStatus(
+  admin: Admin,
+  stripeSubscriptionId: string,
+  status: SubscriptionStatus
+): Promise<void> {
+  await admin
+    .from('custom_plan_purchases')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('stripe_subscription_id', stripeSubscriptionId);
+}
+
 /** Finds the profile behind a subscription, via metadata then customer id. */
 async function resolveProfileId(admin: Admin, sub: Stripe.Subscription) {
   const fromMeta = sub.metadata?.profile_id;
@@ -402,6 +592,27 @@ async function upsertSubscription(
 }
 
 /**
+ * Every profile_id with an ACTIVE Custom Plan purchase that includes a given
+ * Standard Option key, folded into a single lookup set. Used by
+ * applyEntitlement() so a base Membership cancellation never revokes a
+ * Standard Option the member is still separately paying for through a Custom
+ * Plan — see its call site below for the full reasoning.
+ */
+async function activeCustomPlanStandardKeys(admin: Admin, profileId: string): Promise<Set<string>> {
+  const { data } = await admin
+    .from('custom_plan_purchases')
+    .select('standard_keys')
+    .eq('profile_id', profileId)
+    .eq('status', 'active');
+
+  const keys = new Set<string>();
+  for (const row of data ?? []) {
+    for (const k of (row.standard_keys as string[] | null) ?? []) keys.add(k);
+  }
+  return keys;
+}
+
+/**
  * The one place entitlement is granted or revoked.
  * Anything other than trialing/active drops `subscription_active` to false,
  * which the RLS policies read via `auth_has_permission()` — Membership rows
@@ -414,10 +625,19 @@ async function upsertSubscription(
  * an old $100 or $149/mo subscription re-grants the full permission set every
  * time, with the old Stripe price itself never touched.
  *
+ * Standard Option keys from an ACTIVE Custom Plan purchase (see
+ * activeCustomPlanStandardKeys() above) are OR'd on top of the base
+ * Membership cascade before writing — additively only, never subtracted —
+ * so cancelling/lapsing the base Membership subscription can only ever ADD
+ * to what this function would have granted on its own, never take away a
+ * Standard Option the member still separately pays for via a Custom Plan.
+ *
  * Coaching permissions (video_reviews, weekly_checkins, direct_messaging,
  * one_on_one_coaching, custom_programming) are NEVER touched here — those are
  * admin-managed only, from Admin > Plan Management, and are independent of
- * this Stripe subscription's status.
+ * this Stripe subscription's status. (A Custom Plan purchase CAN grant these
+ * — see grantCustomPlan() — but only additively and only from its own
+ * dedicated code path, never from this one.)
  */
 async function applyEntitlement(
   admin: Admin,
@@ -439,7 +659,14 @@ async function applyEntitlement(
   // Users manual activate/deactivate control (app/api/admin/user/route.ts)
   // calls the exact same function so it can never drift from what a real
   // Stripe event does here.
-  const permissionUpdate = membershipPermissionPatch(normalizedTier, active);
+  const permissionUpdate: Record<string, boolean> = {
+    ...membershipPermissionPatch(normalizedTier, active),
+  };
+
+  const extraStandardKeys = await activeCustomPlanStandardKeys(admin, profileId);
+  for (const key of extraStandardKeys) {
+    if ((MEMBERSHIP_PERMISSIONS as readonly string[]).includes(key)) permissionUpdate[key] = true;
+  }
 
   await admin
     .from('profiles')

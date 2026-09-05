@@ -1,16 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CUSTOM_COACHING_SERVICES, STANDARD_MEMBERSHIP_FEATURES } from '@/lib/permissions';
+import { priceCustomPlan, centsToDisplay } from '@/lib/customPlan';
 
 export default function RequestPlanForm() {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  const standardKeySet = useMemo(
+    () => new Set(STANDARD_MEMBERSHIP_FEATURES.map((s) => s.key as string)),
+    []
+  );
+  const personalizedKeySet = useMemo(
+    () => new Set(CUSTOM_COACHING_SERVICES.map((s) => s.key)),
+    []
+  );
+
+  // Live price preview. This is the SAME pricing function the server calls
+  // when the "Continue to Checkout" button actually opens a Stripe session —
+  // see priceCustomPlan()'s doc comment in lib/customPlan.ts for why that
+  // sharing is safe: the server never trusts what this preview shows, it
+  // recomputes independently from the selected keys.
+  const price = useMemo(() => {
+    const standardKeys = [...selected].filter((k) => standardKeySet.has(k));
+    const personalizedKeys = [...selected].filter((k) => personalizedKeySet.has(k));
+    return priceCustomPlan(standardKeys, personalizedKeys);
+  }, [selected, standardKeySet, personalizedKeySet]);
 
   function toggle(key: string) {
     setSelected((prev) => {
@@ -51,6 +74,36 @@ export default function RequestPlanForm() {
     }
   }
 
+  async function checkout() {
+    if (price.totalCents <= 0) {
+      setCheckoutError('Select at least one option before checking out.');
+      return;
+    }
+    setCheckoutBusy(true);
+    setCheckoutError(null);
+    try {
+      // The server recomputes this price itself from these keys — see
+      // app/api/stripe/custom-plan/checkout/route.ts. Nothing about amount is
+      // ever read from this request body.
+      const res = await fetch('/api/stripe/custom-plan/checkout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          standardKeys: price.standardKeys,
+          personalizedKeys: price.personalizedKeys,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.url) {
+        throw new Error(json.error ?? "We couldn't start that checkout. You were not charged.");
+      }
+      window.location.href = json.url;
+    } catch (err) {
+      setCheckoutError((err as Error).message);
+      setCheckoutBusy(false);
+    }
+  }
+
   if (done) {
     return (
       <div className="text-center">
@@ -70,8 +123,8 @@ export default function RequestPlanForm() {
             Standard Options
           </p>
           <p className="mb-3 text-[12px] text-silver-dim">
-            Already included with your Membership — tell us which ones this plan should build
-            around.
+            $24/mo for the first, +$5/mo each additional — 6 selected matches the full $49/mo
+            Membership.
           </p>
           <div className="grid gap-3">
             {STANDARD_MEMBERSHIP_FEATURES.map((s) => {
@@ -93,6 +146,9 @@ export default function RequestPlanForm() {
               );
             })}
           </div>
+          <p className="mt-3 text-right text-[13px] font-semibold text-silver">
+            Standard subtotal: {centsToDisplay(price.standardCents)}/mo
+          </p>
         </div>
 
         <div>
@@ -100,7 +156,8 @@ export default function RequestPlanForm() {
             Personalized Options
           </p>
           <p className="mb-3 text-[12px] text-silver-dim">
-            Coaching add-ons beyond the Membership — quote-only, set up by a coach after review.
+            Meal Plan and Workout Plan are each a flat $40/mo. Every other option is $100/mo for
+            the first, +$20/mo each additional.
           </p>
           <div className="grid gap-3">
             {CUSTOM_COACHING_SERVICES.map((s) => {
@@ -123,6 +180,9 @@ export default function RequestPlanForm() {
               );
             })}
           </div>
+          <p className="mt-3 text-right text-[13px] font-semibold text-silver">
+            Personalized subtotal: {centsToDisplay(price.personalizedCents)}/mo
+          </p>
         </div>
       </div>
 
@@ -139,14 +199,43 @@ export default function RequestPlanForm() {
         />
       </label>
 
+      {/* Your Custom Plan — combined price + primary checkout action. */}
+      <div className="mt-6 rounded-xl border border-electric/40 bg-electric/[.06] p-5">
+        <p className="text-[11px] font-extrabold uppercase tracking-[.14em] text-silver-dim">
+          Your Custom Plan
+        </p>
+        <div className="mt-2 flex items-baseline gap-2">
+          <b className="display text-[32px] leading-none text-white">
+            {centsToDisplay(price.totalCents)}
+          </b>
+          <span className="text-[13px] font-semibold text-silver-dim">/ month</span>
+        </div>
+        <p className="mt-1 text-[12.5px] text-silver-dim">
+          {price.standardKeys.length + price.personalizedKeys.length === 0
+            ? 'Select at least one option above to see your price.'
+            : `${centsToDisplay(price.standardCents)} Standard + ${centsToDisplay(price.personalizedCents)} Personalized`}
+        </p>
+
+        {checkoutError && <p className="mt-3 text-[13px] text-[#ff6b85]">{checkoutError}</p>}
+
+        <button
+          type="button"
+          onClick={checkout}
+          disabled={checkoutBusy || price.totalCents <= 0}
+          className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-[10px] bg-electric px-6 py-3 text-[15px] font-bold text-white transition-all hover:bg-electric-glow disabled:opacity-50 sm:w-auto"
+        >
+          {checkoutBusy ? 'Opening checkout…' : 'Continue to Checkout'}
+        </button>
+      </div>
+
       {error && <p className="mt-3 text-[13px] text-[#ff6b85]">{error}</p>}
 
       <button
         type="submit"
         disabled={busy}
-        className="mt-6 inline-flex min-h-[44px] w-full items-center justify-center rounded-[10px] bg-electric px-6 py-3 text-[15px] font-bold text-white transition-all hover:bg-electric-glow disabled:opacity-50 sm:w-auto"
+        className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[10px] border border-white/[.14] px-6 py-3 text-[14px] font-semibold text-silver transition-colors hover:border-white/30 disabled:opacity-50"
       >
-        {busy ? 'Submitting…' : 'Submit Request'}
+        {busy ? 'Submitting…' : 'Not ready to pay yet? Submit as a request instead'}
       </button>
     </form>
   );
