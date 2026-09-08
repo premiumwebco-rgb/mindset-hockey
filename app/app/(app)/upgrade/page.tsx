@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { PLAN_BY_SLUG } from '@/lib/plans';
-import { standardPriceCents, centsToDisplay } from '@/lib/customPlan';
+import { centsToDisplay, CUSTOM_PLAN_BASE_CENTS } from '@/lib/customPlan';
 import { PERMISSION_LABEL, isPermissionKey } from '@/lib/permissions';
 import { Card, Eyebrow } from '@/components/ui';
 import CheckoutButton from '@/components/CheckoutButton';
@@ -16,7 +16,7 @@ export default async function UpgradePage({
   const session = await requireSession();
   const sp = await searchParams;
   const plan = PLAN_BY_SLUG.membership;
-  const customStartingPrice = centsToDisplay(standardPriceCents(1));
+  const customStartingPrice = centsToDisplay(CUSTOM_PLAN_BASE_CENTS);
 
   const neededPermission = isPermissionKey(sp.p) ? sp.p : null;
 
@@ -88,8 +88,8 @@ export default async function UpgradePage({
           </span>
           <h2 className="display text-[24px]">Custom Plan — Starting at {customStartingPrice}/month</h2>
           <p className="mt-1.5 min-h-[44px] text-[14px] text-silver-dim">
-            Build your plan. Start at {customStartingPrice}/month for one Standard option — add
-            more Standard or Personalized options any time and your price updates automatically.
+            Build your plan. Start at {customStartingPrice}/month for one option — add more any
+            time and your price updates automatically.
           </p>
 
           <div className="mt-5 flex items-baseline gap-2">
@@ -97,7 +97,7 @@ export default async function UpgradePage({
             <span className="text-[13px] font-semibold text-silver-dim">/ month starting</span>
           </div>
           <p className="mt-3 text-[12.5px] text-silver-dim">
-            {customStartingPrice}/month is the entry price for a single Standard option, not full
+            {customStartingPrice}/month is the entry price for a single option, not full
             access to everything — additional options increase your monthly price.
           </p>
 
@@ -120,12 +120,18 @@ export default async function UpgradePage({
             submit it as a request instead and a coach will follow up.
           </p>
 
-          <div className="mt-7">
+          <div className="mt-7 grid gap-2.5">
             <Link
               href="/custom"
               className="inline-flex w-full items-center justify-center rounded-[10px] bg-rink-red px-6 py-3.5 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5"
             >
-              Build Your Custom Plan
+              Build Your Plan
+            </Link>
+            <Link
+              href="/coaching/one-on-one"
+              className="inline-flex w-full items-center justify-center rounded-[10px] border border-white/[.14] px-6 py-3 text-[13.5px] font-semibold text-silver transition-colors hover:border-white/30"
+            >
+              See 1-on-1 Online Coaching
             </Link>
           </div>
         </Card>

@@ -16,65 +16,66 @@ import { MEMBERSHIP_PERMISSIONS, CUSTOM_COACHING_SERVICES, type MembershipPermis
    because the charge is built from the server's own re-computation, not from
    anything the browser reports.
 
-   PRICING RULES (verbatim from product spec):
-     Standard Options   0 selected = $0/mo; first = $24/mo; each additional
-       = +$5/mo (1=$24, 2=$29, 3=$34, 4=$39, 5=$44, 6=$49). These are exactly
-       the 6 MEMBERSHIP_PERMISSIONS (lib/permissions.ts) — selecting all 6
-       costs the same $49/mo as the flat Mindset Hockey Membership plan.
-     Personalized Options   "Meal Plan" (custom_nutrition_coaching) and
-       "Workout Plan" (custom_workout_programming) are each a flat $40/mo,
-       always — never the escalating rule below. Every OTHER personalized/
-       coaching option (the remaining CUSTOM_COACHING_SERVICES entries) is
-       priced on an escalating scale: first selected = $100/mo, each
-       additional = +$20/mo. The two pricing pools are independent — buying
-       Meal Plan does not count toward the "first/additional" count for the
-       escalating pool, and vice versa.
+   PRICING RULES (current product spec):
+     Every Custom Plan option (see CUSTOM_COACHING_SERVICES in
+     lib/permissions.ts — exactly 4: Weekly Check-Ins, Video Reviews, Custom
+     Workout Programming, Custom Nutrition Coaching) is priced from ONE flat
+     scale: 0 selected = $0/mo; the FIRST selected option = $20/mo; each
+     ADDITIONAL option = +$10/mo (1=$20, 2=$30, 3=$40, 4=$50 — selecting all
+     four is the maximum, $50/mo). There is no per-option price difference —
+     which option is first doesn't change the total, only how many are
+     selected does.
+
+     'Standard Options' (buying an individual Membership feature — workouts,
+     nutrition, mindset, etc. — piecemeal rather than the full $49/mo
+     Membership) is a RETIRED purchase path. The plumbing for it
+     (standardKeys/standardCents, isValidStandardKey/standardPriceCents,
+     and the corresponding columns on custom_plan_purchases) is left in
+     place, unchanged, so historical purchases and the existing Stripe
+     webhook/entitlement-preservation logic
+     (activeCustomPlanStandardKeys()/applyEntitlement() in
+     app/api/stripe/webhook/route.ts) keep working exactly as before — new
+     purchases simply never populate it (the current UI never offers a
+     Standard Option to select, so standardKeysIn is always empty in
+     practice), which priceCustomPlan() below already handles safely (an
+     empty list prices to $0, same as no selection).
    ========================================================================== */
 
-/** Personalized keys billed as a flat $40/month, never the escalating scale. */
-export const FLAT_PERSONALIZED_KEYS: ReadonlySet<string> = new Set([
-  'custom_nutrition_coaching', // "Meal Plan"
-  'custom_workout_programming', // "Workout Plan"
-]);
-const FLAT_PERSONALIZED_PRICE_CENTS = 4000;
-
-/** Every other personalized/coaching key: first = $100/mo, +$20/mo each additional. */
-const ESCALATING_FIRST_CENTS = 10000;
-const ESCALATING_STEP_CENTS = 2000;
-
-const VALID_STANDARD_KEYS = new Set<string>(MEMBERSHIP_PERMISSIONS);
-const VALID_PERSONALIZED_KEYS = new Set<string>(CUSTOM_COACHING_SERVICES.map((s) => s.key));
-
-export function isValidStandardKey(key: string): key is MembershipPermission {
-  return VALID_STANDARD_KEYS.has(key);
-}
-
-export function isValidPersonalizedKey(key: string): boolean {
-  return VALID_PERSONALIZED_KEYS.has(key);
-}
-
-/** 0 selections = $0; first = $24/mo; each additional = +$5/mo. */
+/** 0 selections = $0; first = $24/mo; each additional = +$5/mo.
+ *  Retained only for the retired Standard-Options purchase path — see the
+ *  header comment above. No current UI offers a Standard Option to select. */
 export function standardPriceCents(selectedCount: number): number {
   const n = Number.isFinite(selectedCount) ? Math.max(0, Math.floor(selectedCount)) : 0;
   if (n === 0) return 0;
   return 2400 + (n - 1) * 500;
 }
 
+const VALID_STANDARD_KEYS = new Set<string>(MEMBERSHIP_PERMISSIONS);
+const VALID_OPTION_KEYS = new Set<string>(CUSTOM_COACHING_SERVICES.map((s) => s.key));
+
+export function isValidStandardKey(key: string): key is MembershipPermission {
+  return VALID_STANDARD_KEYS.has(key);
+}
+
+/** True for any of the 4 current Custom Plan options (CUSTOM_COACHING_SERVICES). */
+export function isValidPersonalizedKey(key: string): boolean {
+  return VALID_OPTION_KEYS.has(key);
+}
+
+/** The price shown for "starting at" copy — one option, nothing else selected. */
+export const CUSTOM_PLAN_BASE_CENTS = 2000;
+/** Cost of each option after the first. */
+export const CUSTOM_PLAN_ADDITIONAL_CENTS = 1000;
+
 /**
- * Meal/Workout Plan are flat $40 each; every other selected personalized key
- * feeds one shared escalating pool (first = $100, +$20 each additional).
+ * 0 selections = $0; first selected option = $20/mo; each additional = +$10/mo.
  * Unknown keys are ignored here — callers should filter with
  * isValidPersonalizedKey()/priceCustomPlan() first.
  */
 export function personalizedPriceCents(selectedKeys: readonly string[]): number {
-  let total = 0;
-  let escalatingCount = 0;
-  for (const key of selectedKeys) {
-    if (FLAT_PERSONALIZED_KEYS.has(key)) total += FLAT_PERSONALIZED_PRICE_CENTS;
-    else escalatingCount += 1;
-  }
-  if (escalatingCount > 0) total += ESCALATING_FIRST_CENTS + (escalatingCount - 1) * ESCALATING_STEP_CENTS;
-  return total;
+  const n = selectedKeys.length;
+  if (n === 0) return 0;
+  return CUSTOM_PLAN_BASE_CENTS + (n - 1) * CUSTOM_PLAN_ADDITIONAL_CENTS;
 }
 
 export interface CustomPlanPrice {
@@ -91,6 +92,12 @@ export interface CustomPlanPrice {
  * so a hand-crafted request body (or a stale client bundle) cannot inflate
  * the count with junk or duplicate entries — the server-side caller of this
  * function is the only source of truth for what a selection costs.
+ *
+ * standardKeysIn is retained for the retired Standard-Options path (see the
+ * header comment) — the current UI always passes an empty array for it, so
+ * standardCents is always 0 in practice, but the parameter itself is kept so
+ * the checkout route and webhook (app/api/stripe/webhook/route.ts) don't
+ * need to change shape.
  */
 export function priceCustomPlan(
   standardKeysIn: readonly string[],

@@ -139,7 +139,7 @@ export async function POST(req: Request) {
         currency: 'usd',
         unit_amount: personalizedCents,
         recurring: { interval: 'month' },
-        product_data: { name: 'Custom Plan — Personalized Options' },
+        product_data: { name: 'Mindset Hockey — Custom Plan' },
       },
       quantity: 1,
     });

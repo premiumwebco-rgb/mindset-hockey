@@ -1,27 +1,28 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
-import { STANDARD_MEMBERSHIP_FEATURES, CUSTOM_COACHING_SERVICES } from '@/lib/permissions';
-import { standardPriceCents, centsToDisplay } from '@/lib/customPlan';
+import { CUSTOM_COACHING_SERVICES } from '@/lib/permissions';
+import { centsToDisplay, CUSTOM_PLAN_BASE_CENTS } from '@/lib/customPlan';
 import { Card, Eyebrow } from '@/components/ui';
 import RequestPlanForm from '../coaching/request/RequestPlanForm';
 
-export const metadata = { title: 'Custom Plan — Mindset Hockey' };
+export const metadata = { title: 'Build Your Plan — Mindset Hockey' };
 
 /* ============================================================================
-   THE CUSTOM TAB
+   "BUILD YOUR PLAN" — under the "Create a Custom Plan" nav section, alongside
+   the premium "1-on-1 Online Coaching" page (app/(app)/coaching/one-on-one).
 
    Central, always-visible location for every authenticated member — including
-   a brand-new member who has purchased nothing — to see what a Custom Plan
-   can unlock and to build one. Two independent things happen on this page,
-   and they must never be confused with each other:
+   a brand-new member who has purchased nothing — to see the 4 Custom Plan
+   options and build one. Two independent things happen on this page, and
+   they must never be confused with each other:
 
-     1. CATEGORY OVERVIEW (below) — read-only. It renders every Standard and
-        Personalized option and whether THIS member already has it, straight
-        from `session.permissions` (the same permission columns every other
-        gated page in the app reads — see lib/session.ts / lib/permissions.ts).
-        Rendering this page, or rendering a category as "locked", NEVER writes
-        anything and never grants anything — it is a plain read of existing
-        entitlement state.
+     1. OPTION OVERVIEW (below) — read-only. It renders each of the 4
+        CUSTOM_COACHING_SERVICES options and whether THIS member already has
+        it, straight from `session.permissions` (the same permission columns
+        every other gated page in the app reads — see lib/session.ts /
+        lib/permissions.ts). Rendering this page, or rendering an option as
+        "locked", NEVER writes anything and never grants anything — it is a
+        plain read of existing entitlement state.
 
      2. THE BUILDER (<RequestPlanForm />) — the exact existing Custom Plan
         builder/checkout component (unchanged) that already talks to
@@ -49,7 +50,7 @@ function LockIcon() {
   );
 }
 
-function CategoryCard({
+function OptionCard({
   label,
   description,
   unlocked,
@@ -100,27 +101,24 @@ export default async function CustomPage({
   const session = await requireSession();
   const sp = await searchParams;
 
-  // Same server-side pricing function the checkout route and the live
+  // Same server-side pricing constant the checkout route and the live
   // preview both use — see lib/customPlan.ts. Never hardcode this number
-  // anywhere else; it is computed here purely for display.
-  const startingPriceDisplay = centsToDisplay(standardPriceCents(1));
+  // anywhere else; it is read here purely for display.
+  const startingPriceDisplay = centsToDisplay(CUSTOM_PLAN_BASE_CENTS);
 
   return (
     <div>
-      <Eyebrow>Custom Plan</Eyebrow>
-      <h1 className="display text-[clamp(28px,5vw,44px)]">
-        Custom Plan — Starting at {startingPriceDisplay}/month
-      </h1>
+      <Eyebrow>Create a Custom Plan</Eyebrow>
+      <h1 className="display text-[clamp(28px,5vw,44px)]">Build Your Plan</h1>
       <p className="mt-3 max-w-[68ch] text-[16px] text-silver">
-        Build your plan. Start at {startingPriceDisplay}/month for one Standard option — add more
-        Standard or Personalized options any time and your price updates automatically. Every
-        member can build a Custom Plan, whether or not you have a Membership.
+        Build your plan. Start at {startingPriceDisplay}/month for one option — add more any time
+        and your price updates automatically. Every member can build a Custom Plan, whether or not
+        you have a Membership.
       </p>
       <p className="mt-2 max-w-[68ch] text-[13px] text-silver-dim">
-        {startingPriceDisplay}/month is the entry price for a single Standard option, not full
-        access to everything below. Seeing a category here does not mean you have access to it —
-        each one unlocks only once you&apos;ve purchased it (or it&apos;s included with an active
-        Membership or granted by a coach).
+        {startingPriceDisplay}/month is the entry price for a single option, not full access to
+        everything below. Seeing an option here does not mean you have access to it — each one
+        unlocks only once you&apos;ve purchased it (or it&apos;s been granted by a coach).
       </p>
 
       {sp.checkout === 'success' && (
@@ -137,34 +135,15 @@ export default async function CustomPage({
 
       <section className="mt-8">
         <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[.14em] text-silver-dim">
-          Standard Options
+          Custom Plan Options
         </p>
         <p className="mb-3 text-[12.5px] text-silver-dim">
-          Already included with an active Membership. Buy them individually here instead if you
-          don&apos;t want the full Membership.
+          Coaching-driven options — never included automatically with Membership. A coach reviews
+          and enables exactly what you&apos;ve purchased.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {STANDARD_MEMBERSHIP_FEATURES.map((f) => (
-            <CategoryCard
-              key={f.key}
-              label={f.label}
-              unlocked={session.role === 'admin' || Boolean(session.permissions[f.key])}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[.14em] text-silver-dim">
-          Personalized Options
-        </p>
-        <p className="mb-3 text-[12.5px] text-silver-dim">
-          Coaching-driven options. These are never included automatically with Membership — a
-          coach reviews and enables exactly what you&apos;ve purchased.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {CUSTOM_COACHING_SERVICES.map((s) => (
-            <CategoryCard
+            <OptionCard
               key={s.key}
               label={s.label}
               description={s.description}
@@ -172,6 +151,10 @@ export default async function CustomPage({
             />
           ))}
         </div>
+        <p className="mt-3 text-[12.5px] text-silver-dim">
+          Athletes enrolled in a Custom Plan can reach out to their coach whenever they need
+          additional guidance or support — that access is always included.
+        </p>
       </section>
 
       <div id="build" className="mt-10 scroll-mt-6">

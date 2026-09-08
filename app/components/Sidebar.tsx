@@ -37,7 +37,8 @@ const MEMBER_NAV: NavItem[] = [
  * bookmarks/links).
  */
 const COACHING_NAV: NavItem[] = [
-  { href: '/custom', label: 'Custom' },
+  { href: '/custom', label: 'Build Your Plan' },
+  { href: '/coaching/one-on-one', label: '1-on-1 Online Coaching' },
 ];
 
 /**
@@ -199,7 +200,7 @@ export default function Sidebar({
   const body = (
     <>
       {section('Training', MEMBER_NAV)}
-      {section('Custom', COACHING_NAV)}
+      {section('Create a Custom Plan', COACHING_NAV)}
       {section('Personalized Plan', PERSONALIZED_NAV)}
       {section('In-Person Training', IN_PERSON_NAV)}
       {isStaff && section('Coaching', STAFF_NAV)}

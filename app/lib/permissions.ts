@@ -117,12 +117,27 @@ export const STANDARD_MEMBERSHIP_FEATURES: { key: MembershipPermission; label: s
   MEMBERSHIP_PERMISSIONS.map((key) => ({ key, label: PERMISSION_LABEL[key] }));
 
 /**
- * Custom-coaching service catalog shown on the "Request Custom Plan" form.
- * `key` is the value stored in `custom_plan_requests.requested_services` —
- * it is a request, not a grant, so several service keys intentionally map
- * onto the same underlying permission column; an admin decides what to
- * actually enable for the member in Admin > Plan Management after reviewing
- * the request.
+ * Custom Plan option catalog shown on the "Build Your Plan" form
+ * (app/(app)/custom/page.tsx) and on the premium "1-on-1 Online Coaching"
+ * page. `key` is the value stored in `custom_plan_requests.requested_services`
+ * / `custom_plan_purchases.personalized_keys` — it is what a member actually
+ * buys, resolved through `relatedPermission` to the permission column an
+ * admin/the Stripe webhook grants.
+ *
+ * EXACTLY these four options exist — this is the full catalog, not a subset.
+ * Trimmed from an earlier 8-entry catalog: '1-on-1 Online Coaching' is no
+ * longer a separate purchasable line — it is now the name of the premium
+ * experience these four options (chiefly Weekly Check-Ins) deliver, with its
+ * own page. 'Direct Messaging Support' is no longer sold either — every
+ * Custom Plan member already gets that access, communicated on-page rather
+ * than sold as a line item (see the premium page's copy). 'Personalized
+ * Development Plan' is gone because every member already receives one, and
+ * 'Future In-Person Sessions' is gone as a purchasable option. The
+ * 'direct_messaging'/'one_on_one_coaching'/'custom_programming' permission
+ * columns behind those retired options still exist (COACHING_PERMISSIONS
+ * below) for admin-side grants and for historical purchases made before this
+ * catalog changed — trimming the catalog does not touch anyone's existing
+ * entitlement.
  */
 export const CUSTOM_COACHING_SERVICES: {
   key: string;
@@ -131,51 +146,29 @@ export const CUSTOM_COACHING_SERVICES: {
   relatedPermission: CoachingPermission;
 }[] = [
   {
-    key: 'one_on_one_coaching',
-    label: '1-on-1 Online Coaching',
-    description: 'Direct coaching sessions run remotely.',
-    relatedPermission: 'one_on_one_coaching',
-  },
-  {
     key: 'weekly_checkins',
-    label: 'Weekly Check-ins',
-    description: 'A recurring check-in on progress, goals and adjustments.',
+    label: 'Weekly Check-Ins',
+    description:
+      'Choose a day of the week that works best for you. We\'ll schedule a weekly phone call to review your progress, answer questions, provide mentorship, and make sure you\'re staying on track toward your goals.',
     relatedPermission: 'weekly_checkins',
   },
   {
     key: 'video_reviews',
     label: 'Video Reviews',
-    description: 'Coach-reviewed film breakdowns beyond the AI analysis.',
+    description:
+      'Submit videos of practices, games, shooting sessions, or workouts and receive detailed coaching feedback with actionable improvements.',
     relatedPermission: 'video_reviews',
-  },
-  {
-    key: 'direct_messaging',
-    label: 'Direct Messaging Support',
-    description: 'Ongoing message access to a coach between sessions.',
-    relatedPermission: 'direct_messaging',
   },
   {
     key: 'custom_workout_programming',
     label: 'Custom Workout Programming',
-    description: 'Programming built specifically around this athlete, not the shared library.',
+    description: 'Personalized gym and training programming built around this athlete\'s goals and schedule.',
     relatedPermission: 'custom_programming',
   },
   {
     key: 'custom_nutrition_coaching',
     label: 'Custom Nutrition Coaching',
-    description: 'A nutrition plan built around this athlete rather than the shared cookbook.',
-    relatedPermission: 'custom_programming',
-  },
-  {
-    key: 'personalized_development_plan',
-    label: 'Personalized Development Plan',
-    description: 'A long-term roadmap tailored to this athlete’s goals.',
-    relatedPermission: 'custom_programming',
-  },
-  {
-    key: 'in_person_sessions',
-    label: 'Future In-Person Sessions',
-    description: 'On-ice or in-person sessions when that becomes available again in your area.',
+    description: 'Personalized nutrition guidance and adjustments based on performance and goals.',
     relatedPermission: 'custom_programming',
   },
 ];
