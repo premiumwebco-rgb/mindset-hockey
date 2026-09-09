@@ -22,7 +22,7 @@ export default async function AdminGroupSessionsPage() {
   await requireStaff();
 
   let sessions: ReturnType<typeof mapSessionRow>[] = [];
-  let registrationsBySession: Record<string, (ReturnType<typeof mapRegistrationRow> & { memberName: string })[]> = {};
+  const registrationsBySession: Record<string, (ReturnType<typeof mapRegistrationRow> & { memberName: string })[]> = {};
 
   if (!DEMO_MODE) {
     const supabase = await createServerClient();

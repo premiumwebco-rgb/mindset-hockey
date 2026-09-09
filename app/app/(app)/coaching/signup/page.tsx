@@ -36,7 +36,7 @@ export default async function CoachingSignupPage({
 
   let sessions: ReturnType<typeof mapSessionRow>[] = [];
   let registeredSessionIds = new Set<string>();
-  let spotsTakenBySession = new Map<string, number>();
+  const spotsTakenBySession = new Map<string, number>();
   let priorRequestCount = 0;
 
   if (!DEMO_MODE) {
@@ -58,14 +58,14 @@ export default async function CoachingSignupPage({
       ]);
 
     sessions = (sessionRows ?? []).map(mapSessionRow);
+    const myRegistrationRows = (myRegistrations ?? []).map(mapRegistrationRow);
+    const allRegistrationRows = (allRegistrations ?? []).map(mapRegistrationRow);
     registeredSessionIds = new Set(
-      (myRegistrations ?? [])
-        .filter((r) => (r as { status: string }).status === 'paid')
-        .map((r) => (r as { session_id: string }).session_id)
+      myRegistrationRows.filter((r) => r.status === 'paid').map((r) => r.sessionId)
     );
-    for (const row of (allRegistrations ?? []) as { session_id: string; status: string }[]) {
+    for (const row of allRegistrationRows) {
       if (row.status !== 'paid') continue;
-      spotsTakenBySession.set(row.session_id, (spotsTakenBySession.get(row.session_id) ?? 0) + 1);
+      spotsTakenBySession.set(row.sessionId, (spotsTakenBySession.get(row.sessionId) ?? 0) + 1);
     }
     priorRequestCount = myRequests?.length ?? 0;
   }

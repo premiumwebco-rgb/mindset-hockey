@@ -378,7 +378,6 @@ export async function reserveAnalysis(
   const credits = args.isAdmin
     ? { free: 0, purchased: 0, total: 0 }
     : await creditBalance(admin, args.profileId);
-  const purchased = credits.total;
 
   // A free account has no weekly allowance (tier 'none' = 0) but does have the
   // 3 signup credits, so this only refuses when BOTH are exhausted.

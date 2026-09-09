@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { TIER_RANK, type Tier, type Role } from './types';
-import { FEATURE_MIN_TIER, FEATURE_PERMISSION, OPEN_FEATURES, type Feature } from './plans';
+import { FEATURE_PERMISSION, OPEN_FEATURES, type Feature } from './plans';
 import { PERMISSION_KEYS, emptyPermissions, type PermissionKey } from './permissions';
 
 export const DEMO_MODE = !process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -118,13 +118,14 @@ export function nextDueEmail(
  * marketing message must include the unsubscribe URL from
  * `unsubscribeUrl()` — it is a legal requirement, not a nicety.
  */
-export async function sendMarketingEmail(_args: {
+export async function sendMarketingEmail(args: {
   to: string;
   subject: string;
   html: string;
 }): Promise<never> {
   throw new Error(
-    'No email provider is configured. Set RESEND_API_KEY and implement sendMarketingEmail() in lib/email/sequence.ts.'
+    `No email provider is configured. Set RESEND_API_KEY and implement sendMarketingEmail() ` +
+      `in lib/email/sequence.ts. (attempted to email ${args.to}: "${args.subject}")`
   );
 }
 
