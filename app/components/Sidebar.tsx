@@ -38,7 +38,7 @@ const MEMBER_NAV: NavItem[] = [
  */
 const COACHING_NAV: NavItem[] = [
   { href: '/custom', label: 'Build Your Plan' },
-  { href: '/coaching/one-on-one', label: '1-on-1 Online Coaching' },
+  { href: '/coaching/one-on-one', label: 'Live Virtual Coaching' },
 ];
 
 /**

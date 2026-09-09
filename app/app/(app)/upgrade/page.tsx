@@ -131,7 +131,7 @@ export default async function UpgradePage({
               href="/coaching/one-on-one"
               className="inline-flex w-full items-center justify-center rounded-[10px] border border-white/[.14] px-6 py-3 text-[13.5px] font-semibold text-silver transition-colors hover:border-white/30"
             >
-              See 1-on-1 Online Coaching
+              See Live Virtual Coaching
             </Link>
           </div>
         </Card>
