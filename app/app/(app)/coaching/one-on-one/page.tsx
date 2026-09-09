@@ -12,13 +12,16 @@ export const metadata = { title: 'Live Virtual Coaching — Mindset Hockey' };
    accent instead of the site's usual electric blue, a darker gradient
    background, and elevated cards with heavier shadows — so this reads as an
    exclusive, elite-athlete coaching program rather than another settings
-   page.
+   page. Build Your Plan (/custom) reuses this exact color system — see its
+   own header comment.
 
    Unlike the old "1-on-1 Online Coaching" version of this page, this is not
    tied to the recurring Custom Plan subscription or its permission
    lock/unlock state — it describes two live-coaching offerings sold on
-   their own terms (per-session and separately-priced group sessions), so
-   there is no CUSTOM_COACHING_SERVICES-driven feature grid here.
+   their own terms: 1-on-1 Video Coaching ($30/session, request-and-schedule,
+   no checkout here) and Group Coaching Sessions ($10/session, real Stripe
+   checkout on /coaching/signup). See lib/groupCoaching.ts for both prices —
+   this page never hardcodes a dollar amount that isn't sourced from there.
    ========================================================================== */
 
 const ONE_ON_ONE_TOPICS = [
@@ -91,8 +94,8 @@ export default async function LiveVirtualCoachingPage() {
         <div className="relative overflow-hidden rounded-2xl border border-white/[.08] bg-gradient-to-b from-white/[.04] to-transparent p-7 shadow-[0_30px_80px_-25px_rgba(0,0,0,0.7)]">
           <div className="flex items-start justify-between gap-3">
             <h2 className="display text-[21px] text-white">Group Coaching Sessions</h2>
-            <span className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-white/60">
-              Pricing determined separately
+            <span className="shrink-0 rounded-full border border-[#f0c674]/40 bg-[#f0c674]/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[.08em] text-[#f0c674]">
+              $10 per session
             </span>
           </div>
           <p className="mt-4 text-[14.5px] leading-relaxed text-white/60">
@@ -128,20 +131,20 @@ export default async function LiveVirtualCoachingPage() {
           </div>
           <div className="rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-center">
             <p className="text-[13px] text-white/60">Group Coaching Sessions</p>
-            <p className="mt-1 text-[17px] font-bold text-white">Pricing determined separately</p>
+            <p className="mt-1 text-[17px] font-bold text-white">$10 per session</p>
           </div>
         </div>
       </div>
 
       <div className="mx-auto mt-10 flex max-w-[880px] flex-col items-center gap-3 text-center">
         <p className="text-[13.5px] text-white/50">
-          Interested in a session? Reach out to your coach to get scheduled.
+          Ready to get started? Choose 1-on-1 or group coaching and sign up below.
         </p>
         <Link
-          href="/custom#build"
+          href="/coaching/signup"
           className="inline-flex min-h-[48px] items-center justify-center rounded-[10px] bg-gradient-to-b from-[#f6d896] to-[#d4a24e] px-8 py-3.5 text-[15px] font-bold text-[#1a1200] shadow-[0_12px_30px_-8px_rgba(240,198,116,0.5)] transition-transform hover:-translate-y-0.5"
         >
-          Build Your Plan
+          Sign Up
         </Link>
       </div>
     </div>

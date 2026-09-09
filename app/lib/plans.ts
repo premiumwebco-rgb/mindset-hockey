@@ -165,6 +165,9 @@ export type Feature =
   | 'nutrition_plans'
   | 'mindset_training'
   | 'video_review'
+  | 'weekly_checkins'
+  | 'custom_workout_programming'
+  | 'custom_nutrition_coaching'
   | 'advanced_tracking'
   | 'priority_support';
 
@@ -179,6 +182,9 @@ export const FEATURE_MIN_TIER: Record<Feature, Tier> = {
   nutrition_plans: 'membership',
   mindset_training: 'membership',
   video_review: 'membership',
+  weekly_checkins: 'membership',
+  custom_workout_programming: 'membership',
+  custom_nutrition_coaching: 'membership',
   advanced_tracking: 'membership',
   priority_support: 'membership',
 };
@@ -195,6 +201,13 @@ export const FEATURE_PERMISSION: Partial<Record<Feature, PermissionKey>> = {
   nutrition_plans: 'nutrition',
   mindset_training: 'mindset',
   video_review: 'video_reviews',
+  // The other 3 Personalized Plan tabs — same relatedPermission mapping as
+  // CUSTOM_COACHING_SERVICES in lib/permissions.ts (custom_workout_programming
+  // and custom_nutrition_coaching share the single custom_programming column,
+  // exactly like the Build Your Plan catalog they were split out of).
+  weekly_checkins: 'weekly_checkins',
+  custom_workout_programming: 'custom_programming',
+  custom_nutrition_coaching: 'custom_programming',
   basic_tracking: 'progress_tracking',
   advanced_tracking: 'progress_tracking',
 };
@@ -314,6 +327,9 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   nutrition_plans: 'Nutrition & meal planning',
   mindset_training: 'Mindset development',
   video_review: 'Video review',
+  weekly_checkins: 'Weekly check-ins',
+  custom_workout_programming: 'Custom workout programming',
+  custom_nutrition_coaching: 'Custom nutrition coaching',
   advanced_tracking: 'Advanced performance tracking',
   priority_support: 'Priority support',
 };

@@ -142,6 +142,14 @@ async function handleEvent(event: Stripe.Event, admin: Admin) {
         return;
       }
 
+      // A Group Coaching Session registration is a one-time payment for one
+      // session, not a membership change either — same branch-before-anything
+      // rule as the two kinds above.
+      if (cs.metadata?.kind === 'group_session') {
+        await grantGroupSessionRegistration(admin, event, cs);
+        return;
+      }
+
       const profileId = cs.client_reference_id ?? cs.metadata?.profile_id;
       const tier = tierFromMetadata(cs.metadata);
       if (!profileId || !tier) {
@@ -375,6 +383,102 @@ async function grantAnalysisAddon(
   }
 
   console.log(`[addon] granted ${quantity} analysis to ${profileId} (session ${cs.id})`);
+}
+
+/**
+ * Records a paid Group Coaching Session registration.
+ *
+ * Only a genuinely paid session records anything (mirrors
+ * grantAnalysisAddon() above). Re-checks that the session is still
+ * 'scheduled' and, if it has a capacity, that it isn't already full —
+ * a member could have opened checkout before a capacity limit was hit by
+ * someone else, or before an admin cancelled the session, and Checkout can
+ * complete asynchronously well after this route returned its URL. If either
+ * check fails, the payment is refunded immediately rather than silently
+ * keeping money for a registration that was never actually valid — this
+ * is the race-condition backstop the checkout route's own pre-check
+ * (best-effort, at request time) cannot fully close on its own.
+ *
+ * IDEMPOTENCY IS THE DATABASE'S JOB, same as every other grant function
+ * here: `stripe_checkout_session_id` is UNIQUE and `(session_id, profile_id)`
+ * is UNIQUE on group_session_registrations (migration 0024), so a duplicate
+ * webhook delivery — or a member who somehow completed checkout twice —
+ * loses to a unique violation (23505) rather than creating a second row or
+ * charging/keeping a second payment.
+ */
+async function grantGroupSessionRegistration(
+  admin: Admin,
+  event: Stripe.Event,
+  cs: Stripe.Checkout.Session
+): Promise<void> {
+  if (cs.payment_status !== 'paid') {
+    console.warn(`[group-session] session ${cs.id} is ${cs.payment_status}, not registering`);
+    return;
+  }
+
+  const profileId = cs.client_reference_id ?? cs.metadata?.profile_id;
+  const groupSessionId = cs.metadata?.group_session_id;
+  if (!profileId || !groupSessionId) {
+    console.error(`[group-session] session ${cs.id} missing profile/session reference — cannot register`);
+    return;
+  }
+
+  const paymentIntentId =
+    typeof cs.payment_intent === 'string' ? cs.payment_intent : (cs.payment_intent?.id ?? null);
+  const amountCents = cs.amount_total ?? Number(cs.metadata?.amount_cents ?? 0);
+
+  const { data: groupSession } = await admin
+    .from('group_coaching_sessions')
+    .select('id, status, capacity')
+    .eq('id', groupSessionId)
+    .single();
+
+  let refundReason: string | null = null;
+  if (!groupSession) {
+    refundReason = 'session no longer exists';
+  } else if (groupSession.status !== 'scheduled') {
+    refundReason = 'session was cancelled before payment completed';
+  } else if (groupSession.capacity !== null) {
+    const { count } = await admin
+      .from('group_session_registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', groupSessionId)
+      .eq('status', 'paid');
+    if ((count ?? 0) >= groupSession.capacity) refundReason = 'session filled before payment completed';
+  }
+
+  if (refundReason) {
+    console.warn(`[group-session] refunding session ${cs.id} — ${refundReason}`);
+    if (paymentIntentId) {
+      try {
+        await stripe().refunds.create({ payment_intent: paymentIntentId });
+      } catch (err) {
+        console.error('[group-session] auto-refund failed:', (err as Error).message);
+      }
+    }
+    return;
+  }
+
+  const { error } = await admin.from('group_session_registrations').insert({
+    session_id: groupSessionId,
+    profile_id: profileId,
+    status: 'paid',
+    amount_cents: amountCents,
+    stripe_checkout_session_id: cs.id,
+    stripe_payment_intent_id: paymentIntentId,
+  });
+
+  if (error) {
+    // 23505 = unique violation = already registered (duplicate delivery, or
+    // (session_id, profile_id) already taken) — expected on a Stripe retry.
+    if (error.code === '23505') {
+      console.log(`[group-session] session ${cs.id} already registered — duplicate ignored`);
+      return;
+    }
+    throw new Error(`could not record group session registration: ${error.message}`);
+  }
+
+  console.log(`[group-session] registered ${profileId} for session ${groupSessionId} (checkout ${cs.id})`);
 }
 
 /**

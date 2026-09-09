@@ -53,6 +53,17 @@ const COACHING_NAV: NavItem[] = [
  */
 const PERSONALIZED_NAV: NavItem[] = [
   { href: '/reviews', label: 'Video Review', feature: 'video_review' },
+  { href: '/coaching/weekly-checkins', label: 'Weekly Check-Ins', feature: 'weekly_checkins' },
+  {
+    href: '/coaching/workout-programming',
+    label: 'Custom Workout Programming',
+    feature: 'custom_workout_programming',
+  },
+  {
+    href: '/coaching/nutrition-coaching',
+    label: 'Custom Nutrition Coaching',
+    feature: 'custom_nutrition_coaching',
+  },
 ];
 
 /**
@@ -80,6 +91,8 @@ const ADMIN_NAV: NavItem[] = [
   { href: '/admin/workouts', label: 'Workout Content' },
   { href: '/admin/mindset', label: 'Mindset Training' },
   { href: '/admin/nutrition', label: 'Nutrition CMS' },
+  { href: '/admin/coaching-content', label: 'Coaching Content' },
+  { href: '/admin/group-sessions', label: 'Group Sessions' },
   { href: '/admin/leads', label: 'Leads' },
 ];
 
